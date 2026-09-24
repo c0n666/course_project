@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Profile — Nutrition Tracker{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">My Profile</h1>
+    <p class="text-slate-500 text-sm mt-1">Update metrics — daily targets recalculate instantly</p>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">← Dashboard</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+    <h2 class="font-semibold text-slate-900 mb-4">Update profile & goal</h2>
+    <form method="post" class="space-y-5">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Current weight (kg)</label>
+        <input type="number" name="weight" step="0.1" min="30" max="300" required
+               value="{{ profile.weight or '' }}"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Activity level</label>
+        <select name="activity_level" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <option value="sedentary" {% if profile.activity_level == 'sedentary' %}selected{% endif %}>Sedentary</option>
+          <option value="light" {% if profile.activity_level == 'light' %}selected{% endif %}>Light</option>
+          <option value="moderate" {% if profile.activity_level == 'moderate' %}selected{% endif %}>Moderate</option>
+          <option value="active" {% if profile.activity_level == 'active' %}selected{% endif %}>Active</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Goal type</label>
+          <select name="goal_type" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+            <option value="weight_loss" {% if active_goal and active_goal.goal_type == 'weight_loss' %}selected{% endif %}>Схуднення</option>
+            <option value="maintenance" {% if active_goal and active_goal.goal_type == 'maintenance' %}selected{% endif %}>Підтримка форми</option>
+            <option value="muscle_gain" {% if active_goal and active_goal.goal_type == 'muscle_gain' %}selected{% endif %}>Набір маси</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Target weight (kg)</label>
+          <input type="number" name="target_weight" step="0.1" min="30" max="300" required
+                 value="{{ active_goal.target_weight if active_goal else profile.weight }}"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+      </div>
+      <button type="submit"
+              class="w-full sm:w-auto px-6 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition">
+        Save changes
+      </button>
+    </form>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-3">Your metrics</h2>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-slate-500">Gender</dt><dd class="font-medium capitalize">{{ profile.gender or '—' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">Birth date</dt><dd class="font-medium">{{ profile.birth_date or '—' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">Height</dt><dd class="font-medium">{{ profile.height or '—' }} cm</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">Email</dt><dd class="font-medium truncate ml-4">{{ current_user.email }}</dd></div>
+      </dl>
+    </div>
+
+    {% if targets %}
+    <div class="bg-gradient-to-br from-brand-50 to-white rounded-xl border border-brand-100 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-1">Daily targets</h2>
+      <p class="text-xs text-brand-600 mb-3">{{ targets.goal_label }} · BMR {{ targets.bmr }} · TDEE {{ targets.tdee }} kcal</p>
+      <ul class="space-y-2 text-sm">
+        <li class="flex justify-between"><span>Calories</span><strong>{{ targets.calories }} kcal</strong></li>
+        <li class="flex justify-between"><span>Protein</span><strong>{{ targets.proteins }} g</strong></li>
+        <li class="flex justify-between"><span>Fat</span><strong>{{ targets.fats }} g</strong></li>
+        <li class="flex justify-between"><span>Carbs</span><strong>{{ targets.carbs }} g</strong></li>
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

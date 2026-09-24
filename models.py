@@ -1,0 +1,200 @@
+from datetime import date, datetime
+
+from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+db = SQLAlchemy()
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(db.String(255), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    role: Mapped[str] = mapped_column(db.String(20), nullable=False, default="user")
+    trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    trainer: Mapped["User | None"] = relationship(
+        "User",
+        remote_side=[id],
+        back_populates="clients",
+        foreign_keys=[trainer_id],
+    )
+    clients: Mapped[list["User"]] = relationship(
+        "User",
+        back_populates="trainer",
+        foreign_keys=[trainer_id],
+    )
+    profile: Mapped["Profile | None"] = relationship(back_populates="user", uselist=False)
+    goals: Mapped[list["Goal"]] = relationship(back_populates="user")
+    food_logs: Mapped[list["FoodLog"]] = relationship(back_populates="user")
+    workouts: Mapped[list["Workout"]] = relationship(back_populates="user")
+    reports: Mapped[list["Report"]] = relationship(back_populates="user")
+
+    def __repr__(self) -> str:
+        return f"<User {self.email}>"
+
+
+class Profile(db.Model):
+    __tablename__ = "profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    gender: Mapped[str | None] = mapped_column(db.String(20))
+    birth_date: Mapped[date | None] = mapped_column(db.Date)
+    height: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    weight: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    activity_level: Mapped[str | None] = mapped_column(db.String(20))
+    medical_notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped["User"] = relationship(back_populates="profile")
+
+
+class Goal(db.Model):
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    goal_type: Mapped[str] = mapped_column(db.String(30), nullable=False)
+    target_weight: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    start_weight: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    start_date: Mapped[date] = mapped_column(db.Date, nullable=False, default=date.today)
+    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="active")
+
+    user: Mapped["User"] = relationship(back_populates="goals")
+
+
+class Micronutrient(db.Model):
+    __tablename__ = "micronutrients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(100), unique=True, nullable=False)
+    unit: Mapped[str] = mapped_column(db.String(20), nullable=False)
+
+    product_links: Mapped[list["ProductMicronutrient"]] = relationship(back_populates="micronutrient")
+
+
+class Product(db.Model):
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    calories_per_100g: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    proteins: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    fats: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    carbs: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+
+    food_logs: Mapped[list["FoodLog"]] = relationship(back_populates="product")
+    micronutrient_links: Mapped[list["ProductMicronutrient"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
+    def _per_portion(self, per_100g: float, grams: float) -> float:
+        return float(per_100g) * grams / 100.0
+
+    def calories_for_portion(self, grams: float) -> float:
+        return self._per_portion(self.calories_per_100g, grams)
+
+    def protein_for_portion(self, grams: float) -> float:
+        return self._per_portion(self.proteins, grams)
+
+    def fat_for_portion(self, grams: float) -> float:
+        return self._per_portion(self.fats, grams)
+
+    def carb_for_portion(self, grams: float) -> float:
+        return self._per_portion(self.carbs, grams)
+
+
+class ProductMicronutrient(db.Model):
+    __tablename__ = "product_micronutrients"
+    __table_args__ = (
+        UniqueConstraint("product_id", "micronutrient_id", name="uq_product_micronutrient"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
+    micronutrient_id: Mapped[int] = mapped_column(
+        ForeignKey("micronutrients.id"), nullable=False, index=True
+    )
+    amount_per_100g: Mapped[float] = mapped_column(db.Float, nullable=False, default=0)
+
+    product: Mapped["Product"] = relationship(back_populates="micronutrient_links")
+    micronutrient: Mapped["Micronutrient"] = relationship(back_populates="product_links")
+
+    def amount_for_portion(self, grams: float) -> float:
+        return float(self.amount_per_100g) * grams / 100.0
+
+
+class FoodLog(db.Model):
+    __tablename__ = "food_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(db.Date, nullable=False, default=date.today, index=True)
+    meal_type: Mapped[str] = mapped_column(db.String(50), nullable=False)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    portion_grams: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="food_logs")
+    product: Mapped["Product"] = relationship(back_populates="food_logs")
+
+    @property
+    def grams(self) -> float:
+        return float(self.portion_grams)
+
+    @property
+    def calories(self) -> float:
+        return self.product.calories_for_portion(self.grams)
+
+    @property
+    def proteins_g(self) -> float:
+        return self.product.protein_for_portion(self.grams)
+
+    @property
+    def fats_g(self) -> float:
+        return self.product.fat_for_portion(self.grams)
+
+    @property
+    def carbs_g(self) -> float:
+        return self.product.carb_for_portion(self.grams)
+
+
+class Workout(db.Model):
+    __tablename__ = "workouts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(db.String(100), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(nullable=False)
+    calories_burned: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="workouts")
+
+
+class Report(db.Model):
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    nutrition_summary: Mapped[str | None] = mapped_column(Text)
+    ai_grade: Mapped[str | None] = mapped_column(db.String(10))
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="reports")
+    recommendations: Mapped[list["Recommendation"]] = relationship(back_populates="report")
+
+
+class Recommendation(db.Model):
+    __tablename__ = "recommendations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="pending")
+
+    report: Mapped["Report"] = relationship(back_populates="recommendations")

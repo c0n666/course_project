@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Trainer Dashboard — Nutrition Tracker{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">Trainer Dashboard</h1>
+  <p class="text-slate-500 text-sm mt-1">Monitor your assigned athletes — {{ today.strftime('%B %d, %Y') }}</p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Active clients</p>
+    <p class="text-3xl font-bold text-brand-700 mt-2">{{ client_count }}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm sm:col-span-2">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Your role</p>
+    <p class="text-lg font-semibold text-slate-800 mt-2">Trainer — review meals, macros & send recommendations</p>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="px-6 py-4 border-b border-slate-100">
+    <h2 class="font-semibold text-slate-900">Client roster</h2>
+    <p class="text-xs text-slate-500 mt-0.5">Click a client to view today's full food log</p>
+  </div>
+
+  {% if clients %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-left">
+        <tr>
+          <th class="px-6 py-3 font-medium">Athlete</th>
+          <th class="px-6 py-3 font-medium">Profile</th>
+          <th class="px-6 py-3 font-medium text-right">Calories today</th>
+          <th class="px-6 py-3 font-medium text-right">Workouts</th>
+          <th class="px-6 py-3 font-medium text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for item in clients %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-4">
+            <p class="font-medium text-slate-900">{{ item.user.email }}</p>
+            <p class="text-xs text-slate-400">ID #{{ item.user.id }}</p>
+          </td>
+          <td class="px-6 py-4 text-slate-600">
+            {% if item.profile %}
+            {% if item.profile.weight %}{{ item.profile.weight }} kg{% else %}—{% endif %}
+            {% if item.profile.height %} · {{ item.profile.height }} cm{% endif %}
+            {% else %}
+            <span class="text-slate-400">No profile</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 text-right">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {% if item.calories_today > 2500 %}bg-amber-100 text-amber-800
+              {% elif item.calories_today > 0 %}bg-emerald-100 text-emerald-800
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ item.calories_today }} kcal
+            </span>
+          </td>
+          <td class="px-6 py-4 text-right font-medium">{{ item.workouts_today }}</td>
+          <td class="px-6 py-4 text-right">
+            <a href="{{ url_for('trainer_client', client_id=item.user.id) }}"
+               class="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition">
+              View & advise
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="px-6 py-12 text-center">
+    <p class="text-slate-500 text-sm">No athletes are assigned to you yet.</p>
+    <p class="text-slate-400 text-xs mt-2">Athletes can select you as their trainer during registration.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

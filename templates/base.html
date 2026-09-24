@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Nutrition & Workout Tracker{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985' },
+            accent: { 500: '#10b981', 600: '#059669' }
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-50 text-slate-800 antialiased">
+  <div class="min-h-full flex flex-col">
+    {% if current_user.is_authenticated %}
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="h-9 w-9 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">NW</div>
+            <span class="font-semibold text-slate-900">Nutrition & Workout</span>
+          </div>
+          <nav class="flex items-center gap-4 text-sm">
+            {% if current_user.role == 'trainer' %}
+            <a href="{{ url_for('trainer_dashboard') }}" class="text-slate-600 hover:text-brand-700 font-medium">Clients</a>
+            {% else %}
+            <a href="{{ url_for('dashboard') }}" class="text-slate-600 hover:text-brand-700 font-medium">Dashboard</a>
+            <a href="{{ url_for('log_food') }}" class="text-slate-600 hover:text-brand-700 font-medium">Log Food</a>
+            <a href="{{ url_for('profile_page') }}" class="text-slate-600 hover:text-brand-700 font-medium">Profile</a>
+            {% endif %}
+            <span class="text-slate-400 hidden sm:inline">{{ current_user.email }}</span>
+            <span class="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-xs font-medium capitalize">{{ current_user.role }}</span>
+            <a href="{{ url_for('logout') }}" class="text-slate-500 hover:text-red-600">Sign out</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+    {% endif %}
+
+    <main class="flex-1">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+          {% for category, message in messages %}
+          <div class="rounded-lg px-4 py-3 text-sm border
+            {% if category == 'error' %}bg-red-50 text-red-800 border-red-200
+            {% elif category == 'success' %}bg-emerald-50 text-emerald-800 border-emerald-200
+            {% else %}bg-sky-50 text-sky-800 border-sky-200{% endif %}">
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+      Personal Nutrition & Workout Tracking System — Academic Project
+    </footer>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

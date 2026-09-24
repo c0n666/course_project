@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Log Food — Nutrition Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-4">
+    <a href="{{ url_for('dashboard', date=selected_date.isoformat()) }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">← Back to dashboard</a>
+    <h1 class="text-2xl font-bold text-slate-900 mt-2">Log a meal</h1>
+    <p class="text-slate-500 text-sm">Record food intake for {{ selected_date.strftime('%B %d, %Y') }}.</p>
+  </div>
+
+  {% include 'date_nav.html' %}
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 mb-6">
+    {% if products %}
+    <form method="post" action="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="space-y-5">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+      <div>
+        <label for="meal_type" class="block text-sm font-medium text-slate-700 mb-1">Meal type</label>
+        <select id="meal_type" name="meal_type" required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+          <option value="snack">Snack</option>
+        </select>
+      </div>
+      <div>
+        <label for="product_id" class="block text-sm font-medium text-slate-700 mb-1">Product</label>
+        <select id="product_id" name="product_id" required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <option value="">Select a product…</option>
+          {% for p in products %}
+          <option value="{{ p.id }}"
+                  data-cal="{{ p.calories_per_100g }}"
+                  data-p="{{ p.proteins }}" data-f="{{ p.fats }}" data-c="{{ p.carbs }}">
+            {{ p.name }} ({{ p.calories_per_100g }} kcal / 100g)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div id="macros" class="hidden rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-600 grid grid-cols-3 gap-2 text-center">
+        <div><span class="font-semibold text-slate-800" id="m-p">—</span><br>Protein / 100g</div>
+        <div><span class="font-semibold text-slate-800" id="m-f">—</span><br>Fat / 100g</div>
+        <div><span class="font-semibold text-slate-800" id="m-c">—</span><br>Carbs / 100g</div>
+      </div>
+      <div>
+        <label for="portion_grams" class="block text-sm font-medium text-slate-700 mb-1">Portion (grams)</label>
+        <input type="number" id="portion_grams" name="portion_grams" required min="1" step="1" value="100"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        <p id="est-cal" class="text-xs text-slate-500 mt-1"></p>
+      </div>
+      <button type="submit"
+              class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition text-sm">
+        Save meal
+      </button>
+    </form>
+    {% else %}
+    <p class="text-slate-500 text-sm text-center py-4">
+      No products in the database. Run <code class="bg-slate-100 px-1 rounded">flask init-db</code> to seed sample data.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h2 class="font-semibold text-slate-900">Meals on {{ selected_date.strftime('%d.%m.%Y') }}</h2>
+    </div>
+    {% if food_logs %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-left">
+          <tr>
+            <th class="px-6 py-3 font-medium">Meal</th>
+            <th class="px-6 py-3 font-medium">Product</th>
+            <th class="px-6 py-3 font-medium">Portion</th>
+            <th class="px-6 py-3 font-medium text-right">kcal</th>
+            <th class="px-4 py-3 w-14"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for log in food_logs %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-3 capitalize">{{ log.meal_type }}</td>
+            <td class="px-6 py-3">{{ log.product.name }}</td>
+            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
+            <td class="px-6 py-3 text-right font-medium">{{ "%.0f"|format(log.calories) }}</td>
+            <td class="px-4 py-3 text-center">
+              <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="inline"
+                    onsubmit="return confirm('Видалити цей запис?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('log_food', date=selected_date.isoformat()) }}">
+                <button type="submit" title="Видалити"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="px-6 py-8 text-slate-400 text-sm text-center">No meals logged for this day.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const sel = document.getElementById('product_id');
+  const portion = document.getElementById('portion_grams');
+  const macros = document.getElementById('macros');
+  const est = document.getElementById('est-cal');
+
+  function updatePreview() {
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+      macros.classList.add('hidden');
+      est.textContent = '';
+      return;
+    }
+    macros.classList.remove('hidden');
+    document.getElementById('m-p').textContent = opt.dataset.p;
+    document.getElementById('m-f').textContent = opt.dataset.f;
+    document.getElementById('m-c').textContent = opt.dataset.c;
+    const g = parseFloat(portion.value) || 0;
+    const kcal = (parseFloat(opt.dataset.cal) * g / 100).toFixed(0);
+    est.textContent = g > 0 ? `Estimated: ~${kcal} kcal` : '';
+  }
+  if (sel) {
+    sel.addEventListener('change', updatePreview);
+    portion.addEventListener('input', updatePreview);
+  }
+</script>
+{% endblock %}

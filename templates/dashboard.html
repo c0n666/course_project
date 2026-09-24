@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Nutrition Tracker{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="text-2xl font-bold text-slate-900">Athlete Dashboard</h1>
+  <p class="text-slate-500 text-sm mt-1">
+    {% if selected_date == today %}
+    Overview for {{ selected_date.strftime('%B %d, %Y') }} (today)
+    {% else %}
+    Overview for {{ selected_date.strftime('%B %d, %Y') }}
+    {% endif %}
+  </p>
+</div>
+
+{% include 'date_nav.html' %}
+
+<div class="mb-6 bg-white rounded-xl border border-violet-200 shadow-sm p-6">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div>
+      <h2 class="font-semibold text-slate-900">AI-аналіз раціону</h2>
+      <p class="text-xs text-slate-500 mt-1">Аналіз останніх 7 днів · калорії, БЖВ, мікронутрієнти · оцінка та рекомендації</p>
+    </div>
+    <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit"
+              class="shrink-0 bg-violet-600 hover:bg-violet-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
+        Запустити AI-звіт
+      </button>
+    </form>
+  </div>
+  {% if latest_report %}
+  <div class="mt-4 rounded-lg bg-violet-50 border border-violet-100 px-4 py-3">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
+      <span class="text-lg font-bold text-violet-800">{{ latest_report.ai_grade }}</span>
+      <span class="text-xs text-slate-500">{{ latest_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+    </div>
+    <p class="text-sm text-slate-700">{{ latest_report.nutrition_summary }}</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if recommendations %}
+<div class="mb-6 space-y-3">
+  <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide">Рекомендації (очікують затвердження)</h2>
+  {% for rec in recommendations %}
+  <div class="rounded-xl border {% if rec.content.startswith('[AI') %}border-violet-200 bg-violet-50{% else %}border-brand-200 bg-brand-50{% endif %} px-5 py-4 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm text-slate-800">{{ rec.content }}</p>
+        <p class="text-xs mt-2 font-medium {% if rec.content.startswith('[AI') %}text-violet-600{% else %}text-brand-600{% endif %}">
+          {% if rec.content.startswith('[AI') %}AI · очікує перегляду тренером{% else %}Від тренера{% endif %}
+        </p>
+      </div>
+      <form method="post" action="/recommendation/delete/{{ rec.id }}" class="shrink-0"
+            onsubmit="return confirm('Видалити цю рекомендацію?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+        <button type="submit"
+                class="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-medium px-3 py-2 rounded-lg text-xs transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Видалити
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if targets %}
+<div class="bg-white rounded-xl border border-brand-200 shadow-sm p-6 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+    <div>
+      <h2 class="font-semibold text-slate-900">Daily nutrition targets</h2>
+      <p class="text-xs text-slate-500">{{ targets.goal_label }} · BMR {{ targets.bmr }} kcal · TDEE {{ targets.tdee }} kcal</p>
+    </div>
+    <a href="{{ url_for('profile_page') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">Edit profile →</a>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="text-center p-3 rounded-lg bg-brand-50">
+      <p class="text-xs text-slate-500 uppercase">Calories</p>
+      <p class="text-xl font-bold text-brand-700">{{ targets.calories }}</p>
+      <p class="text-xs {% if calories_in > targets.calories %}text-amber-600{% else %}text-slate-400{% endif %}">{{ calories_in }} eaten</p>
+    </div>
+    <div class="text-center p-3 rounded-lg bg-slate-50">
+      <p class="text-xs text-slate-500 uppercase">Protein</p>
+      <p class="text-xl font-bold text-slate-800">{{ targets.proteins }}g</p>
+      <p class="text-xs text-slate-400">{{ proteins_g }}g eaten</p>
+    </div>
+    <div class="text-center p-3 rounded-lg bg-slate-50">
+      <p class="text-xs text-slate-500 uppercase">Fat</p>
+      <p class="text-xl font-bold text-slate-800">{{ targets.fats }}g</p>
+      <p class="text-xs text-slate-400">{{ fats_g }}g eaten</p>
+    </div>
+    <div class="text-center p-3 rounded-lg bg-slate-50">
+      <p class="text-xs text-slate-500 uppercase">Carbs</p>
+      <p class="text-xl font-bold text-slate-800">{{ targets.carbs }}g</p>
+      <p class="text-xs text-slate-400">{{ carbs_g }}g eaten</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if goal_progress %}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold text-slate-900">Goal progress</h2>
+    <span class="text-sm font-medium text-brand-700">{{ goal_progress.goal_label }}</span>
+  </div>
+  <div class="flex justify-between text-xs text-slate-500 mb-2">
+    <span>Start: {{ goal_progress.start_weight }} kg</span>
+    <span>Current: <strong class="text-slate-800">{{ goal_progress.current_weight }} kg</strong></span>
+    <span>Target: {{ goal_progress.target_weight }} kg</span>
+  </div>
+  <div class="h-3 rounded-full bg-slate-100 overflow-hidden">
+    <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-accent-500 transition-all duration-500"
+         style="width: {{ goal_progress.percent }}%"></div>
+  </div>
+  <p class="text-xs text-slate-500 mt-2 text-right">{{ goal_progress.percent }}% toward goal</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 gap-4 mb-4">
+  <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Burned</p>
+    <p class="text-2xl font-bold text-accent-600 mt-1">{{ calories_burned }}</p>
+    <p class="text-xs text-slate-400">kcal</p>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Net</p>
+    <p class="text-2xl font-bold {% if net_calories >= 0 %}text-amber-600{% else %}text-emerald-600{% endif %} mt-1">{{ net_calories }}</p>
+  </div>
+</div>
+
+<div class="mb-8">
+  <button type="button" id="openMicroModal"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-medium shadow-md hover:bg-slate-700 transition focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    Детальний аналіз мікронутрієнтів
+  </button>
+</div>
+
+<div id="microModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+  <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="microModalBackdrop"></div>
+  <div class="flex min-h-full items-center justify-center p-4">
+    <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+         role="dialog" aria-modal="true" aria-labelledby="microModalTitle">
+      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div>
+          <h2 id="microModalTitle" class="text-lg font-semibold text-slate-900">Детальний аналіз мікронутрієнтів</h2>
+          <p class="text-xs text-slate-500 mt-0.5">{{ selected_date.strftime('%d.%m.%Y') }} — спожито за день</p>
+        </div>
+        <button type="button" id="closeMicroModal"
+                class="rounded-lg p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
+                aria-label="Закрити">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-6 max-h-[70vh] overflow-y-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-600 text-left">
+              <th class="px-4 py-3 font-semibold rounded-tl-lg">Мікронутрієнт</th>
+              <th class="px-4 py-3 font-semibold text-right">Спожито за день</th>
+              <th class="px-4 py-3 font-semibold text-right rounded-tr-lg">Одиниця</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in micronutrient_totals %}
+            <tr class="{% if loop.index is odd %}bg-white{% else %}bg-slate-50{% endif %} border-b border-slate-100 last:border-0">
+              <td class="px-4 py-3 font-medium text-slate-800">{{ item.name }}</td>
+              <td class="px-4 py-3 text-right tabular-nums text-slate-700">{{ item.total }}</td>
+              <td class="px-4 py-3 text-right text-slate-500">{{ item.unit }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 text-right">
+        <button type="button" id="closeMicroModalFooter"
+                class="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">
+          Закрити
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+    <h2 class="font-semibold text-slate-900 mb-1">Macro distribution</h2>
+    <p class="text-xs text-slate-500 mb-4">Protein, fat & carbs today (grams)</p>
+    <div class="relative h-64 flex items-center justify-center">
+      <canvas id="macrosChart"></canvas>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+    <h2 class="font-semibold text-slate-900 mb-1">Calorie trend</h2>
+    <p class="text-xs text-slate-500 mb-4">Daily intake — last 7 days</p>
+    <div class="relative h-64">
+      <canvas id="caloriesChart"></canvas>
+    </div>
+  </div>
+</div>
+
+{% if weight_meta %}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+    <div>
+      <h2 class="font-semibold text-slate-900">Прогностична динаміка маси тіла</h2>
+      <p class="text-xs text-slate-500 mt-1">
+        Нелінійна модель (адаптація TDEE −24 ккал/кг) · 7700 ккал ≈ 1 кг ·
+        {% if weight_meta %}
+        баланс <strong>{{ weight_meta.avg_balance_kcal }}</strong> ккал/день
+        (споживання {{ weight_meta.avg_intake_kcal }}, витрати {{ weight_meta.avg_expenditure_kcal }})
+        {% endif %}
+      </p>
+    </div>
+    {% if active_goal and active_goal.target_weight %}
+    <span class="text-xs font-medium px-3 py-1.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
+      Ціль: {{ active_goal.target_weight }} kg
+    </span>
+    {% endif %}
+  </div>
+  <div class="relative h-72">
+    <canvas id="weightChart"></canvas>
+  </div>
+  <p class="text-xs text-slate-400 mt-3 flex flex-wrap gap-4">
+    <span><span class="inline-block w-6 border-t-2 border-slate-700 align-middle mr-1"></span> Оцінка фактичної ваги (з логів)</span>
+    <span><span class="inline-block w-6 border-t-2 border-dashed border-violet-500 align-middle mr-1"></span> Прогноз системи (30 днів)</span>
+  </p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="font-semibold text-slate-900">Meals</h2>
+      <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">+ Log food</a>
+    </div>
+    {% if food_logs %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-left">
+          <tr>
+            <th class="px-6 py-3 font-medium">Meal</th>
+            <th class="px-6 py-3 font-medium">Product</th>
+            <th class="px-6 py-3 font-medium">Portion</th>
+            <th class="px-6 py-3 font-medium text-right">kcal</th>
+            <th class="px-4 py-3 font-medium text-center w-14"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for log in food_logs %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-3 capitalize">{{ log.meal_type }}</td>
+            <td class="px-6 py-3">{{ log.product.name }}</td>
+            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
+            <td class="px-6 py-3 text-right font-medium">{{ "%.0f"|format(log.calories) }}</td>
+            <td class="px-4 py-3 text-center">
+              <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="inline"
+                    onsubmit="return confirm('Видалити цей запис?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('dashboard', date=selected_date.isoformat()) }}">
+                <button type="submit" title="Видалити"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="px-6 py-8 text-slate-400 text-sm text-center">No meals logged for this day.</p>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-4">Log workout</h2>
+      <form method="post" action="{{ url_for('log_workout') }}" class="grid grid-cols-2 gap-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Type</label>
+          <input type="text" name="type" required placeholder="e.g. Running, Strength"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Duration (min)</label>
+          <input type="number" name="duration_minutes" required min="1"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Calories burned</label>
+          <input type="number" name="calories_burned" step="0.1" min="0" value="0"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div class="col-span-2">
+          <button type="submit"
+                  class="w-full bg-accent-600 hover:bg-accent-500 text-white font-medium py-2 rounded-lg text-sm transition">
+            Save workout
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100">
+        <h2 class="font-semibold text-slate-900">Today's workouts</h2>
+      </div>
+      {% if workouts %}
+      <ul class="divide-y divide-slate-100">
+        {% for w in workouts %}
+        <li class="px-6 py-3 flex justify-between text-sm">
+          <span class="font-medium">{{ w.type }}</span>
+          <span class="text-slate-500">{{ w.duration_minutes }} min · {{ w.calories_burned }} kcal</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="px-6 py-6 text-slate-400 text-sm text-center">No workouts logged today.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if profile %}
+<div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+  <h2 class="font-semibold text-slate-900 mb-3">Profile snapshot</h2>
+  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+    <div>
+      <dt class="text-slate-500">Gender</dt>
+      <dd class="font-medium capitalize">{{ profile.gender or '—' }}</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Height</dt>
+      <dd class="font-medium">{{ profile.height or '—' }} cm</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Weight</dt>
+      <dd class="font-medium">{{ profile.weight or '—' }} kg</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Birth date</dt>
+      <dd class="font-medium">{{ profile.birth_date or '—' }}</dd>
+    </div>
+  </dl>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const macrosData = {{ chart_macros_json|safe }};
+  const caloriesData = {{ chart_calories_json|safe }};
+  const weightData = {{ chart_weight_json|safe }};
+
+  const macroColors = ['#0ea5e9', '#f59e0b', '#10b981'];
+  const hasMacros = macrosData.values.some(v => v > 0);
+
+  new Chart(document.getElementById('macrosChart'), {
+    type: 'pie',
+    data: {
+      labels: macrosData.labels,
+      datasets: [{
+        data: hasMacros ? macrosData.values : [1, 1, 1],
+        backgroundColor: hasMacros ? macroColors : ['#e2e8f0', '#e2e8f0', '#e2e8f0'],
+        borderWidth: 2,
+        borderColor: '#fff',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => hasMacros
+              ? `${ctx.label}: ${ctx.parsed} g`
+              : 'Log food to see macros',
+          },
+        },
+      },
+    },
+  });
+
+  if (weightData.labels && weightData.labels.length && document.getElementById('weightChart')) {
+    const datasets = [
+      {
+        label: 'Оцінка фактичної ваги',
+        data: weightData.actual,
+        borderColor: '#334155',
+        backgroundColor: 'rgba(51, 65, 85, 0.08)',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3,
+        spanGaps: false,
+      },
+      {
+        label: 'Прогноз системи',
+        data: weightData.forecast,
+        borderColor: '#7c3aed',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [8, 4],
+        tension: 0.45,
+        pointRadius: 2,
+        cubicInterpolationMode: 'monotone',
+        spanGaps: false,
+      },
+    ];
+    if (weightData.target_weight) {
+      datasets.push({
+        label: 'Цільова вага',
+        data: weightData.labels.map(() => weightData.target_weight),
+        borderColor: 'rgba(16, 185, 129, 0.55)',
+        borderWidth: 1,
+        borderDash: [3, 3],
+        pointRadius: 0,
+        fill: false,
+      });
+    }
+
+    new Chart(document.getElementById('weightChart'), {
+      type: 'line',
+      data: { labels: weightData.labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            title: { display: true, text: 'Вага (kg)' },
+            grid: { color: '#f1f5f9' },
+          },
+          x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 14 } },
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                if (ctx.parsed.y == null) return null;
+                return `${ctx.dataset.label}: ${ctx.parsed.y} kg`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  new Chart(document.getElementById('caloriesChart'), {
+    type: 'line',
+    data: {
+      labels: caloriesData.labels,
+      datasets: [{
+        label: 'Calories (kcal)',
+        data: caloriesData.values,
+        borderColor: '#0284c7',
+        backgroundColor: 'rgba(14, 165, 233, 0.15)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: '#0284c7',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+        x: { grid: { display: false } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  const modal = document.getElementById('microModal');
+  const openBtn = document.getElementById('openMicroModal');
+  const closeBtn = document.getElementById('closeMicroModal');
+  const closeFooter = document.getElementById('closeMicroModalFooter');
+  const backdrop = document.getElementById('microModalBackdrop');
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  openBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  closeFooter.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', closeModal);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+  });
+</script>
+{% endblock %}

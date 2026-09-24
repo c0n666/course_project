@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ client.email }} — Client View{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="{{ url_for('trainer_dashboard') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">← Back to clients</a>
+  <h1 class="text-2xl font-bold text-slate-900 mt-2">{{ client.email }}</h1>
+  <p class="text-slate-500 text-sm">Detailed intake for {{ today.strftime('%B %d, %Y') }}</p>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+    <p class="text-xs text-slate-500 uppercase">Calories</p>
+    <p class="text-xl font-bold text-brand-700">{{ "%.0f"|format(summary.calories) }} kcal</p>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+    <p class="text-xs text-slate-500 uppercase">Protein</p>
+    <p class="text-xl font-bold">{{ "%.1f"|format(summary.proteins) }} g</p>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm sm:col-span-2">
+    <p class="text-xs text-slate-500 uppercase mb-2">Key micronutrients today</p>
+    <div class="flex flex-wrap gap-2 text-xs">
+      {% for item in micronutrient_totals[:5] %}
+      <span class="px-2 py-1 rounded-md bg-slate-100 text-slate-700">{{ item.name }}: {{ item.total }} {{ item.unit }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+    <p class="text-xs text-slate-500 uppercase">Profile</p>
+    <p class="text-sm font-medium text-slate-700 mt-1">
+      {% if profile %}
+      {{ profile.weight or '—' }} kg · {{ profile.height or '—' }} cm
+      {% else %}No profile{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h2 class="font-semibold text-slate-900">Today's food log</h2>
+      <p class="text-xs text-slate-500">Full meal breakdown</p>
+    </div>
+    {% if food_logs %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-left">
+          <tr>
+            <th class="px-6 py-3 font-medium">Meal</th>
+            <th class="px-6 py-3 font-medium">Product</th>
+            <th class="px-6 py-3 font-medium">Portion</th>
+            <th class="px-6 py-3 font-medium text-right">kcal</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for log in food_logs %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-3 capitalize font-medium text-slate-800">{{ log.meal_type }}</td>
+            <td class="px-6 py-3">{{ log.product.name }}</td>
+            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
+            <td class="px-6 py-3 text-right">{{ "%.0f"|format(log.calories) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="px-6 py-10 text-center text-slate-400 text-sm">No meals logged today.</p>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6">
+    {% if latest_ai_report %}
+    <div class="bg-white rounded-xl border border-violet-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-1">Останній AI-звіт клієнта</h2>
+      <p class="text-xs text-slate-500 mb-3">Згенеровано спортсменом з дашборду</p>
+      <div class="rounded-lg bg-violet-50 border border-violet-100 px-3 py-3 text-sm">
+        <p class="font-bold text-violet-800 text-lg">{{ latest_ai_report.ai_grade }}</p>
+        <p class="text-slate-600 mt-1">{{ latest_ai_report.nutrition_summary }}</p>
+        <p class="text-xs text-slate-400 mt-2">{{ latest_ai_report.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-1">Send recommendation</h2>
+      <p class="text-xs text-slate-500 mb-4">Manual tip — appears on the athlete's dashboard after you send it.</p>
+      <form method="post" action="{{ url_for('send_recommendation', client_id=client.id) }}" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea name="content" rows="5" required
+                  placeholder="e.g. Increase protein at breakfast and add more leafy greens for iron."
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+        <button type="submit"
+                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition">
+          Send to athlete
+        </button>
+      </form>
+    </div>
+
+    {% if pending_recommendations %}
+    <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-1">Pending recommendations</h2>
+      <p class="text-xs text-slate-500 mb-4">Edit text and approve — athlete will see the final version.</p>
+      <ul class="space-y-4">
+        {% for rec in pending_recommendations %}
+        <li class="rounded-lg border border-amber-100 bg-amber-50/50 p-4">
+          <form method="post" action="/trainer/recommendation/approve/{{ rec.id }}" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea name="content" rows="3" required
+                      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-brand-500 outline-none resize-none">{{ rec.content }}</textarea>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-amber-700 font-medium">
+                {% if rec.content.startswith('[AI') %}AI recommendation{% else %}Athlete / system{% endif %}
+              </span>
+              <button type="submit"
+                      class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
+                Затвердити
+              </button>
+            </div>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if recent_recommendations %}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 class="font-semibold text-slate-900 mb-3">Approved recommendations</h2>
+      <ul class="space-y-3">
+        {% for rec in recent_recommendations %}
+        <li class="text-sm border-l-2 border-emerald-300 pl-3 py-1">
+          <p class="text-slate-700">{{ rec.content }}</p>
+          <span class="text-xs text-emerald-600 capitalize">{{ rec.status }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+<nav class="mb-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3 bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+  <a href="{{ date_nav.prev_url }}"
+     class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-brand-700 transition"
+     title="Попередній день" aria-label="Попередній день">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  </a>
+  <form method="get" action="{{ date_nav.base_url }}" class="flex items-center gap-2">
+    <label for="nav-date" class="sr-only">Дата</label>
+    <input type="date" id="nav-date" name="date" value="{{ selected_date.isoformat() }}"
+           onchange="this.form.submit()"
+           class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+  </form>
+  <a href="{{ date_nav.next_url }}"
+     class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-brand-700 transition"
+     title="Наступний день" aria-label="Наступний день">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+  </a>
+  {% if selected_date != today %}
+  <a href="{{ date_nav.today_url }}"
+     class="text-xs font-medium text-brand-600 hover:text-brand-700 px-2 py-1 rounded-md hover:bg-brand-50">
+    Сьогодні
+  </a>
+  {% endif %}
+</nav>
