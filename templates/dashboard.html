@@ -2,361 +2,451 @@
 {% block title %}Dashboard — Nutrition Tracker{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-  <h1 class="text-2xl font-bold text-slate-900">Athlete Dashboard</h1>
-  <p class="text-slate-500 text-sm mt-1">
-    {% if selected_date == today %}
-    Overview for {{ selected_date.strftime('%B %d, %Y') }} (today)
-    {% else %}
-    Overview for {{ selected_date.strftime('%B %d, %Y') }}
-    {% endif %}
-  </p>
+{% import '_ui.html' as ui %}
+
+{#- ---------- Derived display values ---------- -#}
+{% if targets and targets.calories %}
+  {% set cal_pct = (calories_in / targets.calories * 100) %}
+  {% set cal_ring = [cal_pct, 100]|min %}
+  {% set cal_over = calories_in > targets.calories %}
+  {% set cal_left = targets.calories - calories_in %}
+{% else %}
+  {% set cal_pct = 0 %}{% set cal_ring = 0 %}{% set cal_over = false %}{% set cal_left = none %}
+{% endif %}
+{% set macros = [
+  ('Protein', proteins_g, targets.proteins if targets else none, 'bg-protein', 'bg-sky-100'),
+  ('Fat',     fats_g,     targets.fats     if targets else none, 'bg-fat',     'bg-amber-100'),
+  ('Carbs',   carbs_g,    targets.carbs    if targets else none, 'bg-carbs',   'bg-indigo-100'),
+] %}
+
+{# ================= Page header ================= #}
+<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 sm:mb-8">
+  <div>
+    <p class="text-sm font-medium text-slate-500">
+      {{ selected_date.strftime('%A, %B %d, %Y') }}
+      {% if selected_date == today %}<span class="ml-1 inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">Today</span>{% endif %}
+    </p>
+    <h1 class="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-ink">Athlete Dashboard</h1>
+  </div>
+  {% include 'date_nav.html' %}
 </div>
 
-{% include 'date_nav.html' %}
-
-<div class="mb-6 bg-white rounded-xl border border-violet-200 shadow-sm p-6">
-  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-    <div>
-      <h2 class="font-semibold text-slate-900">AI-аналіз раціону</h2>
-      <p class="text-xs text-slate-500 mt-1">Аналіз останніх 7 днів · калорії, БЖВ, мікронутрієнти · оцінка та рекомендації</p>
+{# ================= Today: energy rings + balance ================= #}
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6" aria-labelledby="today-heading">
+  <div class="{{ ui.card }} p-5 sm:p-7 lg:col-span-2">
+    <div class="flex items-start justify-between gap-3 mb-6">
+      <div>
+        <h2 id="today-heading" class="text-lg font-semibold text-ink">Daily nutrition</h2>
+        {% if targets %}
+        <p class="text-sm text-slate-500 mt-0.5">{{ targets.goal_label }} · BMR {{ targets.bmr }} · TDEE {{ targets.tdee }} kcal</p>
+        {% else %}
+        <p class="text-sm text-slate-500 mt-0.5">Complete your profile to unlock personal targets</p>
+        {% endif %}
+      </div>
+      <a href="{{ url_for('profile_page') }}" class="shrink-0 text-sm font-semibold text-brand-600 hover:text-brand-700">
+        {{ 'Edit targets' if targets else 'Set up profile' }}
+      </a>
     </div>
-    <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}">
+
+    <div class="flex flex-col sm:flex-row items-center gap-8">
+      {# Calorie ring #}
+      <div class="relative shrink-0 w-44 h-44" role="img"
+           aria-label="{{ '%.0f'|format(calories_in) }} kcal eaten{% if targets %} of {{ targets.calories }} kcal target{% endif %}">
+        <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#FFEDD5" stroke-width="12"/>
+          {% if cal_ring > 0 %}
+          <circle class="ring-progress" cx="60" cy="60" r="52" fill="none"
+                  stroke="{{ '#DC2626' if cal_over else '#F97316' }}" stroke-width="12" stroke-linecap="round"
+                  pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="{{ 100 - cal_ring }}"/>
+          {% endif %}
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span class="text-3xl font-bold tracking-tight text-ink tabular-nums">{{ "%.0f"|format(calories_in) }}</span>
+          <span class="text-xs font-medium text-slate-500">
+            {% if targets %}of {{ targets.calories }} kcal{% else %}kcal eaten{% endif %}
+          </span>
+          {% if cal_left is not none %}
+          <span class="mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold
+                       {{ 'bg-red-50 text-red-700' if cal_over else 'bg-orange-50 text-orange-700' }}">
+            {% if cal_over %}{{ "%.0f"|format(-cal_left) }} over{% else %}{{ "%.0f"|format(cal_left) }} left{% endif %}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Macro bars #}
+      <ul class="w-full flex-1 space-y-5">
+        {% for name, eaten, target, fill, track in macros %}
+        {% set pct = ([eaten / target * 100, 100]|min) if target else 0 %}
+        <li>
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <span class="h-2.5 w-2.5 rounded-full {{ fill }}" aria-hidden="true"></span>{{ name }}
+            </span>
+            <span class="text-sm tabular-nums text-slate-500">
+              <strong class="font-semibold text-ink">{{ eaten }}</strong>{% if target %} / {{ target }}{% endif %} g
+            </span>
+          </div>
+          <div class="h-2.5 rounded-full {{ track }} overflow-hidden" role="progressbar"
+               aria-label="{{ name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct|round|int }}">
+            <div class="bar-fill h-full rounded-full {{ fill }}" style="width: {{ pct }}%"></div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="mt-7 pt-5 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+      <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="{{ ui.btn_primary }} press">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Log food
+      </a>
+      <button type="button" id="openMicroModal" class="{{ ui.btn_secondary }}">
+        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+        Micronutrient breakdown
+      </button>
+    </div>
+  </div>
+
+  {# Energy balance #}
+  <div class="grid grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
+    <div class="{{ ui.card }} p-5 sm:p-6">
+      <div class="flex items-center gap-2 text-sm font-medium text-slate-500">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent-50 text-accent-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z"/></svg>
+        </span>
+        Burned
+      </div>
+      <p class="mt-3 text-3xl font-bold tracking-tight text-accent-600 tabular-nums">{{ calories_burned }}</p>
+      <p class="text-xs font-medium text-slate-400">kcal from workouts</p>
+    </div>
+    <div class="{{ ui.card }} p-5 sm:p-6">
+      <div class="flex items-center gap-2 text-sm font-medium text-slate-500">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full {{ 'bg-amber-50 text-amber-600' if net_calories >= 0 else 'bg-emerald-50 text-emerald-600' }}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z"/></svg>
+        </span>
+        Net
+      </div>
+      <p class="mt-3 text-3xl font-bold tracking-tight tabular-nums {{ 'text-amber-600' if net_calories >= 0 else 'text-emerald-600' }}">{{ net_calories }}</p>
+      <p class="text-xs font-medium text-slate-400">kcal eaten − burned</p>
+    </div>
+  </div>
+</section>
+
+{# ================= AI analysis ================= #}
+<section class="relative overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7 mb-6" aria-labelledby="ai-heading">
+  <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
+  <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
+      </span>
+      <div>
+        <h2 id="ai-heading" class="text-lg font-semibold">AI diet analysis</h2>
+        <p class="text-sm text-violet-100 mt-0.5">Last 7 days · calories, macros & micronutrients · grade and recommendations</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}" class="shrink-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit"
-              class="shrink-0 bg-violet-600 hover:bg-violet-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
-        Запустити AI-звіт
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-white text-violet-700 text-sm font-semibold shadow-sm hover:bg-violet-50 focus-visible:ring-4 focus-visible:ring-white/40">
+        Run AI report
       </button>
     </form>
   </div>
   {% if latest_report %}
-  <div class="mt-4 rounded-lg bg-violet-50 border border-violet-100 px-4 py-3">
-    <div class="flex flex-wrap items-center gap-2 mb-2">
-      <span class="text-lg font-bold text-violet-800">{{ latest_report.ai_grade }}</span>
-      <span class="text-xs text-slate-500">{{ latest_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+  <div class="relative mt-5 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-4 sm:px-5">
+    <div class="flex flex-wrap items-center gap-3 mb-2">
+      <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ latest_report.ai_grade }}</span>
+      <span class="text-xs text-violet-100">Latest report · {{ latest_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
     </div>
-    <p class="text-sm text-slate-700">{{ latest_report.nutrition_summary }}</p>
+    <p class="text-sm leading-relaxed text-white/90">{{ latest_report.nutrition_summary }}</p>
   </div>
   {% endif %}
-</div>
+</section>
 
+{# ================= Recommendations ================= #}
 {% if recommendations %}
-<div class="mb-6 space-y-3">
-  <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide">Рекомендації (очікують затвердження)</h2>
-  {% for rec in recommendations %}
-  <div class="rounded-xl border {% if rec.content.startswith('[AI') %}border-violet-200 bg-violet-50{% else %}border-brand-200 bg-brand-50{% endif %} px-5 py-4 shadow-sm">
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-      <div class="flex-1 min-w-0">
-        <p class="text-sm text-slate-800">{{ rec.content }}</p>
-        <p class="text-xs mt-2 font-medium {% if rec.content.startswith('[AI') %}text-violet-600{% else %}text-brand-600{% endif %}">
-          {% if rec.content.startswith('[AI') %}AI · очікує перегляду тренером{% else %}Від тренера{% endif %}
-        </p>
+<section class="mb-6" aria-labelledby="recs-heading">
+  <h2 id="recs-heading" class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Recommendations · awaiting approval</h2>
+  <ul class="space-y-3">
+    {% for rec in recommendations %}
+    {% set is_ai = rec.content.startswith('[AI') %}
+    <li class="{{ ui.card }} p-4 sm:p-5 border-l-4 {{ 'border-violet-500' if is_ai else 'border-brand-500' }}">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold
+                       {{ 'bg-violet-50 text-violet-700' if is_ai else 'bg-brand-50 text-brand-700' }}">
+            {{ 'AI · pending trainer review' if is_ai else 'From your trainer' }}
+          </span>
+          <p class="mt-2 text-sm leading-relaxed text-slate-700">{{ rec.content }}</p>
+        </div>
+        <form method="post" action="/recommendation/delete/{{ rec.id }}" class="shrink-0"
+              onsubmit="return confirm('Delete this recommendation?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Delete
+          </button>
+        </form>
       </div>
-      <form method="post" action="/recommendation/delete/{{ rec.id }}" class="shrink-0"
-            onsubmit="return confirm('Видалити цю рекомендацію?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
-        <button type="submit"
-                class="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-medium px-3 py-2 rounded-lg text-xs transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-          </svg>
-          Видалити
-        </button>
-      </form>
-    </div>
-  </div>
-  {% endfor %}
-</div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
 {% endif %}
 
-{% if targets %}
-<div class="bg-white rounded-xl border border-brand-200 shadow-sm p-6 mb-6">
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-    <div>
-      <h2 class="font-semibold text-slate-900">Daily nutrition targets</h2>
-      <p class="text-xs text-slate-500">{{ targets.goal_label }} · BMR {{ targets.bmr }} kcal · TDEE {{ targets.tdee }} kcal</p>
-    </div>
-    <a href="{{ url_for('profile_page') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">Edit profile →</a>
-  </div>
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-    <div class="text-center p-3 rounded-lg bg-brand-50">
-      <p class="text-xs text-slate-500 uppercase">Calories</p>
-      <p class="text-xl font-bold text-brand-700">{{ targets.calories }}</p>
-      <p class="text-xs {% if calories_in > targets.calories %}text-amber-600{% else %}text-slate-400{% endif %}">{{ calories_in }} eaten</p>
-    </div>
-    <div class="text-center p-3 rounded-lg bg-slate-50">
-      <p class="text-xs text-slate-500 uppercase">Protein</p>
-      <p class="text-xl font-bold text-slate-800">{{ targets.proteins }}g</p>
-      <p class="text-xs text-slate-400">{{ proteins_g }}g eaten</p>
-    </div>
-    <div class="text-center p-3 rounded-lg bg-slate-50">
-      <p class="text-xs text-slate-500 uppercase">Fat</p>
-      <p class="text-xl font-bold text-slate-800">{{ targets.fats }}g</p>
-      <p class="text-xs text-slate-400">{{ fats_g }}g eaten</p>
-    </div>
-    <div class="text-center p-3 rounded-lg bg-slate-50">
-      <p class="text-xs text-slate-500 uppercase">Carbs</p>
-      <p class="text-xl font-bold text-slate-800">{{ targets.carbs }}g</p>
-      <p class="text-xs text-slate-400">{{ carbs_g }}g eaten</p>
-    </div>
-  </div>
-</div>
-{% endif %}
-
+{# ================= Goal progress ================= #}
 {% if goal_progress %}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="font-semibold text-slate-900">Goal progress</h2>
-    <span class="text-sm font-medium text-brand-700">{{ goal_progress.goal_label }}</span>
+<section class="{{ ui.card }} p-5 sm:p-7 mb-6" aria-labelledby="goal-heading">
+  <div class="flex items-center justify-between gap-3 mb-5">
+    <h2 id="goal-heading" class="text-lg font-semibold text-ink">Goal progress</h2>
+    <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">{{ goal_progress.goal_label }}</span>
   </div>
-  <div class="flex justify-between text-xs text-slate-500 mb-2">
-    <span>Start: {{ goal_progress.start_weight }} kg</span>
-    <span>Current: <strong class="text-slate-800">{{ goal_progress.current_weight }} kg</strong></span>
-    <span>Target: {{ goal_progress.target_weight }} kg</span>
+  <div class="flex items-end justify-between gap-4 mb-3">
+    <div>
+      <p class="text-xs font-medium text-slate-500">Start</p>
+      <p class="text-base font-semibold text-slate-700 tabular-nums">{{ goal_progress.start_weight }} kg</p>
+    </div>
+    <div class="text-center">
+      <p class="text-xs font-medium text-slate-500">Current</p>
+      <p class="text-2xl font-bold tracking-tight text-ink tabular-nums">{{ goal_progress.current_weight }} kg</p>
+    </div>
+    <div class="text-right">
+      <p class="text-xs font-medium text-slate-500">Target</p>
+      <p class="text-base font-semibold text-slate-700 tabular-nums">{{ goal_progress.target_weight }} kg</p>
+    </div>
   </div>
-  <div class="h-3 rounded-full bg-slate-100 overflow-hidden">
-    <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-accent-500 transition-all duration-500"
+  <div class="h-3 rounded-full bg-slate-100 overflow-hidden" role="progressbar" aria-label="Goal progress"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ goal_progress.percent }}">
+    <div class="bar-fill h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
          style="width: {{ goal_progress.percent }}%"></div>
   </div>
-  <p class="text-xs text-slate-500 mt-2 text-right">{{ goal_progress.percent }}% toward goal</p>
-</div>
+  <p class="mt-2 text-right text-xs font-medium text-slate-500">{{ goal_progress.percent }}% toward goal</p>
+</section>
 {% endif %}
 
-<div class="grid grid-cols-2 gap-4 mb-4">
-  <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Burned</p>
-    <p class="text-2xl font-bold text-accent-600 mt-1">{{ calories_burned }}</p>
-    <p class="text-xs text-slate-400">kcal</p>
-  </div>
-  <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Net</p>
-    <p class="text-2xl font-bold {% if net_calories >= 0 %}text-amber-600{% else %}text-emerald-600{% endif %} mt-1">{{ net_calories }}</p>
-  </div>
-</div>
-
-<div class="mb-8">
-  <button type="button" id="openMicroModal"
-          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-medium shadow-md hover:bg-slate-700 transition focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-    Детальний аналіз мікронутрієнтів
-  </button>
-</div>
-
+{# ================= Micronutrient modal ================= #}
 <div id="microModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
-  <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="microModalBackdrop"></div>
-  <div class="flex min-h-full items-center justify-center p-4">
-    <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+  <div class="absolute inset-0 bg-ink/50 backdrop-blur-sm" id="microModalBackdrop"></div>
+  <div class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="modal-panel relative w-full sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
          role="dialog" aria-modal="true" aria-labelledby="microModalTitle">
-      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+      <div class="px-5 sm:px-6 pt-5 pb-4 flex items-start justify-between gap-4 border-b border-slate-100">
         <div>
-          <h2 id="microModalTitle" class="text-lg font-semibold text-slate-900">Детальний аналіз мікронутрієнтів</h2>
-          <p class="text-xs text-slate-500 mt-0.5">{{ selected_date.strftime('%d.%m.%Y') }} — спожито за день</p>
+          <h2 id="microModalTitle" class="text-lg font-semibold text-ink">Micronutrient breakdown</h2>
+          <p class="text-sm text-slate-500 mt-0.5">{{ selected_date.strftime('%d.%m.%Y') }} · consumed this day</p>
         </div>
         <button type="button" id="closeMicroModal"
-                class="rounded-lg p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
-                aria-label="Закрити">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                class="-mr-2 inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="p-6 max-h-[70vh] overflow-y-auto">
-        <table class="w-full text-sm border-collapse">
+      <div class="px-5 sm:px-6 py-4 max-h-[65vh] overflow-y-auto">
+        <table class="w-full text-sm">
           <thead>
-            <tr class="bg-slate-100 text-slate-600 text-left">
-              <th class="px-4 py-3 font-semibold rounded-tl-lg">Мікронутрієнт</th>
-              <th class="px-4 py-3 font-semibold text-right">Спожито за день</th>
-              <th class="px-4 py-3 font-semibold text-right rounded-tr-lg">Одиниця</th>
+            <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <th scope="col" class="py-2 pr-4">Micronutrient</th>
+              <th scope="col" class="py-2 px-4 text-right">Consumed</th>
+              <th scope="col" class="py-2 pl-4 text-right">Unit</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-slate-100">
             {% for item in micronutrient_totals %}
-            <tr class="{% if loop.index is odd %}bg-white{% else %}bg-slate-50{% endif %} border-b border-slate-100 last:border-0">
-              <td class="px-4 py-3 font-medium text-slate-800">{{ item.name }}</td>
-              <td class="px-4 py-3 text-right tabular-nums text-slate-700">{{ item.total }}</td>
-              <td class="px-4 py-3 text-right text-slate-500">{{ item.unit }}</td>
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 pr-4 font-medium text-ink">{{ item.name }}</td>
+              <td class="py-3 px-4 text-right tabular-nums font-semibold text-slate-700">{{ item.total }}</td>
+              <td class="py-3 pl-4 text-right text-slate-500">{{ item.unit }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 text-right">
-        <button type="button" id="closeMicroModalFooter"
-                class="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">
-          Закрити
+      <div class="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+        <button type="button" id="closeMicroModalFooter" class="{{ ui.btn_primary }} w-full sm:w-auto">
+          Close
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-    <h2 class="font-semibold text-slate-900 mb-1">Macro distribution</h2>
-    <p class="text-xs text-slate-500 mb-4">Protein, fat & carbs today (grams)</p>
+{# ================= Charts ================= #}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+  <div class="{{ ui.card }} p-5 sm:p-7">
+    <h2 class="text-lg font-semibold text-ink">Macro distribution</h2>
+    <p class="text-sm text-slate-500 mt-0.5 mb-5">Protein, fat & carbs today (grams)</p>
     <div class="relative h-64 flex items-center justify-center">
-      <canvas id="macrosChart"></canvas>
+      <canvas id="macrosChart" aria-label="Macro distribution chart" role="img"></canvas>
     </div>
   </div>
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-    <h2 class="font-semibold text-slate-900 mb-1">Calorie trend</h2>
-    <p class="text-xs text-slate-500 mb-4">Daily intake — last 7 days</p>
+  <div class="{{ ui.card }} p-5 sm:p-7">
+    <h2 class="text-lg font-semibold text-ink">Calorie trend</h2>
+    <p class="text-sm text-slate-500 mt-0.5 mb-5">Daily intake · last 7 days</p>
     <div class="relative h-64">
-      <canvas id="caloriesChart"></canvas>
+      <canvas id="caloriesChart" aria-label="Calorie trend chart" role="img"></canvas>
     </div>
   </div>
-</div>
+</section>
 
 {% if weight_meta %}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+<section class="{{ ui.card }} p-5 sm:p-7 mb-6" aria-labelledby="weight-heading">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
     <div>
-      <h2 class="font-semibold text-slate-900">Прогностична динаміка маси тіла</h2>
-      <p class="text-xs text-slate-500 mt-1">
-        Нелінійна модель (адаптація TDEE −24 ккал/кг) · 7700 ккал ≈ 1 кг ·
-        {% if weight_meta %}
-        баланс <strong>{{ weight_meta.avg_balance_kcal }}</strong> ккал/день
-        (споживання {{ weight_meta.avg_intake_kcal }}, витрати {{ weight_meta.avg_expenditure_kcal }})
-        {% endif %}
+      <h2 id="weight-heading" class="text-lg font-semibold text-ink">Weight forecast</h2>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Non-linear model (TDEE adaptation −24 kcal/kg) · 7700 kcal ≈ 1 kg ·
+        balance <strong class="text-ink">{{ weight_meta.avg_balance_kcal }}</strong> kcal/day
+        (intake {{ weight_meta.avg_intake_kcal }}, expenditure {{ weight_meta.avg_expenditure_kcal }})
       </p>
     </div>
     {% if active_goal and active_goal.target_weight %}
-    <span class="text-xs font-medium px-3 py-1.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
-      Ціль: {{ active_goal.target_weight }} kg
+    <span class="self-start shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+      Target: {{ active_goal.target_weight }} kg
     </span>
     {% endif %}
   </div>
   <div class="relative h-72">
-    <canvas id="weightChart"></canvas>
+    <canvas id="weightChart" aria-label="Weight forecast chart" role="img"></canvas>
   </div>
-  <p class="text-xs text-slate-400 mt-3 flex flex-wrap gap-4">
-    <span><span class="inline-block w-6 border-t-2 border-slate-700 align-middle mr-1"></span> Оцінка фактичної ваги (з логів)</span>
-    <span><span class="inline-block w-6 border-t-2 border-dashed border-violet-500 align-middle mr-1"></span> Прогноз системи (30 днів)</span>
+  <p class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
+    <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-ink" aria-hidden="true"></span> Estimated actual weight (from logs)</span>
+    <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-violet-600" aria-hidden="true"></span> System forecast (30 days)</span>
   </p>
-</div>
+</section>
 {% endif %}
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h2 class="font-semibold text-slate-900">Meals</h2>
-      <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">+ Log food</a>
+{# ================= Meals & workouts ================= #}
+<section class="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
+  <div class="{{ ui.card }} overflow-hidden lg:col-span-3" aria-labelledby="meals-heading">
+    <div class="px-5 sm:px-6 py-4 flex items-center justify-between border-b border-slate-100">
+      <h2 id="meals-heading" class="text-lg font-semibold text-ink">Meals</h2>
+      <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}"
+         class="inline-flex items-center gap-1 h-10 px-3 -mr-3 rounded-xl text-sm font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Log food
+      </a>
     </div>
     {% if food_logs %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 text-left">
-          <tr>
-            <th class="px-6 py-3 font-medium">Meal</th>
-            <th class="px-6 py-3 font-medium">Product</th>
-            <th class="px-6 py-3 font-medium">Portion</th>
-            <th class="px-6 py-3 font-medium text-right">kcal</th>
-            <th class="px-4 py-3 font-medium text-center w-14"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for log in food_logs %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-6 py-3 capitalize">{{ log.meal_type }}</td>
-            <td class="px-6 py-3">{{ log.product.name }}</td>
-            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
-            <td class="px-6 py-3 text-right font-medium">{{ "%.0f"|format(log.calories) }}</td>
-            <td class="px-4 py-3 text-center">
-              <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="inline"
-                    onsubmit="return confirm('Видалити цей запис?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="next" value="{{ url_for('dashboard', date=selected_date.isoformat()) }}">
-                <button type="submit" title="Видалити"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <ul class="divide-y divide-slate-100">
+      {% for log in food_logs %}
+      <li class="flex items-center gap-3 px-5 sm:px-6 py-3.5 hover:bg-slate-50/70">
+        <span class="hidden sm:inline-flex w-24 shrink-0 justify-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize {{ ui.meal_styles.get(log.meal_type, ui.meal_default) }}">{{ log.meal_type }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-ink">{{ log.product.name }}</p>
+          <p class="text-xs text-slate-500"><span class="sm:hidden capitalize">{{ log.meal_type }} · </span>{{ log.portion_grams }} g</p>
+        </div>
+        <p class="shrink-0 text-sm font-semibold text-ink tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-slate-400">kcal</span></p>
+        <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="shrink-0"
+              onsubmit="return confirm('Delete this entry?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ url_for('dashboard', date=selected_date.isoformat()) }}">
+          <button type="submit" title="Delete" aria-label="Delete {{ log.product.name }}"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
     {% else %}
-    <p class="px-6 py-8 text-slate-400 text-sm text-center">No meals logged for this day.</p>
+    <div class="px-6 py-12 text-center">
+      <span class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-kcal">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12M12.265 3.11a.375.375 0 1 1-.53 0L12 2.845l.265.265Z"/></svg>
+      </span>
+      <p class="mt-3 text-sm font-medium text-ink">No meals logged for this day</p>
+      <p class="mt-1 text-sm text-slate-500">Add your first meal to see calories and macros.</p>
+    </div>
     {% endif %}
   </div>
 
-  <div class="space-y-6">
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <h2 class="font-semibold text-slate-900 mb-4">Log workout</h2>
+  <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+    <div class="{{ ui.card }} p-5 sm:p-6">
+      <h2 class="text-lg font-semibold text-ink mb-4">Log workout</h2>
       <form method="post" action="{{ url_for('log_workout') }}" class="grid grid-cols-2 gap-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
         <div class="col-span-2">
-          <label class="block text-xs font-medium text-slate-600 mb-1">Type</label>
-          <input type="text" name="type" required placeholder="e.g. Running, Strength"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <label for="w-type" class="{{ ui.label }}">Type</label>
+          <input type="text" id="w-type" name="type" required placeholder="e.g. Running, Strength" class="{{ ui.input }}">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Duration (min)</label>
-          <input type="number" name="duration_minutes" required min="1"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <label for="w-duration" class="{{ ui.label }}">Duration (min)</label>
+          <input type="number" id="w-duration" name="duration_minutes" required min="1" inputmode="numeric" class="{{ ui.input }}">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Calories burned</label>
-          <input type="number" name="calories_burned" step="0.1" min="0" value="0"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+          <label for="w-kcal" class="{{ ui.label }}">Calories burned</label>
+          <input type="number" id="w-kcal" name="calories_burned" step="0.1" min="0" value="0" inputmode="decimal" class="{{ ui.input }}">
         </div>
         <div class="col-span-2">
           <button type="submit"
-                  class="w-full bg-accent-600 hover:bg-accent-500 text-white font-medium py-2 rounded-lg text-sm transition">
+                  class="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-accent-600 text-white text-sm font-semibold shadow-sm hover:bg-accent-500 focus-visible:ring-4 focus-visible:ring-accent-500/30">
             Save workout
           </button>
         </div>
       </form>
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-100">
-        <h2 class="font-semibold text-slate-900">Today's workouts</h2>
+    <div class="{{ ui.card }} overflow-hidden">
+      <div class="px-5 sm:px-6 py-4 border-b border-slate-100">
+        <h2 class="text-lg font-semibold text-ink">Workouts</h2>
       </div>
       {% if workouts %}
       <ul class="divide-y divide-slate-100">
         {% for w in workouts %}
-        <li class="px-6 py-3 flex justify-between text-sm">
-          <span class="font-medium">{{ w.type }}</span>
-          <span class="text-slate-500">{{ w.duration_minutes }} min · {{ w.calories_burned }} kcal</span>
+        <li class="flex items-center gap-3 px-5 sm:px-6 py-3.5">
+          <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg>
+          </span>
+          <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink">{{ w.type }}</span>
+          <span class="shrink-0 text-right text-xs text-slate-500 tabular-nums">
+            {{ w.duration_minutes }} min<br><strong class="font-semibold text-accent-600">{{ w.calories_burned }} kcal</strong>
+          </span>
         </li>
         {% endfor %}
       </ul>
       {% else %}
-      <p class="px-6 py-6 text-slate-400 text-sm text-center">No workouts logged today.</p>
+      <p class="px-6 py-8 text-center text-sm text-slate-500">No workouts logged for this day.</p>
       {% endif %}
     </div>
   </div>
-</div>
+</section>
 
+{# ================= Profile snapshot ================= #}
 {% if profile %}
-<div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-  <h2 class="font-semibold text-slate-900 mb-3">Profile snapshot</h2>
-  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-    <div>
-      <dt class="text-slate-500">Gender</dt>
-      <dd class="font-medium capitalize">{{ profile.gender or '—' }}</dd>
+<section class="{{ ui.card }} p-5 sm:p-7 mt-6" aria-labelledby="profile-heading">
+  <div class="flex items-center justify-between mb-4">
+    <h2 id="profile-heading" class="text-lg font-semibold text-ink">Profile snapshot</h2>
+    <a href="{{ url_for('profile_page') }}" class="text-sm font-semibold text-brand-600 hover:text-brand-700">Edit</a>
+  </div>
+  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="rounded-2xl bg-slate-50 px-4 py-3">
+      <dt class="text-xs font-medium text-slate-500">Gender</dt>
+      <dd class="mt-0.5 text-base font-semibold text-ink capitalize">{{ profile.gender or '—' }}</dd>
     </div>
-    <div>
-      <dt class="text-slate-500">Height</dt>
-      <dd class="font-medium">{{ profile.height or '—' }} cm</dd>
+    <div class="rounded-2xl bg-slate-50 px-4 py-3">
+      <dt class="text-xs font-medium text-slate-500">Height</dt>
+      <dd class="mt-0.5 text-base font-semibold text-ink tabular-nums">{{ profile.height or '—' }} cm</dd>
     </div>
-    <div>
-      <dt class="text-slate-500">Weight</dt>
-      <dd class="font-medium">{{ profile.weight or '—' }} kg</dd>
+    <div class="rounded-2xl bg-slate-50 px-4 py-3">
+      <dt class="text-xs font-medium text-slate-500">Weight</dt>
+      <dd class="mt-0.5 text-base font-semibold text-ink tabular-nums">{{ profile.weight or '—' }} kg</dd>
     </div>
-    <div>
-      <dt class="text-slate-500">Birth date</dt>
-      <dd class="font-medium">{{ profile.birth_date or '—' }}</dd>
+    <div class="rounded-2xl bg-slate-50 px-4 py-3">
+      <dt class="text-xs font-medium text-slate-500">Birth date</dt>
+      <dd class="mt-0.5 text-base font-semibold text-ink tabular-nums">{{ profile.birth_date or '—' }}</dd>
     </div>
   </dl>
-</div>
+</section>
 {% endif %}
 {% endblock %}
 
@@ -365,26 +455,33 @@
   const macrosData = {{ chart_macros_json|safe }};
   const caloriesData = {{ chart_calories_json|safe }};
   const weightData = {{ chart_weight_json|safe }};
+  const calorieTarget = {{ targets.calories if targets else 'null' }};
 
-  const macroColors = ['#0ea5e9', '#f59e0b', '#10b981'];
+  /* Metric colors — keep in sync with tokens in static/css/app.css */
+  const C = { protein: '#0EA5E9', fat: '#F59E0B', carbs: '#6366F1', kcal: '#F97316', ink: '#0F172A', ai: '#7C3AED', brand: '#047857' };
+
+  const macroColors = [C.protein, C.fat, C.carbs];
   const hasMacros = macrosData.values.some(v => v > 0);
 
   new Chart(document.getElementById('macrosChart'), {
-    type: 'pie',
+    type: 'doughnut',
     data: {
       labels: macrosData.labels,
       datasets: [{
         data: hasMacros ? macrosData.values : [1, 1, 1],
-        backgroundColor: hasMacros ? macroColors : ['#e2e8f0', '#e2e8f0', '#e2e8f0'],
-        borderWidth: 2,
+        backgroundColor: hasMacros ? macroColors : ['#E2E8F0', '#E2E8F0', '#E2E8F0'],
+        borderWidth: 3,
         borderColor: '#fff',
+        hoverOffset: 6,
+        borderRadius: 6,
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: '68%',
       plugins: {
-        legend: { position: 'bottom' },
+        legend: { position: 'bottom', labels: { padding: 16 } },
         tooltip: {
           callbacks: {
             label: (ctx) => hasMacros
@@ -399,35 +496,37 @@
   if (weightData.labels && weightData.labels.length && document.getElementById('weightChart')) {
     const datasets = [
       {
-        label: 'Оцінка фактичної ваги',
+        label: 'Estimated actual weight',
         data: weightData.actual,
-        borderColor: '#334155',
-        backgroundColor: 'rgba(51, 65, 85, 0.08)',
-        borderWidth: 2,
+        borderColor: C.ink,
+        backgroundColor: 'rgba(15, 23, 42, 0.06)',
+        borderWidth: 2.5,
         tension: 0.3,
         pointRadius: 3,
+        pointBackgroundColor: C.ink,
         spanGaps: false,
       },
       {
-        label: 'Прогноз системи',
+        label: 'System forecast',
         data: weightData.forecast,
-        borderColor: '#7c3aed',
+        borderColor: C.ai,
         backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [8, 4],
+        borderWidth: 2.5,
+        borderDash: [8, 5],
         tension: 0.45,
-        pointRadius: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
         cubicInterpolationMode: 'monotone',
         spanGaps: false,
       },
     ];
     if (weightData.target_weight) {
       datasets.push({
-        label: 'Цільова вага',
+        label: 'Target weight',
         data: weightData.labels.map(() => weightData.target_weight),
-        borderColor: 'rgba(16, 185, 129, 0.55)',
-        borderWidth: 1,
-        borderDash: [3, 3],
+        borderColor: 'rgba(4, 120, 87, 0.6)',
+        borderWidth: 1.5,
+        borderDash: [3, 4],
         pointRadius: 0,
         fill: false,
       });
@@ -442,13 +541,18 @@
         interaction: { mode: 'index', intersect: false },
         scales: {
           y: {
-            title: { display: true, text: 'Вага (kg)' },
-            grid: { color: '#f1f5f9' },
+            title: { display: true, text: 'Weight (kg)' },
+            grid: { color: '#F1F5F9' },
+            border: { display: false },
           },
-          x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 14 } },
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+          },
         },
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: (ctx) => {
@@ -462,27 +566,49 @@
     });
   }
 
-  new Chart(document.getElementById('caloriesChart'), {
+  const calCanvas = document.getElementById('caloriesChart');
+  const calFill = (() => {
+    const g = calCanvas.getContext('2d').createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+    g.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    return g;
+  })();
+  const calDatasets = [{
+    label: 'Calories (kcal)',
+    data: caloriesData.values,
+    borderColor: C.kcal,
+    backgroundColor: calFill,
+    fill: true,
+    borderWidth: 2.5,
+    tension: 0.35,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    pointBackgroundColor: '#fff',
+    pointBorderColor: C.kcal,
+    pointBorderWidth: 2,
+  }];
+  if (calorieTarget) {
+    calDatasets.push({
+      label: 'Target',
+      data: caloriesData.labels.map(() => calorieTarget),
+      borderColor: 'rgba(100, 116, 139, 0.5)',
+      borderWidth: 1.5,
+      borderDash: [4, 4],
+      pointRadius: 0,
+      fill: false,
+    });
+  }
+
+  new Chart(calCanvas, {
     type: 'line',
-    data: {
-      labels: caloriesData.labels,
-      datasets: [{
-        label: 'Calories (kcal)',
-        data: caloriesData.values,
-        borderColor: '#0284c7',
-        backgroundColor: 'rgba(14, 165, 233, 0.15)',
-        fill: true,
-        tension: 0.35,
-        pointRadius: 4,
-        pointBackgroundColor: '#0284c7',
-      }],
-    },
+    data: { labels: caloriesData.labels, datasets: calDatasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       scales: {
-        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } },
+        x: { grid: { display: false }, border: { display: false } },
       },
       plugins: { legend: { display: false } },
     },
@@ -498,12 +624,14 @@
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('overflow-hidden');
+    closeBtn.focus();
   }
 
   function closeModal() {
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('overflow-hidden');
+    openBtn.focus();
   }
 
   openBtn.addEventListener('click', openModal);

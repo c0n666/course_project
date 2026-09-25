@@ -1,141 +1,158 @@
 {% extends "base.html" %}
+{% import '_ui.html' as ui %}
 {% block title %}{{ client.email }} — Client View{% endblock %}
 
 {% block content %}
-<div class="mb-6">
-  <a href="{{ url_for('trainer_dashboard') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">← Back to clients</a>
-  <h1 class="text-2xl font-bold text-slate-900 mt-2">{{ client.email }}</h1>
-  <p class="text-slate-500 text-sm">Detailed intake for {{ today.strftime('%B %d, %Y') }}</p>
-</div>
-
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-    <p class="text-xs text-slate-500 uppercase">Calories</p>
-    <p class="text-xl font-bold text-brand-700">{{ "%.0f"|format(summary.calories) }} kcal</p>
-  </div>
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-    <p class="text-xs text-slate-500 uppercase">Protein</p>
-    <p class="text-xl font-bold">{{ "%.1f"|format(summary.proteins) }} g</p>
-  </div>
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm sm:col-span-2">
-    <p class="text-xs text-slate-500 uppercase mb-2">Key micronutrients today</p>
-    <div class="flex flex-wrap gap-2 text-xs">
-      {% for item in micronutrient_totals[:5] %}
-      <span class="px-2 py-1 rounded-md bg-slate-100 text-slate-700">{{ item.name }}: {{ item.total }} {{ item.unit }}</span>
-      {% endfor %}
-    </div>
-  </div>
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-    <p class="text-xs text-slate-500 uppercase">Profile</p>
-    <p class="text-sm font-medium text-slate-700 mt-1">
-      {% if profile %}
-      {{ profile.weight or '—' }} kg · {{ profile.height or '—' }} cm
-      {% else %}No profile{% endif %}
-    </p>
-  </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-100">
-      <h2 class="font-semibold text-slate-900">Today's food log</h2>
-      <p class="text-xs text-slate-500">Full meal breakdown</p>
-    </div>
-    {% if food_logs %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 text-left">
-          <tr>
-            <th class="px-6 py-3 font-medium">Meal</th>
-            <th class="px-6 py-3 font-medium">Product</th>
-            <th class="px-6 py-3 font-medium">Portion</th>
-            <th class="px-6 py-3 font-medium text-right">kcal</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for log in food_logs %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-6 py-3 capitalize font-medium text-slate-800">{{ log.meal_type }}</td>
-            <td class="px-6 py-3">{{ log.product.name }}</td>
-            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
-            <td class="px-6 py-3 text-right">{{ "%.0f"|format(log.calories) }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="px-6 py-10 text-center text-slate-400 text-sm">No meals logged today.</p>
-    {% endif %}
-  </div>
-
-  <div class="space-y-6">
-    {% if latest_ai_report %}
-    <div class="bg-white rounded-xl border border-violet-200 shadow-sm p-6">
-      <h2 class="font-semibold text-slate-900 mb-1">Останній AI-звіт клієнта</h2>
-      <p class="text-xs text-slate-500 mb-3">Згенеровано спортсменом з дашборду</p>
-      <div class="rounded-lg bg-violet-50 border border-violet-100 px-3 py-3 text-sm">
-        <p class="font-bold text-violet-800 text-lg">{{ latest_ai_report.ai_grade }}</p>
-        <p class="text-slate-600 mt-1">{{ latest_ai_report.nutrition_summary }}</p>
-        <p class="text-xs text-slate-400 mt-2">{{ latest_ai_report.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+<div class="mb-6 sm:mb-8 flex items-start gap-4">
+  <div class="min-w-0 flex-1">
+    <a href="{{ url_for('trainer_dashboard') }}" class="{{ ui.back_link }}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+      Clients
+    </a>
+    <div class="mt-2 flex items-center gap-3">
+      <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-lg font-semibold uppercase text-white">{{ client.email[:1] }}</span>
+      <div class="min-w-0">
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink truncate">{{ client.email }}</h1>
+        <p class="text-sm text-slate-500">Detailed intake for {{ today.strftime('%B %d, %Y') }}</p>
       </div>
     </div>
+  </div>
+</div>
+
+{# ================= Summary ================= #}
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6" aria-label="Today's summary">
+  <div class="{{ ui.card }} p-5">
+    <p class="text-sm font-medium text-slate-500">Calories</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-kcal tabular-nums">{{ "%.0f"|format(summary.calories) }}<span class="ml-1 text-sm font-semibold text-slate-400">kcal</span></p>
+  </div>
+  <div class="{{ ui.card }} p-5">
+    <p class="text-sm font-medium text-slate-500">Protein</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-sky-600 tabular-nums">{{ "%.1f"|format(summary.proteins) }}<span class="ml-1 text-sm font-semibold text-slate-400">g</span></p>
+  </div>
+  <div class="{{ ui.card }} p-5 col-span-2">
+    <p class="text-sm font-medium text-slate-500 mb-3">Key micronutrients today</p>
+    {% if micronutrient_totals %}
+    <div class="flex flex-wrap gap-2">
+      {% for item in micronutrient_totals[:5] %}
+      <span class="inline-flex items-center gap-1 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+        <span class="font-medium text-ink">{{ item.name }}</span> {{ item.total }} {{ item.unit }}
+      </span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-400">No data yet</p>
+    {% endif %}
+  </div>
+  <div class="{{ ui.card }} p-5 col-span-2 lg:col-span-4 flex flex-wrap items-center gap-x-8 gap-y-2">
+    <p class="text-sm font-medium text-slate-500">Profile</p>
+    {% if profile %}
+    <p class="text-sm text-slate-600">Weight <strong class="font-semibold text-ink tabular-nums">{{ profile.weight or '—' }} kg</strong></p>
+    <p class="text-sm text-slate-600">Height <strong class="font-semibold text-ink tabular-nums">{{ profile.height or '—' }} cm</strong></p>
+    {% else %}
+    <p class="text-sm text-slate-400">No profile</p>
+    {% endif %}
+  </div>
+</section>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
+  {# ================= Food log ================= #}
+  <section class="{{ ui.card }} overflow-hidden lg:col-span-3" aria-labelledby="log-heading">
+    <div class="{{ ui.card_header }}">
+      <div>
+        <h2 id="log-heading" class="{{ ui.h2 }}">Today's food log</h2>
+        <p class="text-sm text-slate-500 mt-0.5">Full meal breakdown</p>
+      </div>
+    </div>
+    {% if food_logs %}
+    <ul class="divide-y divide-slate-100">
+      {% for log in food_logs %}
+      <li class="flex items-center gap-3 px-5 sm:px-6 py-3.5">
+        <span class="hidden sm:inline-flex w-24 shrink-0 justify-center {{ ui.badge }} capitalize {{ ui.meal_styles.get(log.meal_type, ui.meal_default) }}">{{ log.meal_type }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-ink">{{ log.product.name }}</p>
+          <p class="text-xs text-slate-500"><span class="sm:hidden capitalize">{{ log.meal_type }} · </span>{{ log.portion_grams }} g</p>
+        </div>
+        <p class="shrink-0 text-sm font-semibold text-ink tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-slate-400">kcal</span></p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="px-6 py-12 text-center text-sm text-slate-500">No meals logged today.</p>
+    {% endif %}
+  </section>
+
+  {# ================= Coaching column ================= #}
+  <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+    {% if latest_ai_report %}
+    <section class="rounded-card bg-gradient-to-br from-violet-600 to-fuchsia-700 text-white shadow-card p-5 sm:p-6" aria-labelledby="ai-heading">
+      <h2 id="ai-heading" class="text-lg font-semibold">Client's latest AI report</h2>
+      <p class="text-sm text-violet-100 mt-0.5">Generated by the athlete from their dashboard</p>
+      <div class="mt-4 rounded-2xl bg-white/10 ring-1 ring-white/15 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ latest_ai_report.ai_grade }}</span>
+          <span class="text-xs text-violet-100">{{ latest_ai_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+        </div>
+        <p class="text-sm leading-relaxed text-white/90">{{ latest_ai_report.nutrition_summary }}</p>
+      </div>
+    </section>
     {% endif %}
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <h2 class="font-semibold text-slate-900 mb-1">Send recommendation</h2>
-      <p class="text-xs text-slate-500 mb-4">Manual tip — appears on the athlete's dashboard after you send it.</p>
+    <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="send-heading">
+      <h2 id="send-heading" class="{{ ui.h2 }}">Send recommendation</h2>
+      <p class="text-sm text-slate-500 mt-0.5 mb-4">Appears on the athlete's dashboard after you send it.</p>
       <form method="post" action="{{ url_for('send_recommendation', client_id=client.id) }}" class="space-y-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <textarea name="content" rows="5" required
+        <label for="rec-content" class="sr-only">Recommendation</label>
+        <textarea id="rec-content" name="content" rows="5" required
                   placeholder="e.g. Increase protein at breakfast and add more leafy greens for iron."
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
-        <button type="submit"
-                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition">
+                  class="{{ ui.textarea }}"></textarea>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
           Send to athlete
         </button>
       </form>
-    </div>
+    </section>
 
     {% if pending_recommendations %}
-    <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-6">
-      <h2 class="font-semibold text-slate-900 mb-1">Pending recommendations</h2>
-      <p class="text-xs text-slate-500 mb-4">Edit text and approve — athlete will see the final version.</p>
+    <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="pending-heading">
+      <div class="flex items-center justify-between gap-3">
+        <h2 id="pending-heading" class="{{ ui.h2 }}">Pending recommendations</h2>
+        <span class="{{ ui.badge }} bg-amber-50 text-amber-800">{{ pending_recommendations|length }}</span>
+      </div>
+      <p class="text-sm text-slate-500 mt-0.5 mb-4">Edit the text and approve — the athlete sees the final version.</p>
       <ul class="space-y-4">
         {% for rec in pending_recommendations %}
-        <li class="rounded-lg border border-amber-100 bg-amber-50/50 p-4">
+        {% set is_ai = rec.content.startswith('[AI') %}
+        <li class="rounded-2xl border border-slate-200 p-4">
           <form method="post" action="/trainer/recommendation/approve/{{ rec.id }}" class="space-y-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <textarea name="content" rows="3" required
-                      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-brand-500 outline-none resize-none">{{ rec.content }}</textarea>
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-amber-700 font-medium">
-                {% if rec.content.startswith('[AI') %}AI recommendation{% else %}Athlete / system{% endif %}
-              </span>
-              <button type="submit"
-                      class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
-                Затвердити
-              </button>
-            </div>
+            <label for="pending-{{ rec.id }}" class="{{ ui.badge }} {{ 'bg-violet-50 text-violet-700' if is_ai else 'bg-slate-100 text-slate-600' }}">
+              {{ 'AI recommendation' if is_ai else 'Athlete / system' }}
+            </label>
+            <textarea id="pending-{{ rec.id }}" name="content" rows="3" required class="{{ ui.textarea }}">{{ rec.content }}</textarea>
+            <button type="submit" class="{{ ui.btn_primary }} w-full sm:w-auto">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              Approve
+            </button>
           </form>
         </li>
         {% endfor %}
       </ul>
-    </div>
+    </section>
     {% endif %}
 
     {% if recent_recommendations %}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <h2 class="font-semibold text-slate-900 mb-3">Approved recommendations</h2>
+    <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="approved-heading">
+      <h2 id="approved-heading" class="{{ ui.h2 }} mb-4">Approved recommendations</h2>
       <ul class="space-y-3">
         {% for rec in recent_recommendations %}
-        <li class="text-sm border-l-2 border-emerald-300 pl-3 py-1">
-          <p class="text-slate-700">{{ rec.content }}</p>
-          <span class="text-xs text-emerald-600 capitalize">{{ rec.status }}</span>
+        <li class="rounded-2xl bg-slate-50 p-4 border-l-4 border-brand-500">
+          <p class="text-sm leading-relaxed text-slate-700">{{ rec.content }}</p>
+          <span class="mt-2 {{ ui.badge }} bg-brand-50 text-brand-700 capitalize">{{ rec.status }}</span>
         </li>
         {% endfor %}
       </ul>
-    </div>
+    </section>
     {% endif %}
   </div>
 </div>

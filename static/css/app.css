@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Design tokens — Nutrition & Workout
+   Light app surface (Apple Health-like) + dark navigation chrome.
+   ========================================================================== */
+:root {
+  /* Surfaces */
+  --color-bg: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E7EB;
+
+  /* Text */
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+
+  /* Navigation chrome */
+  --color-nav: #0F172A;
+  --color-nav-hover: #1E293B;
+  --color-nav-text: #94A3B8;
+
+  /* Brand */
+  --color-primary: #047857;
+  --color-primary-hover: #065F46;
+
+  /* Data (metric colors) */
+  --color-kcal: #F97316;
+  --color-protein: #0EA5E9;
+  --color-fat: #F59E0B;
+  --color-carbs: #6366F1;
+
+  /* Status */
+  --color-success: #059669;
+  --color-error: #DC2626;
+  --color-info: #2563EB;
+
+  /* Shape & depth */
+  --radius-card: 20px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-toast: 0 10px 40px rgba(15, 23, 42, 0.18);
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+
+body { font-feature-settings: "cv11", "ss01"; }
+
+/* Keyboard focus — visible everywhere, never on mouse click */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.nav-dark :focus-visible { outline-color: #34D399; }
+
+/* Buttons & links: subtle press feedback */
+button:not(:disabled),
+a[href],
+[role="button"] { cursor: pointer; }
+
+button:not(:disabled):active,
+.press:active { transform: scale(0.98); }
+
+button, .press { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease; }
+
+/* Space for the mobile tab bar */
+.has-tabbar { padding-bottom: calc(4.5rem + var(--safe-bottom)); }
+@media (min-width: 1024px) { .has-tabbar { padding-bottom: 0; } }
+
+.tabbar { padding-bottom: var(--safe-bottom); }
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+.toast-region {
+  position: fixed;
+  z-index: 60;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .toast-region { left: auto; right: 1.5rem; top: 1.5rem; align-items: flex-end; }
+}
+
+.toast {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .875rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-toast);
+  animation: toast-in .28s cubic-bezier(.21, 1.02, .73, 1) both;
+}
+.toast.is-leaving { animation: toast-out .18s ease-in forwards; }
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.toast--success .toast-icon { background: #D1FAE5; color: var(--color-success); }
+.toast--error   .toast-icon { background: #FEE2E2; color: var(--color-error); }
+.toast--info    .toast-icon { background: #DBEAFE; color: var(--color-info); }
+
+.toast-progress {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  transform-origin: left;
+  opacity: .5;
+}
+.toast--success .toast-progress { background: var(--color-success); }
+.toast--error   .toast-progress { background: var(--color-error); }
+.toast--info    .toast-progress { background: var(--color-info); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(-6px) scale(.97); }
+}
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* ==========================================================================
+   Progress rings & bars (dashboard)
+   ========================================================================== */
+.ring-progress { animation: ring-fill .9s cubic-bezier(.2, .8, .2, 1) .1s both; }
+@keyframes ring-fill { from { stroke-dashoffset: 100; } }
+
+.bar-fill {
+  transform-origin: left;
+  animation: bar-fill .8s cubic-bezier(.2, .8, .2, 1) .15s both;
+}
+@keyframes bar-fill { from { transform: scaleX(0); } }
+
+/* Modal entrance */
+.modal-panel { animation: modal-in .22s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ==========================================================================
+   Reduced motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  button:not(:disabled):active, .press:active { transform: none; }
+}

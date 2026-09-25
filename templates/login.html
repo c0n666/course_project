@@ -1,39 +1,111 @@
 {% extends "base.html" %}
+{% import '_ui.html' as ui %}
 {% block title %}Sign In — Nutrition Tracker{% endblock %}
 
 {% block content %}
-<div class="min-h-[70vh] flex items-center justify-center">
-  <div class="w-full max-w-md">
-    <div class="text-center mb-8">
-      <div class="inline-flex h-14 w-14 rounded-2xl bg-brand-600 items-center justify-center text-white text-xl font-bold mb-4">NW</div>
-      <h1 class="text-2xl font-bold text-slate-900">Nutrition & Workout Tracker</h1>
-      <p class="text-slate-500 mt-1 text-sm">Personal health monitoring for athletes and trainers</p>
+<div class="min-h-[75vh] flex items-center justify-center">
+  <div class="w-full max-w-4xl grid lg:grid-cols-2 overflow-hidden rounded-[28px] bg-white shadow-card">
+
+    {# ---------- Brand panel (desktop) ---------- #}
+    <div class="hidden lg:flex relative flex-col justify-between bg-ink p-10 text-white overflow-hidden">
+      <div class="pointer-events-none absolute -left-24 -bottom-24 h-80 w-80 rounded-full bg-brand-500/25 blur-3xl" aria-hidden="true"></div>
+      <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/15 blur-3xl" aria-hidden="true"></div>
+
+      <div class="relative flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+        </div>
+        <span class="font-semibold">Nutrition & Workout</span>
+      </div>
+
+      <div class="relative">
+        <h2 class="text-3xl font-bold tracking-tight leading-tight">Eat smarter.<br>Train better.</h2>
+        <p class="mt-3 text-sm text-ink-muted max-w-xs">Personal health monitoring for athletes and the trainers who guide them.</p>
+      </div>
+
+      {# Decorative product preview — mirrors the dashboard "Daily nutrition" widget #}
+      <div class="relative rounded-3xl bg-white/[0.06] ring-1 ring-white/10 backdrop-blur p-5" aria-hidden="true">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Today</p>
+          <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-300">630 left</span>
+        </div>
+        <div class="flex items-center gap-5">
+          <div class="relative h-24 w-24 shrink-0">
+            <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(249,115,22,.18)" stroke-width="14"/>
+              <circle class="ring-progress" cx="60" cy="60" r="50" fill="none" stroke="#F97316" stroke-width="14" stroke-linecap="round"
+                      pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="28"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-lg font-bold tabular-nums">1620</span>
+              <span class="text-[10px] text-slate-400">kcal</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-3">
+            {% for name, pct, color, track in [('Protein', 82, 'bg-protein', 'bg-sky-500/15'), ('Fat', 64, 'bg-fat', 'bg-amber-500/15'), ('Carbs', 71, 'bg-carbs', 'bg-indigo-500/20')] %}
+            <li>
+              <div class="flex justify-between text-[11px] font-medium text-slate-300 mb-1"><span>{{ name }}</span><span class="tabular-nums text-slate-400">{{ pct }}%</span></div>
+              <div class="h-1.5 rounded-full {{ track }} overflow-hidden"><div class="bar-fill h-full rounded-full {{ color }}" style="width: {{ pct }}%"></div></div>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
-      <form method="post" action="{{ url_for('login') }}" class="space-y-5">
+    {# ---------- Form ---------- #}
+    <div class="p-6 sm:p-10">
+      <div class="lg:hidden mb-8 flex items-center gap-3">
+        <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+        </div>
+        <span class="font-semibold text-ink">Nutrition & Workout</span>
+      </div>
+
+      <h1 class="text-2xl font-bold tracking-tight text-ink">Welcome back</h1>
+      <p class="mt-1 text-sm text-slate-500">Sign in to continue to your dashboard.</p>
+
+      <form method="post" action="{{ url_for('login') }}" class="mt-8 space-y-5">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
-          <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input type="email" id="email" name="email" required
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                 placeholder="you@university.edu">
+          <label for="email" class="{{ ui.label }}">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" autofocus
+                 class="{{ ui.input }}" placeholder="you@university.edu">
         </div>
         <div>
-          <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input type="password" id="password" name="password" required
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none">
+          <label for="password" class="{{ ui.label }}">Password</label>
+          <div class="relative">
+            <input type="password" id="password" name="password" required autocomplete="current-password"
+                   class="{{ ui.input }} pr-12">
+            <button type="button" id="togglePassword" aria-label="Show password" aria-pressed="false"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-9 rounded-lg text-slate-400 hover:text-slate-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+            </button>
+          </div>
         </div>
-        <button type="submit"
-                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition text-sm">
-          Sign in
-        </button>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">Sign in</button>
       </form>
-      <p class="text-center text-sm text-slate-500 mt-6">
+
+      <p class="mt-8 text-center text-sm text-slate-500">
         No account?
-        <a href="{{ url_for('register') }}" class="text-brand-600 hover:text-brand-700 font-medium">Create one</a>
+        <a href="{{ url_for('register') }}" class="font-semibold text-brand-600 hover:text-brand-700">Create one</a>
       </p>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const btn = document.getElementById('togglePassword');
+    const input = document.getElementById('password');
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  })();
+</script>
 {% endblock %}

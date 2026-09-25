@@ -1,35 +1,50 @@
 {% extends "base.html" %}
+{% import '_ui.html' as ui %}
 {% block title %}Log Food — Nutrition Tracker{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-  <div class="mb-4">
-    <a href="{{ url_for('dashboard', date=selected_date.isoformat()) }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">← Back to dashboard</a>
-    <h1 class="text-2xl font-bold text-slate-900 mt-2">Log a meal</h1>
-    <p class="text-slate-500 text-sm">Record food intake for {{ selected_date.strftime('%B %d, %Y') }}.</p>
+{# ================= Header ================= #}
+<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 sm:mb-8">
+  <div>
+    <a href="{{ url_for('dashboard', date=selected_date.isoformat()) }}" class="{{ ui.back_link }}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+      Dashboard
+    </a>
+    <h1 class="{{ ui.h1 }} mt-1">Log a meal</h1>
+    <p class="mt-1 text-sm text-slate-500">Record food intake for {{ selected_date.strftime('%B %d, %Y') }}.</p>
   </div>
+  <div>{% include 'date_nav.html' %}</div>
+</div>
 
-  {% include 'date_nav.html' %}
-
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 mb-6">
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
+  {# ================= Form ================= #}
+  <section class="{{ ui.card }} p-5 sm:p-7 lg:col-span-3" aria-labelledby="form-heading">
+    <h2 id="form-heading" class="{{ ui.h2 }} mb-5">New entry</h2>
     {% if products %}
-    <form method="post" action="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="space-y-5">
+    <form method="post" action="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="space-y-6">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+
+      <fieldset>
+        <legend id="meal_type" class="{{ ui.label }}">Meal type</legend>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {% for value, text in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('dinner', 'Dinner'), ('snack', 'Snack')] %}
+          <label class="relative cursor-pointer">
+            <input type="radio" name="meal_type" value="{{ value }}" class="peer sr-only" required {% if loop.first %}checked{% endif %}>
+            <span class="flex items-center justify-center gap-2 h-11 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-600 transition
+                         hover:border-slate-300 hover:bg-white
+                         peer-checked:border-brand-600 peer-checked:bg-brand-50 peer-checked:text-brand-800 peer-checked:ring-4 peer-checked:ring-brand-500/10
+                         peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/30">
+              <span class="h-2 w-2 rounded-full {{ ui.meal_dots[value] }}" aria-hidden="true"></span>{{ text }}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
       <div>
-        <label for="meal_type" class="block text-sm font-medium text-slate-700 mb-1">Meal type</label>
-        <select id="meal_type" name="meal_type" required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
-          <option value="breakfast">Breakfast</option>
-          <option value="lunch">Lunch</option>
-          <option value="dinner">Dinner</option>
-          <option value="snack">Snack</option>
-        </select>
-      </div>
-      <div>
-        <label for="product_id" class="block text-sm font-medium text-slate-700 mb-1">Product</label>
-        <select id="product_id" name="product_id" required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        <label for="product_id" class="{{ ui.label }}">Product</label>
+        <select id="product_id" name="product_id" required class="{{ ui.input }}">
           <option value="">Select a product…</option>
           {% for p in products %}
           <option value="{{ p.id }}"
@@ -40,77 +55,86 @@
           {% endfor %}
         </select>
       </div>
-      <div id="macros" class="hidden rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-600 grid grid-cols-3 gap-2 text-center">
-        <div><span class="font-semibold text-slate-800" id="m-p">—</span><br>Protein / 100g</div>
-        <div><span class="font-semibold text-slate-800" id="m-f">—</span><br>Fat / 100g</div>
-        <div><span class="font-semibold text-slate-800" id="m-c">—</span><br>Carbs / 100g</div>
+
+      <div id="macros" class="hidden grid grid-cols-3 gap-2 sm:gap-3 text-center">
+        <div class="rounded-2xl bg-sky-50 px-2 py-3">
+          <p class="text-lg font-bold text-sky-700 tabular-nums" id="m-p">—</p>
+          <p class="text-[11px] font-medium text-slate-500">Protein / 100g</p>
+        </div>
+        <div class="rounded-2xl bg-amber-50 px-2 py-3">
+          <p class="text-lg font-bold text-amber-700 tabular-nums" id="m-f">—</p>
+          <p class="text-[11px] font-medium text-slate-500">Fat / 100g</p>
+        </div>
+        <div class="rounded-2xl bg-indigo-50 px-2 py-3">
+          <p class="text-lg font-bold text-indigo-700 tabular-nums" id="m-c">—</p>
+          <p class="text-[11px] font-medium text-slate-500">Carbs / 100g</p>
+        </div>
       </div>
+
       <div>
-        <label for="portion_grams" class="block text-sm font-medium text-slate-700 mb-1">Portion (grams)</label>
-        <input type="number" id="portion_grams" name="portion_grams" required min="1" step="1" value="100"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
-        <p id="est-cal" class="text-xs text-slate-500 mt-1"></p>
+        <label for="portion_grams" class="{{ ui.label }}">Portion (grams)</label>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="number" id="portion_grams" name="portion_grams" required min="1" step="1" value="100" inputmode="numeric"
+                 class="{{ ui.input }} sm:max-w-[10rem]">
+          <div class="flex gap-2" role="group" aria-label="Quick portion">
+            {% for g in [50, 100, 150, 200] %}
+            <button type="button" data-portion="{{ g }}"
+                    class="flex-1 sm:flex-none h-11 px-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 tabular-nums hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50">{{ g }} g</button>
+            {% endfor %}
+          </div>
+        </div>
+        <p id="est-cal" class="mt-3 text-sm font-semibold text-orange-700" aria-live="polite"></p>
       </div>
-      <button type="submit"
-              class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition text-sm">
-        Save meal
-      </button>
+
+      <button type="submit" class="{{ ui.btn_primary }} w-full">Save meal</button>
     </form>
     {% else %}
-    <p class="text-slate-500 text-sm text-center py-4">
-      No products in the database. Run <code class="bg-slate-100 px-1 rounded">flask init-db</code> to seed sample data.
-    </p>
+    <div class="py-8 text-center">
+      <p class="text-sm font-medium text-ink">No products in the database</p>
+      <p class="mt-1 text-sm text-slate-500">Run <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">flask init-db</code> to seed sample data.</p>
+    </div>
     {% endif %}
-  </div>
+  </section>
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-100">
-      <h2 class="font-semibold text-slate-900">Meals on {{ selected_date.strftime('%d.%m.%Y') }}</h2>
+  {# ================= Meals for the day ================= #}
+  <section class="{{ ui.card }} overflow-hidden lg:col-span-2" aria-labelledby="day-heading">
+    <div class="{{ ui.card_header }}">
+      <h2 id="day-heading" class="{{ ui.h2 }}">Meals on {{ selected_date.strftime('%d.%m.%Y') }}</h2>
+      {% if food_logs %}
+      <span class="{{ ui.badge }} bg-orange-50 text-orange-700 tabular-nums">{{ "%.0f"|format(food_logs|sum(attribute='calories')) }} kcal</span>
+      {% endif %}
     </div>
     {% if food_logs %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 text-left">
-          <tr>
-            <th class="px-6 py-3 font-medium">Meal</th>
-            <th class="px-6 py-3 font-medium">Product</th>
-            <th class="px-6 py-3 font-medium">Portion</th>
-            <th class="px-6 py-3 font-medium text-right">kcal</th>
-            <th class="px-4 py-3 w-14"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for log in food_logs %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-6 py-3 capitalize">{{ log.meal_type }}</td>
-            <td class="px-6 py-3">{{ log.product.name }}</td>
-            <td class="px-6 py-3">{{ log.portion_grams }} g</td>
-            <td class="px-6 py-3 text-right font-medium">{{ "%.0f"|format(log.calories) }}</td>
-            <td class="px-4 py-3 text-center">
-              <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="inline"
-                    onsubmit="return confirm('Видалити цей запис?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="next" value="{{ url_for('log_food', date=selected_date.isoformat()) }}">
-                <button type="submit" title="Видалити"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <ul class="divide-y divide-slate-100">
+      {% for log in food_logs %}
+      <li class="flex items-center gap-3 px-5 sm:px-6 py-3.5 hover:bg-slate-50/70">
+        <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ ui.meal_dots.get(log.meal_type, 'bg-slate-300') }}" aria-hidden="true"></span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-ink">{{ log.product.name }}</p>
+          <p class="text-xs text-slate-500"><span class="capitalize">{{ log.meal_type }}</span> · {{ log.portion_grams }} g</p>
+        </div>
+        <p class="shrink-0 text-sm font-semibold text-ink tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-slate-400">kcal</span></p>
+        <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" class="shrink-0"
+              onsubmit="return confirm('Delete this entry?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ url_for('log_food', date=selected_date.isoformat()) }}">
+          <button type="submit" title="Delete" aria-label="Delete {{ log.product.name }}" class="{{ ui.btn_icon_danger }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="{{ ui.trash_path }}"/>
+            </svg>
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
     {% else %}
-    <p class="px-6 py-8 text-slate-400 text-sm text-center">No meals logged for this day.</p>
+    <p class="px-6 py-10 text-center text-sm text-slate-500">No meals logged for this day.</p>
     {% endif %}
-  </div>
+  </section>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
   const sel = document.getElementById('product_id');
   const portion = document.getElementById('portion_grams');
@@ -135,6 +159,10 @@
   if (sel) {
     sel.addEventListener('change', updatePreview);
     portion.addEventListener('input', updatePreview);
+    document.querySelectorAll('[data-portion]').forEach(btn => btn.addEventListener('click', () => {
+      portion.value = btn.dataset.portion;
+      updatePreview();
+    }));
   }
 </script>
 {% endblock %}

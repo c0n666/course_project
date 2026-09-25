@@ -2,7 +2,8 @@
 <html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F172A">
   <title>{% block title %}Nutrition & Workout Tracker{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -10,71 +11,209 @@
       theme: {
         extend: {
           colors: {
-            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985' },
-            accent: { 500: '#10b981', 600: '#059669' }
+            /* Primary — emerald, 600 is the AA-safe button color on white text */
+            brand: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#047857', 700: '#065f46', 800: '#064e3b' },
+            /* Accent — energy / workouts */
+            accent: { 50: '#fff7ed', 100: '#ffedd5', 500: '#ea580c', 600: '#c2410c' },
+            /* Metric colors */
+            kcal: '#F97316', protein: '#0EA5E9', fat: '#F59E0B', carbs: '#6366F1',
+            ink: { DEFAULT: '#0F172A', soft: '#1E293B', muted: '#94A3B8' },
+            canvas: '#F5F5F7',
           },
-          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          borderRadius: { card: '20px' },
+          boxShadow: {
+            card: '0 1px 2px rgba(15,23,42,.04), 0 4px 16px rgba(15,23,42,.06)',
+            'card-hover': '0 2px 4px rgba(15,23,42,.05), 0 12px 32px rgba(15,23,42,.10)',
+          },
         }
       }
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full bg-slate-50 text-slate-800 antialiased">
-  <div class="min-h-full flex flex-col">
-    {% if current_user.is_authenticated %}
-    <header class="bg-white border-b border-slate-200 shadow-sm">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="h-9 w-9 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">NW</div>
-            <span class="font-semibold text-slate-900">Nutrition & Workout</span>
-          </div>
-          <nav class="flex items-center gap-4 text-sm">
-            {% if current_user.role == 'trainer' %}
-            <a href="{{ url_for('trainer_dashboard') }}" class="text-slate-600 hover:text-brand-700 font-medium">Clients</a>
-            {% else %}
-            <a href="{{ url_for('dashboard') }}" class="text-slate-600 hover:text-brand-700 font-medium">Dashboard</a>
-            <a href="{{ url_for('log_food') }}" class="text-slate-600 hover:text-brand-700 font-medium">Log Food</a>
-            <a href="{{ url_for('profile_page') }}" class="text-slate-600 hover:text-brand-700 font-medium">Profile</a>
-            {% endif %}
-            <span class="text-slate-400 hidden sm:inline">{{ current_user.email }}</span>
-            <span class="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-xs font-medium capitalize">{{ current_user.role }}</span>
-            <a href="{{ url_for('logout') }}" class="text-slate-500 hover:text-red-600">Sign out</a>
-          </nav>
+
+{#- ---------- Icons (Heroicons outline, 24px) ---------- -#}
+{% macro icon(name, cls='w-5 h-5') -%}
+<svg class="{{ cls }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+  {%- if name == 'home' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+  {%- elif name == 'plus' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+  {%- elif name == 'user' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+  {%- elif name == 'users' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+  {%- elif name == 'logout' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
+  {%- elif name == 'check' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+  {%- elif name == 'alert' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+  {%- elif name == 'info' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
+  {%- elif name == 'close' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+  {%- elif name == 'pulse' -%}
+  <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/>
+  {%- endif -%}
+</svg>
+{%- endmacro %}
+
+{#- ---------- Navigation model ---------- -#}
+{% set endpoint = request.endpoint or '' %}
+{% if current_user.is_authenticated %}
+  {% if current_user.role == 'trainer' %}
+    {% set nav_items = [
+      ('trainer_dashboard', 'Clients', 'users', ['trainer_dashboard', 'trainer_client']),
+    ] %}
+  {% else %}
+    {% set nav_items = [
+      ('dashboard', 'Dashboard', 'home', ['dashboard']),
+      ('log_food', 'Log Food', 'plus', ['log_food']),
+      ('profile_page', 'Profile', 'user', ['profile_page']),
+    ] %}
+  {% endif %}
+{% endif %}
+
+<body class="h-full bg-canvas text-ink antialiased">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-card text-sm font-medium">Skip to content</a>
+
+  {# ---------- Toast notifications (flash messages) ---------- #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="toast-region" aria-live="polite" aria-atomic="false">
+    {% for category, message in messages %}
+    {% set kind = category if category in ['success', 'error'] else 'info' %}
+    <div class="toast toast--{{ kind }} relative overflow-hidden" data-kind="{{ kind }}"
+         role="{{ 'alert' if kind == 'error' else 'status' }}">
+      <span class="toast-icon">{{ icon('check' if kind == 'success' else ('alert' if kind == 'error' else 'info'), 'w-5 h-5') }}</span>
+      <div class="flex-1 min-w-0 pt-1.5">
+        <p class="text-sm font-medium text-ink leading-snug">{{ message }}</p>
+      </div>
+      <button type="button" data-toast-close aria-label="Dismiss notification"
+              class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+        {{ icon('close', 'w-4 h-4') }}
+      </button>
+      <span class="toast-progress" aria-hidden="true"></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% if current_user.is_authenticated %}
+  {# ================= Authenticated app shell ================= #}
+  <div class="min-h-full lg:pl-64">
+
+    {# ---------- Desktop sidebar ---------- #}
+    <aside class="nav-dark hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-ink text-ink-muted">
+      <div class="flex items-center gap-3 px-6 h-20 shrink-0">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white shadow-lg shadow-black/30">
+          {{ icon('pulse', 'w-5 h-5') }}
         </div>
+        <div class="leading-tight">
+          <p class="text-white font-semibold text-[15px]">Nutrition</p>
+          <p class="text-xs text-ink-muted">& Workout</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1" aria-label="Main">
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Menu</p>
+        {% for ep, label, ic, active_on in nav_items %}
+        {% set is_active = endpoint in active_on %}
+        <a href="{{ url_for(ep) }}" {% if is_active %}aria-current="page"{% endif %}
+           class="group flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium transition-colors
+                  {% if is_active %}bg-white/10 text-white{% else %}text-ink-muted hover:bg-white/5 hover:text-white{% endif %}">
+          <span class="{% if is_active %}text-brand-400{% else %}text-slate-500 group-hover:text-slate-300{% endif %}">{{ icon(ic) }}</span>
+          {{ label }}
+          {% if is_active %}<span class="ml-auto h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true"></span>{% endif %}
+        </a>
+        {% endfor %}
+      </nav>
+
+      <div class="p-3 border-t border-white/5">
+        <div class="flex items-center gap-3 rounded-xl px-3 py-3">
+          <div class="h-9 w-9 shrink-0 rounded-full bg-ink-soft text-white flex items-center justify-center text-sm font-semibold uppercase">
+            {{ current_user.email[:1] }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm text-white truncate" title="{{ current_user.email }}">{{ current_user.email }}</p>
+            <p class="text-xs text-brand-400 capitalize">{{ current_user.role }}</p>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}"
+           class="flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-ink-muted hover:bg-red-500/10 hover:text-red-300 transition-colors">
+          {{ icon('logout') }} Sign out
+        </a>
+      </div>
+    </aside>
+
+    {# ---------- Mobile top bar ---------- #}
+    <header class="nav-dark lg:hidden sticky top-0 z-30 bg-ink/95 backdrop-blur text-white">
+      <div class="flex h-14 items-center justify-between px-4">
+        <div class="flex items-center gap-2.5">
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
+            {{ icon('pulse', 'w-4 h-4') }}
+          </div>
+          <span class="font-semibold text-[15px]">Nutrition & Workout</span>
+        </div>
+        <span class="px-2.5 py-1 rounded-full bg-white/10 text-brand-300 text-xs font-medium capitalize">{{ current_user.role }}</span>
       </div>
     </header>
-    {% endif %}
 
-    <main class="flex-1">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="mb-6 space-y-2">
-          {% for category, message in messages %}
-          <div class="rounded-lg px-4 py-3 text-sm border
-            {% if category == 'error' %}bg-red-50 text-red-800 border-red-200
-            {% elif category == 'success' %}bg-emerald-50 text-emerald-800 border-emerald-200
-            {% else %}bg-sky-50 text-sky-800 border-sky-200{% endif %}">
-            {{ message }}
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
+  {% else %}
+  {# ================= Public shell (login / register) ================= #}
+  <div class="min-h-full flex flex-col bg-gradient-to-b from-white to-canvas">
+  {% endif %}
 
+    {# ---------- Page content (shared by both shells) ---------- #}
+    {% set authed = current_user.is_authenticated %}
+    <main id="main" class="{{ 'has-tabbar' if authed else 'flex-1' }}">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 {{ 'lg:px-10 py-6 sm:py-8 lg:py-10' if authed else 'lg:px-8 py-8 sm:py-12' }}">
         {% block content %}{% endblock %}
       </div>
+      {% if authed %}
+      <footer class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pb-8 text-xs text-slate-400">
+        Personal Nutrition & Workout Tracking System
+      </footer>
+      {% endif %}
     </main>
 
-    <footer class="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-      Personal Nutrition & Workout Tracking System — Academic Project
+  {% if authed %}
+    {# ---------- Mobile bottom tab bar ---------- #}
+    <nav class="nav-dark tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 bg-ink/95 backdrop-blur border-t border-white/5" aria-label="Main">
+      <div class="flex items-stretch justify-around h-16 max-w-md mx-auto">
+        {% for ep, label, ic, active_on in nav_items %}
+        {% set is_active = endpoint in active_on %}
+        <a href="{{ url_for(ep) }}" {% if is_active %}aria-current="page"{% endif %}
+           class="flex-1 flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors
+                  {% if is_active %}text-brand-400{% else %}text-ink-muted hover:text-white{% endif %}">
+          {{ icon(ic, 'w-6 h-6') }}
+          {{ label }}
+        </a>
+        {% endfor %}
+        <a href="{{ url_for('logout') }}"
+           class="flex-1 flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-red-300 transition-colors">
+          {{ icon('logout', 'w-6 h-6') }}
+          Sign out
+        </a>
+      </div>
+    </nav>
+  </div>
+  {% else %}
+    <footer class="py-6 text-center text-xs text-slate-400">
+      Personal Nutrition & Workout Tracking System
     </footer>
   </div>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

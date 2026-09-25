@@ -1,0 +1,36 @@
+{#- Shared UI class strings. Usage: {% import '_ui.html' as ui %} then class="{{ ui.card }}" -#}
+
+{#- Surfaces -#}
+{% set card = 'bg-white rounded-card shadow-card' %}
+{% set card_header = 'px-5 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-slate-100' %}
+{% set h1 = 'text-2xl sm:text-3xl font-bold tracking-tight text-ink' %}
+{% set h2 = 'text-lg font-semibold text-ink' %}
+{% set eyebrow = 'text-xs font-semibold uppercase tracking-wider text-slate-500' %}
+{% set back_link = 'inline-flex items-center gap-1 -ml-2 h-10 px-2 rounded-xl text-sm font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700' %}
+
+{#- Forms -#}
+{% set label = 'block text-sm font-medium text-slate-700 mb-1.5' %}
+{% set input = 'w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-ink placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 outline-none transition' %}
+{% set textarea = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-ink placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 outline-none transition resize-none' %}
+{% set hint = 'mt-1.5 text-xs text-slate-500' %}
+
+{#- Buttons -#}
+{% set btn_primary = 'inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-brand-600 text-white text-sm font-semibold shadow-sm hover:bg-brand-700 focus-visible:ring-4 focus-visible:ring-brand-500/30' %}
+{% set btn_secondary = 'inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-slate-100 text-ink text-sm font-semibold hover:bg-slate-200' %}
+{% set btn_ghost = 'inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-ink' %}
+{% set btn_accent = 'inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-accent-600 text-white text-sm font-semibold shadow-sm hover:bg-accent-500 focus-visible:ring-4 focus-visible:ring-accent-500/30' %}
+{% set btn_icon_danger = 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600' %}
+
+{#- Badges -#}
+{% set badge = 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold' %}
+{% set meal_styles = {
+  'breakfast': 'bg-amber-50 text-amber-700',
+  'lunch': 'bg-emerald-50 text-emerald-700',
+  'dinner': 'bg-indigo-50 text-indigo-700',
+  'snack': 'bg-pink-50 text-pink-700',
+} %}
+{% set meal_default = 'bg-slate-100 text-slate-600' %}
+{% set meal_dots = {'breakfast': 'bg-amber-400', 'lunch': 'bg-emerald-500', 'dinner': 'bg-indigo-500', 'snack': 'bg-pink-500'} %}
+
+{#- Trash icon (Heroicons) -#}
+{% set trash_path = 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' %}
