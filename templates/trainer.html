@@ -1,117 +1,84 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
+{% set page_title = 'Clients' %}
+{% set page_subtitle = today.strftime('%A, %B %d') %}
 {% block title %}Trainer Dashboard — Nutrition Tracker{% endblock %}
 
-{% macro kcal_badge(kcal) -%}
-<span class="{{ ui.badge }} tabular-nums
-  {% if kcal > 2500 %}bg-amber-50 text-amber-800
-  {% elif kcal > 0 %}bg-emerald-50 text-emerald-800
-  {% else %}bg-slate-100 text-slate-600{% endif %}">{{ kcal }} kcal</span>
-{%- endmacro %}
-
 {% block content %}
-<div class="mb-6 sm:mb-8">
-  <p class="text-sm font-medium text-slate-500">{{ today.strftime('%A, %B %d, %Y') }}</p>
-  <h1 class="{{ ui.h1 }} mt-1">Trainer Dashboard</h1>
-</div>
-
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
-  <div class="{{ ui.card }} p-5 sm:p-6">
-    <div class="flex items-center gap-2 text-sm font-medium text-slate-500">
-      <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
-      </span>
-      Active clients
+<div class="max-w-3xl">
+  {# ---------- Summary ---------- #}
+  {% set logged_today = clients|selectattr('calories_today', 'gt', 0)|list|length %}
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    {% for label, value, color in [('Athletes', client_count, 'text-fg'), ('Logged today', logged_today, 'text-kcal'), ('Workouts', clients|sum(attribute='workouts_today'), 'text-emerald-600 dark:text-emerald-400')] %}
+    <div class="{{ ui.card }} px-4 py-3.5">
+      <p class="text-[26px] leading-none font-bold tracking-tight tabular-nums {{ color }}">{{ value }}</p>
+      <p class="mt-1.5 text-[12px] font-medium text-fg-muted">{{ label }}</p>
     </div>
-    <p class="mt-3 text-4xl font-bold tracking-tight text-ink tabular-nums">{{ client_count }}</p>
-  </div>
-  <div class="{{ ui.card }} p-5 sm:p-6 sm:col-span-2 bg-gradient-to-br from-ink to-slate-800 text-white">
-    <p class="text-sm font-medium text-ink-muted">Your role</p>
-    <p class="mt-3 text-lg font-semibold leading-snug">Review meals & macros, approve AI suggestions and send personal recommendations.</p>
-  </div>
-</div>
-
-<section class="{{ ui.card }} overflow-hidden" aria-labelledby="roster-heading">
-  <div class="{{ ui.card_header }}">
-    <div>
-      <h2 id="roster-heading" class="{{ ui.h2 }}">Client roster</h2>
-      <p class="text-sm text-slate-500 mt-0.5">Open a client to see today's full food log</p>
-    </div>
+    {% endfor %}
   </div>
 
   {% if clients %}
-  {# ---------- Mobile: cards ---------- #}
-  <ul class="md:hidden divide-y divide-slate-100">
+  {# ---------- Search ---------- #}
+  <div class="relative mb-3">
+    <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+    <label for="clientSearch" class="sr-only">Search athletes</label>
+    <input type="search" id="clientSearch" placeholder="Search athletes" autocomplete="off" enterkeyhint="search" class="{{ ui.input }} pl-11">
+  </div>
+
+  {# ---------- Roster ---------- #}
+  <ul class="{{ ui.list }}" id="clientList">
     {% for item in clients %}
-    <li>
-      <a href="{{ url_for('trainer_client', client_id=item.user.id) }}" class="flex items-center gap-3 px-5 py-4 hover:bg-slate-50 active:bg-slate-100">
-        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold uppercase text-slate-600">{{ item.user.email[:1] }}</span>
+    <li class="client-row" data-name="{{ item.user.email|lower }}">
+      <a href="{{ url_for('trainer_client', client_id=item.user.id) }}"
+         class="press flex items-center gap-3 px-4 min-h-[68px] py-3 hover:bg-surface-2/60 active:bg-surface-2">
+        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[17px] font-semibold uppercase text-primary">{{ item.user.email[:1] }}</span>
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-ink">{{ item.user.email }}</p>
-          <p class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            {{ kcal_badge(item.calories_today) }}
-            <span>{{ item.workouts_today }} workouts</span>
+          <p class="truncate text-[15px] font-semibold">{{ item.user.email }}</p>
+          <p class="text-[13px] text-fg-muted tabular-nums">
+            {% if item.profile and (item.profile.weight or item.profile.height) %}
+              {% if item.profile.weight %}{{ item.profile.weight }} kg{% endif %}{% if item.profile.weight and item.profile.height %} · {% endif %}{% if item.profile.height %}{{ item.profile.height }} cm{% endif %}
+            {% else %}No profile{% endif %}
+            · ID #{{ item.user.id }}
           </p>
         </div>
-        <svg class="w-5 h-5 shrink-0 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        <div class="shrink-0 text-right">
+          <span class="{{ ui.badge }} tabular-nums
+            {% if item.calories_today > 2500 %}bg-amber-500/15 text-amber-700 dark:text-amber-300
+            {% elif item.calories_today > 0 %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-300
+            {% else %}bg-surface-2 text-fg-muted{% endif %}">{{ item.calories_today }} kcal</span>
+          <p class="mt-1 text-[12px] text-fg-muted tabular-nums">{{ item.workouts_today }} {{ 'workout' if item.workouts_today == 1 else 'workouts' }}</p>
+        </div>
+        <svg class="w-4 h-4 shrink-0 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
       </a>
     </li>
     {% endfor %}
+    <li id="noClients" hidden class="px-4 py-8 text-center text-sm text-fg-muted">No athletes match your search.</li>
   </ul>
-
-  {# ---------- Desktop: table ---------- #}
-  <div class="hidden md:block overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-          <th scope="col" class="px-6 py-3">Athlete</th>
-          <th scope="col" class="px-6 py-3">Profile</th>
-          <th scope="col" class="px-6 py-3 text-right">Calories today</th>
-          <th scope="col" class="px-6 py-3 text-right">Workouts</th>
-          <th scope="col" class="px-6 py-3 text-right"><span class="sr-only">Actions</span></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for item in clients %}
-        <tr class="hover:bg-slate-50/70">
-          <td class="px-6 py-4">
-            <div class="flex items-center gap-3">
-              <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold uppercase text-slate-600">{{ item.user.email[:1] }}</span>
-              <div class="min-w-0">
-                <p class="font-medium text-ink truncate">{{ item.user.email }}</p>
-                <p class="text-xs text-slate-400">ID #{{ item.user.id }}</p>
-              </div>
-            </div>
-          </td>
-          <td class="px-6 py-4 text-slate-600 tabular-nums">
-            {% if item.profile %}
-            {% if item.profile.weight %}{{ item.profile.weight }} kg{% else %}—{% endif %}
-            {% if item.profile.height %} · {{ item.profile.height }} cm{% endif %}
-            {% else %}
-            <span class="text-slate-400">No profile</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-4 text-right">{{ kcal_badge(item.calories_today) }}</td>
-          <td class="px-6 py-4 text-right font-semibold text-ink tabular-nums">{{ item.workouts_today }}</td>
-          <td class="px-6 py-4 text-right">
-            <a href="{{ url_for('trainer_client', client_id=item.user.id) }}"
-               class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">
-              View & advise
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
   {% else %}
-  <div class="px-6 py-14 text-center">
-    <span class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
+  <div class="{{ ui.card }} px-6 py-14 text-center">
+    <span class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
     </span>
-    <p class="mt-3 text-sm font-medium text-ink">No athletes are assigned to you yet</p>
-    <p class="mt-1 text-sm text-slate-500">Athletes can select you as their trainer during registration.</p>
+    <p class="mt-4 text-[17px] font-semibold">No athletes yet</p>
+    <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">Athletes can select you as their trainer during registration.</p>
   </div>
   {% endif %}
-</section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const search = document.getElementById('clientSearch');
+    if (!search) return;
+    const rows = Array.from(document.querySelectorAll('.client-row'));
+    const empty = document.getElementById('noClients');
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(r => { const m = !q || r.dataset.name.includes(q); r.hidden = !m; if (m) shown++; });
+      empty.hidden = shown > 0;
+    });
+  })();
+</script>
 {% endblock %}

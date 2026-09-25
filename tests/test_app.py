@@ -247,3 +247,13 @@ def test_gemini_malformed_response_falls_back(app, monkeypatch):
 
     monkeypatch.setattr(ai_service.urllib.request, "urlopen", lambda *a, **k: Resp(b"[1, 2]"))
     assert ai_service._call_gemini("prompt") is None
+
+
+def test_service_worker_served_from_root_with_full_scope(client):
+    resp = client.get("/sw.js")
+    assert resp.status_code == 200
+    assert resp.mimetype == "application/javascript"
+    assert resp.headers["Service-Worker-Allowed"] == "/"
+    assert "no-cache" in resp.headers["Cache-Control"]
+    assert b"addEventListener('fetch'" in resp.data
+    resp.close()

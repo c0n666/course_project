@@ -1,88 +1,165 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+{#- Page contract (set at the top of a child template, outside blocks):
+      page_title     large iOS-style title (omit to keep the page's own header)
+      page_subtitle  small line above the title
+      presented      full-screen modal screen: no tab bar, "Cancel" returns to page_back_url
+      page_back_url  pushed screen: "‹ page_back_label" in the app bar
+      page_bar_title compact title shown in the app bar (defaults to page_title)
+-#}
+<html lang="en" class="h-full{{ ' is-presented' if presented else '' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0F172A">
+  <meta name="theme-color" content="#F5F5F7">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}Nutrition & Workout Tracker{% endblock %}</title>
+
+  {# ---------- PWA ---------- #}
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Nutrition">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+
+  {# Runs before first paint: JS flag, initial in-page view, theme (System / Light / Dark) #}
+  <script>
+    (function () {
+      var r = document.documentElement;
+      r.classList.add('js');
+      var h = location.hash.slice(1);
+      r.dataset.viewActive = ['today', 'insights', 'coach'].indexOf(h) > -1 ? h : 'today';
+      var pref = 'system';
+      try { pref = localStorage.getItem('theme') || 'system'; } catch (e) {}
+      r.dataset.themePref = pref;
+      var m = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : { matches: false };
+      window.__applyTheme = function () {
+        var p = r.dataset.themePref;
+        var dark = p === 'dark' || (p !== 'light' && m.matches);
+        var changed = dark !== r.classList.contains('dark');
+        r.classList.toggle('dark', dark);
+        var t = document.querySelector('meta[name="theme-color"]');
+        if (t) t.content = dark ? '#000000' : '#F5F5F7';
+        if (changed && document.body) document.dispatchEvent(new CustomEvent('app:themechange', { detail: { dark: dark } }));
+      };
+      window.__applyTheme();
+      if (m.addEventListener) m.addEventListener('change', function () { if (r.dataset.themePref === 'system') window.__applyTheme(); });
+    })();
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            /* Primary — emerald, 600 is the AA-safe button color on white text */
-            brand: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#047857', 700: '#065f46', 800: '#064e3b' },
-            /* Accent — energy / workouts */
-            accent: { 50: '#fff7ed', 100: '#ffedd5', 500: '#ea580c', 600: '#c2410c' },
-            /* Metric colors */
-            kcal: '#F97316', protein: '#0EA5E9', fat: '#F59E0B', carbs: '#6366F1',
-            ink: { DEFAULT: '#0F172A', soft: '#1E293B', muted: '#94A3B8' },
-            canvas: '#F5F5F7',
-          },
-          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-          borderRadius: { card: '20px' },
-          boxShadow: {
-            card: '0 1px 2px rgba(15,23,42,.04), 0 4px 16px rgba(15,23,42,.06)',
-            'card-hover': '0 2px 4px rgba(15,23,42,.05), 0 12px 32px rgba(15,23,42,.10)',
-          },
+    (function () {
+      var v = function (name) { return 'rgb(var(' + name + ') / <alpha-value>)'; };
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              /* Semantic tokens — switch with the theme (see static/css/app.css) */
+              canvas: v('--canvas'),
+              surface: { DEFAULT: v('--surface'), 2: v('--surface-2') },
+              line: v('--line'),
+              fg: { DEFAULT: v('--fg'), muted: v('--fg-muted'), subtle: v('--fg-subtle') },
+              primary: { DEFAULT: v('--primary'), strong: v('--primary-strong') },
+              'on-primary': v('--on-primary'),
+              energy: v('--energy'),
+              'on-energy': v('--on-energy'),
+              chrome: '#0F172A',
+              /* Metric colors — identical in both themes */
+              kcal: '#F97316', protein: '#0EA5E9', fat: '#F59E0B', carbs: '#6366F1',
+            },
+            fontFamily: {
+              sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Inter', 'Arial', 'sans-serif'],
+            },
+            borderRadius: { card: '20px' },
+            boxShadow: {
+              card: 'var(--shadow-card)',
+              float: 'var(--shadow-float)',
+            },
+          }
         }
-      }
-    }
+      };
+    })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
 
-{#- ---------- Icons (Heroicons outline, 24px) ---------- -#}
-{% macro icon(name, cls='w-5 h-5') -%}
-<svg class="{{ cls }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
-  {%- if name == 'home' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
-  {%- elif name == 'plus' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-  {%- elif name == 'user' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
-  {%- elif name == 'users' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
-  {%- elif name == 'logout' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
-  {%- elif name == 'check' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-  {%- elif name == 'alert' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
-  {%- elif name == 'info' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
-  {%- elif name == 'close' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-  {%- elif name == 'pulse' -%}
-  <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/>
+{#- ---------- Icons (Heroicons outline) ---------- -#}
+{% macro icon(name, cls='w-6 h-6', sw='1.8') -%}
+<svg class="{{ cls }}" fill="none" stroke="currentColor" stroke-width="{{ sw }}" viewBox="0 0 24 24" aria-hidden="true">
+  {%- if name == 'home' -%}<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+  {%- elif name == 'chart' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+  {%- elif name == 'chat' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/>
+  {%- elif name == 'user' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+  {%- elif name == 'users' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+  {%- elif name == 'plus' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+  {%- elif name == 'logout' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
+  {%- elif name == 'check' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+  {%- elif name == 'alert' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+  {%- elif name == 'info' -%}<path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
+  {%- elif name == 'close' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+  {%- elif name == 'pulse' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/>
+  {%- elif name == 'bolt' -%}<path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/>
+  {%- elif name == 'food' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12M12.265 3.11a.375.375 0 1 1-.53 0L12 2.845l.265.265Z"/>
+  {%- elif name == 'download' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+  {%- elif name == 'share' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15m0-3-3-3m0 0-3 3m3-3V15"/>
+  {%- elif name == 'add-square' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m-3.75 8.25h13.5a1.5 1.5 0 0 0 1.5-1.5V5.25a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v13.5a1.5 1.5 0 0 0 1.5 1.5Z"/>
+  {%- elif name == 'sun' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+  {%- elif name == 'moon' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
+  {%- elif name == 'auto' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"/>
+  {%- elif name == 'chevron-left' -%}<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
+  {%- elif name == 'chevron-right' -%}<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
   {%- endif -%}
 </svg>
 {%- endmacro %}
 
 {#- ---------- Navigation model ---------- -#}
 {% set endpoint = request.endpoint or '' %}
-{% if current_user.is_authenticated %}
-  {% if current_user.role == 'trainer' %}
+{% set authed = current_user.is_authenticated %}
+{% set is_trainer = authed and current_user.role == 'trainer' %}
+{% set coach_count = (recommendations|length) if recommendations is defined and recommendations else 0 %}
+{% set day_param = selected_date.isoformat() if selected_date is defined and selected_date else none %}
+{% if authed %}
+  {% if is_trainer %}
     {% set nav_items = [
-      ('trainer_dashboard', 'Clients', 'users', ['trainer_dashboard', 'trainer_client']),
+      {'key': 'clients', 'label': 'Clients', 'icon': 'users', 'href': url_for('trainer_dashboard'), 'active': endpoint in ['trainer_dashboard', 'trainer_client']},
     ] %}
   {% else %}
     {% set nav_items = [
-      ('dashboard', 'Dashboard', 'home', ['dashboard']),
-      ('log_food', 'Log Food', 'plus', ['log_food']),
-      ('profile_page', 'Profile', 'user', ['profile_page']),
+      {'key': 'today', 'label': 'Today', 'icon': 'home', 'href': url_for('dashboard'), 'active': endpoint == 'dashboard'},
+      {'key': 'insights', 'label': 'Insights', 'icon': 'chart', 'href': url_for('dashboard') ~ '#insights', 'active': false},
+      {'key': 'coach', 'label': 'Coach', 'icon': 'chat', 'href': url_for('dashboard') ~ '#coach', 'active': false, 'badge': coach_count},
+      {'key': 'me', 'label': 'Me', 'icon': 'user', 'href': url_for('profile_page'), 'active': endpoint == 'profile_page'},
     ] %}
   {% endif %}
 {% endif %}
 
-<body class="h-full bg-canvas text-ink antialiased">
-  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-card text-sm font-medium">Skip to content</a>
+{% macro tab(item, mobile=true) -%}
+<a href="{{ item.href }}" data-tab="{{ item.key }}" {% if item.active %}aria-current="page"{% endif %}
+   {% if mobile %}
+   class="tab-link press relative flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium"
+   {% else %}
+   class="group flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white"
+   {% endif %}>
+  <span class="relative {{ '' if mobile else 'text-slate-500 group-hover:text-slate-300 group-aria-[current=page]:text-emerald-400' }}">
+    {{ icon(item.icon, 'w-[26px] h-[26px]' if mobile else 'w-5 h-5') }}
+    {% if item.badge %}
+    <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-semibold leading-[18px] text-center" aria-label="{{ item.badge }} new">{{ item.badge }}</span>
+    {% endif %}
+  </span>
+  {{ item.label }}
+</a>
+{%- endmacro %}
+
+{% import '_ui.html' as ui %}
+
+<body class="min-h-full bg-canvas text-fg antialiased">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-surface focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-card text-sm font-medium">Skip to content</a>
 
   {# ---------- Toast notifications (flash messages) ---------- #}
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -90,15 +167,12 @@
   <div class="toast-region" aria-live="polite" aria-atomic="false">
     {% for category, message in messages %}
     {% set kind = category if category in ['success', 'error'] else 'info' %}
-    <div class="toast toast--{{ kind }} relative overflow-hidden" data-kind="{{ kind }}"
-         role="{{ 'alert' if kind == 'error' else 'status' }}">
+    <div class="toast toast--{{ kind }}" data-kind="{{ kind }}" role="{{ 'alert' if kind == 'error' else 'status' }}">
       <span class="toast-icon">{{ icon('check' if kind == 'success' else ('alert' if kind == 'error' else 'info'), 'w-5 h-5') }}</span>
-      <div class="flex-1 min-w-0 pt-1.5">
-        <p class="text-sm font-medium text-ink leading-snug">{{ message }}</p>
-      </div>
+      <p class="flex-1 min-w-0 pt-1.5 text-[15px] sm:text-sm font-medium leading-snug">{{ message }}</p>
       <button type="button" data-toast-close aria-label="Dismiss notification"
-              class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-        {{ icon('close', 'w-4 h-4') }}
+              class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2">
+        {{ icon('close', 'w-4 h-4', '2') }}
       </button>
       <span class="toast-progress" aria-hidden="true"></span>
     </div>
@@ -107,111 +181,267 @@
   {% endif %}
   {% endwith %}
 
-  {% if current_user.is_authenticated %}
-  {# ================= Authenticated app shell ================= #}
+  {% if authed %}
+  {# ======================= Authenticated app shell ======================= #}
   <div class="min-h-full lg:pl-64">
 
     {# ---------- Desktop sidebar ---------- #}
-    <aside class="nav-dark hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-ink text-ink-muted">
+    <aside class="app-sidebar app-chrome hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-chrome text-slate-400">
       <div class="flex items-center gap-3 px-6 h-20 shrink-0">
-        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white shadow-lg shadow-black/30">
-          {{ icon('pulse', 'w-5 h-5') }}
-        </div>
+        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="h-10 w-10 rounded-xl">
         <div class="leading-tight">
           <p class="text-white font-semibold text-[15px]">Nutrition</p>
-          <p class="text-xs text-ink-muted">& Workout</p>
+          <p class="text-xs text-slate-400">& Workout</p>
         </div>
       </div>
 
+      {% if not is_trainer %}
+      <div class="px-3 pb-2">
+        <button type="button" data-sheet-open="quickAddSheet"
+                class="press w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-500 text-emerald-950 text-sm font-semibold hover:bg-emerald-400">
+          {{ icon('plus', 'w-5 h-5', '2.2') }} New entry
+        </button>
+      </div>
+      {% endif %}
+
       <nav class="flex-1 px-3 py-4 space-y-1" aria-label="Main">
-        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Menu</p>
-        {% for ep, label, ic, active_on in nav_items %}
-        {% set is_active = endpoint in active_on %}
-        <a href="{{ url_for(ep) }}" {% if is_active %}aria-current="page"{% endif %}
-           class="group flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium transition-colors
-                  {% if is_active %}bg-white/10 text-white{% else %}text-ink-muted hover:bg-white/5 hover:text-white{% endif %}">
-          <span class="{% if is_active %}text-brand-400{% else %}text-slate-500 group-hover:text-slate-300{% endif %}">{{ icon(ic) }}</span>
-          {{ label }}
-          {% if is_active %}<span class="ml-auto h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true"></span>{% endif %}
-        </a>
-        {% endfor %}
+        {% for item in nav_items %}{{ tab(item, mobile=false) }}{% endfor %}
       </nav>
 
-      <div class="p-3 border-t border-white/5">
+      <div class="p-3 border-t border-white/5 space-y-1">
+        <div class="px-1 pb-2">{{ ui.theme_switch(on_chrome=true) }}</div>
+        <button type="button" data-install data-install-action hidden
+                class="w-full flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
+          {{ icon('download', 'w-5 h-5') }} Install app
+        </button>
         <div class="flex items-center gap-3 rounded-xl px-3 py-3">
-          <div class="h-9 w-9 shrink-0 rounded-full bg-ink-soft text-white flex items-center justify-center text-sm font-semibold uppercase">
-            {{ current_user.email[:1] }}
-          </div>
+          <div class="h-9 w-9 shrink-0 rounded-full bg-slate-700 text-white flex items-center justify-center text-sm font-semibold uppercase">{{ current_user.email[:1] }}</div>
           <div class="min-w-0 flex-1">
             <p class="text-sm text-white truncate" title="{{ current_user.email }}">{{ current_user.email }}</p>
-            <p class="text-xs text-brand-400 capitalize">{{ current_user.role }}</p>
+            <p class="text-xs text-emerald-400 capitalize">{{ current_user.role }}</p>
           </div>
         </div>
         <a href="{{ url_for('logout') }}"
-           class="flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-ink-muted hover:bg-red-500/10 hover:text-red-300 transition-colors">
-          {{ icon('logout') }} Sign out
+           class="flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-300">
+          {{ icon('logout', 'w-5 h-5') }} Sign out
         </a>
       </div>
     </aside>
 
-    {# ---------- Mobile top bar ---------- #}
-    <header class="nav-dark lg:hidden sticky top-0 z-30 bg-ink/95 backdrop-blur text-white">
-      <div class="flex h-14 items-center justify-between px-4">
-        <div class="flex items-center gap-2.5">
-          <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
-            {{ icon('pulse', 'w-4 h-4') }}
-          </div>
-          <span class="font-semibold text-[15px]">Nutrition & Workout</span>
-        </div>
-        <span class="px-2.5 py-1 rounded-full bg-white/10 text-brand-300 text-xs font-medium capitalize">{{ current_user.role }}</span>
+    {# ---------- Mobile app bar ---------- #}
+    {% set bar_title = page_bar_title or page_title or '' %}
+    <header class="app-bar app-chrome lg:hidden sticky top-0 z-30 bg-canvas/80 backdrop-blur-xl backdrop-saturate-150 {{ 'is-collapsed' if not page_title else '' }}">
+      <div class="relative flex h-12 items-center justify-between px-2">
+        {% if presented %}
+        <a href="{{ page_back_url }}" class="press inline-flex h-11 items-center px-2 text-[17px] text-primary">Cancel</a>
+        {% elif page_back_url %}
+        <a href="{{ page_back_url }}" class="press inline-flex h-11 items-center -ml-1 pr-2 text-[17px] text-primary">
+          {{ icon('chevron-left', 'w-6 h-6', '2.2') }}{{ page_back_label or 'Back' }}
+        </a>
+        {% else %}
+        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="ml-1 h-8 w-8 rounded-[9px]">
+        {% endif %}
+        <p class="app-bar-title absolute left-1/2 -translate-x-1/2 max-w-[55%] truncate text-[17px] font-semibold" data-view-title-target {% if page_title %}aria-hidden="true"{% endif %}>{{ bar_title }}</p>
+        {% if presented %}
+        <span class="w-16" aria-hidden="true"></span>
+        {% else %}
+        <button type="button" data-sheet-open="accountSheet" aria-label="Account"
+                class="press inline-flex h-11 w-11 items-center justify-center rounded-full">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold uppercase text-fg">{{ current_user.email[:1] }}</span>
+        </button>
+        {% endif %}
       </div>
     </header>
 
-  {% else %}
-  {# ================= Public shell (login / register) ================= #}
-  <div class="min-h-full flex flex-col bg-gradient-to-b from-white to-canvas">
-  {% endif %}
-
-    {# ---------- Page content (shared by both shells) ---------- #}
-    {% set authed = current_user.is_authenticated %}
-    <main id="main" class="{{ 'has-tabbar' if authed else 'flex-1' }}">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 {{ 'lg:px-10 py-6 sm:py-8 lg:py-10' if authed else 'lg:px-8 py-8 sm:py-12' }}">
+    {# ---------- Page content ---------- #}
+    <main id="main" class="app-main">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-2 lg:pt-10">
+        {% if page_title %}
+        <header class="mb-5 lg:mb-8" data-large-title>
+          {% if page_subtitle %}<p class="text-[13px] sm:text-sm font-semibold uppercase tracking-wide text-fg-muted">{{ page_subtitle }}</p>{% endif %}
+          <h1 class="text-[34px] leading-tight font-bold tracking-tight text-fg" data-view-title-target>{{ page_title }}</h1>
+        </header>
+        {% endif %}
         {% block content %}{% endblock %}
       </div>
-      {% if authed %}
-      <footer class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pb-8 text-xs text-slate-400">
+      <footer class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-4 text-xs text-fg-subtle hidden lg:block">
         Personal Nutrition & Workout Tracking System
       </footer>
-      {% endif %}
     </main>
 
-  {% if authed %}
-    {# ---------- Mobile bottom tab bar ---------- #}
-    <nav class="nav-dark tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 bg-ink/95 backdrop-blur border-t border-white/5" aria-label="Main">
-      <div class="flex items-stretch justify-around h-16 max-w-md mx-auto">
-        {% for ep, label, ic, active_on in nav_items %}
-        {% set is_active = endpoint in active_on %}
-        <a href="{{ url_for(ep) }}" {% if is_active %}aria-current="page"{% endif %}
-           class="flex-1 flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors
-                  {% if is_active %}text-brand-400{% else %}text-ink-muted hover:text-white{% endif %}">
-          {{ icon(ic, 'w-6 h-6') }}
-          {{ label }}
-        </a>
-        {% endfor %}
-        <a href="{{ url_for('logout') }}"
-           class="flex-1 flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-red-300 transition-colors">
-          {{ icon('logout', 'w-6 h-6') }}
-          Sign out
-        </a>
+    {# ---------- Mobile tab bar (hidden on presented screens) ---------- #}
+    {% if not presented %}
+    <nav class="app-tabbar app-chrome lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/85 backdrop-blur-xl backdrop-saturate-150 border-t border-line" aria-label="Main">
+      <div class="flex items-stretch h-16 max-w-lg mx-auto px-1">
+        {% if is_trainer %}
+          {% for item in nav_items %}{{ tab(item) }}{% endfor %}
+          <button type="button" data-sheet-open="accountSheet"
+                  class="tab-link press flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium">
+            {{ icon('user', 'w-[26px] h-[26px]') }} Account
+          </button>
+        {% else %}
+          {{ tab(nav_items[0]) }}
+          {{ tab(nav_items[1]) }}
+          <div class="flex-1 flex items-center justify-center">
+            <button type="button" data-sheet-open="quickAddSheet" aria-label="New entry"
+                    class="press -mt-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-float ring-4 ring-canvas">
+              {{ icon('plus', 'w-7 h-7', '2.4') }}
+            </button>
+          </div>
+          {{ tab(nav_items[2]) }}
+          {{ tab(nav_items[3]) }}
+        {% endif %}
       </div>
     </nav>
+    {% endif %}
   </div>
-  {% else %}
-    <footer class="py-6 text-center text-xs text-slate-400">
-      Personal Nutrition & Workout Tracking System
-    </footer>
+
+  {# ======================= Sheets ======================= #}
+
+  {# Account #}
+  <div id="accountSheet" class="sheet" hidden aria-hidden="true">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="accountSheetTitle">
+      <div data-sheet-drag class="pb-1"><div class="sheet-handle"></div></div>
+      <div class="sheet-body px-4 pb-4 pt-2">
+        <div class="flex items-center gap-3 px-2 py-3">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary text-lg font-semibold uppercase">{{ current_user.email[:1] }}</span>
+          <div class="min-w-0">
+            <h2 id="accountSheetTitle" class="truncate text-[17px] font-semibold">{{ current_user.email }}</h2>
+            <p class="text-sm text-fg-muted capitalize">{{ current_user.role }}</p>
+          </div>
+        </div>
+        <div class="mt-2 rounded-2xl bg-surface-2 divide-y divide-line overflow-hidden">
+          {% if not is_trainer %}
+          <a href="{{ url_for('profile_page') }}" class="press flex items-center gap-3 px-4 min-h-[52px] text-[17px]">
+            {{ icon('user', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">Profile & goals</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
+          </a>
+          {% endif %}
+          <button type="button" data-install data-install-action hidden class="press w-full flex items-center gap-3 px-4 min-h-[52px] text-[17px] text-left">
+            {{ icon('download', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">Install app</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
+          </button>
+        </div>
+        <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">Appearance</p>
+        {{ ui.theme_switch() }}
+        <a href="{{ url_for('logout') }}" class="press mt-5 flex items-center justify-center gap-2 min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-medium text-red-600 dark:text-red-400">
+          {{ icon('logout', 'w-5 h-5') }} Sign out
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if not is_trainer %}
+  {# Quick add (FAB) #}
+  <div id="quickAddSheet" class="sheet" hidden aria-hidden="true">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle">
+      <div data-sheet-drag class="pb-1"><div class="sheet-handle"></div></div>
+      <div class="sheet-body px-4 pb-5 pt-2">
+        <h2 id="quickAddTitle" class="px-1 pb-4 text-xl font-bold tracking-tight">New entry</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <a href="{{ url_for('log_food', date=day_param) if day_param else url_for('log_food') }}"
+             class="press flex flex-col items-start gap-3 rounded-2xl bg-orange-500/10 p-4 min-h-[120px]">
+            <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-kcal text-white">{{ icon('food', 'w-6 h-6') }}</span>
+            <span><span class="block text-[17px] font-semibold">Log food</span><span class="block text-sm text-fg-muted">Meal or snack</span></span>
+          </a>
+          <button type="button" data-sheet-open="workoutSheet"
+                  class="press flex flex-col items-start gap-3 rounded-2xl bg-emerald-500/10 p-4 min-h-[120px] text-left">
+            <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white">{{ icon('bolt', 'w-6 h-6') }}</span>
+            <span><span class="block text-[17px] font-semibold">Log workout</span><span class="block text-sm text-fg-muted">Training session</span></span>
+          </button>
+        </div>
+        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-semibold">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  {# Log workout (same form contract as before: action, method, field names) #}
+  <div id="workoutSheet" class="sheet" hidden aria-hidden="true">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="workoutSheetTitle">
+      <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
+        <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
+        <h2 id="workoutSheetTitle" class="text-[17px] font-semibold">Log workout</h2>
+        <span class="w-16" aria-hidden="true"></span>
+      </div>
+      <div class="sheet-body px-4 pb-5">
+        <form method="post" action="{{ url_for('log_workout') }}" class="space-y-5">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if day_param %}<input type="hidden" name="date" value="{{ day_param }}">{% endif %}
+          <div>
+            <label for="w-type" class="{{ ui.label }}">Type</label>
+            <input type="text" id="w-type" name="type" required placeholder="e.g. Running, Strength" autocomplete="off" class="{{ ui.input }}">
+            <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="Suggestions">
+              {% for t in ['Running', 'Strength', 'Cycling', 'Swimming', 'Yoga'] %}
+              <button type="button" class="press h-9 px-3.5 rounded-full bg-surface-2 text-sm font-medium" onclick="document.getElementById('w-type').value='{{ t }}'">{{ t }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="w-duration" class="{{ ui.label }}">Duration (min)</label>
+              <input type="number" id="w-duration" name="duration_minutes" required min="1" inputmode="numeric" class="{{ ui.input }}">
+            </div>
+            <div>
+              <label for="w-kcal" class="{{ ui.label }}">Calories burned</label>
+              <input type="number" id="w-kcal" name="calories_burned" step="0.1" min="0" value="0" inputmode="decimal" class="{{ ui.input }}">
+            </div>
+          </div>
+          <button type="submit" class="{{ ui.btn_primary }} w-full">Save workout</button>
+        </form>
+      </div>
+    </div>
   </div>
   {% endif %}
+
+  {% else %}
+  {# ======================= Public shell (login / register) ======================= #}
+  <div class="min-h-full flex flex-col" style="padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);">
+    <main id="main" class="flex-1">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {{ self.content() }}
+      </div>
+    </main>
+    <footer class="py-6 text-center text-xs text-fg-subtle">Personal Nutrition & Workout Tracking System</footer>
+  </div>
+  {% endif %}
+
+  {# Confirm (action sheet) — used by <form data-confirm="…"> #}
+  <div id="confirmSheet" class="sheet action-sheet" hidden aria-hidden="true">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmSheetMsg">
+      <div class="action-group">
+        <p id="confirmSheetMsg" data-confirm-message class="px-4 py-3.5 text-center text-[13px] text-fg-muted border-b border-line"></p>
+        <button type="button" data-confirm-ok class="action-btn font-medium text-red-600 dark:text-red-400">Delete</button>
+      </div>
+      <div class="action-group mt-2">
+        <button type="button" data-sheet-close class="action-btn font-semibold text-primary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  {# Install instructions (iOS / browsers without an install prompt) #}
+  <div id="installSheet" class="sheet" hidden aria-hidden="true">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="installSheetTitle">
+      <div data-sheet-drag class="pb-1"><div class="sheet-handle"></div></div>
+      <div class="sheet-body px-5 pb-6 pt-3">
+        <div class="flex items-center gap-4">
+          <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="h-14 w-14 rounded-2xl shadow-card">
+          <div>
+            <h2 id="installSheetTitle" class="text-xl font-bold tracking-tight">Install the app</h2>
+            <p class="text-sm text-fg-muted">Full screen, one tap from your Home Screen.</p>
+          </div>
+        </div>
+        <ol class="mt-5 rounded-2xl bg-surface-2 divide-y divide-line text-[15px]">
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">1</span>Tap <span class="inline-flex items-center gap-1 font-semibold">{{ icon('share', 'w-5 h-5 text-blue-500') }} Share</span> in the browser bar</li>
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">2</span>Choose <span class="inline-flex items-center gap-1 font-semibold">{{ icon('add-square', 'w-5 h-5') }} Add to Home Screen</span></li>
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">3</span>Tap <span class="font-semibold">Add</span></li>
+        </ol>
+        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-primary text-on-primary text-[17px] font-semibold">Got it</button>
+      </div>
+    </div>
+  </div>
 
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}

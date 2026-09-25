@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F5F5F7">
+  <title>Offline — Nutrition & Workout</title>
+  <link rel="icon" type="image/png" href="/static/icons/icon-192.png">
+  <script>
+    (function () {
+      var p = 'system';
+      try { p = localStorage.getItem('theme') || 'system'; } catch (e) {}
+      var dark = p === 'dark' || (p !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+  </script>
+  <style>
+    :root { --bg: #F5F5F7; --card: #FFFFFF; --fg: #0F172A; --muted: #64748B; --primary: #047857; --on-primary: #FFFFFF; }
+    html.dark { --bg: #000000; --card: #1C1C1E; --fg: #F5F5F7; --muted: #98989F; --primary: #34D399; --on-primary: #022C22; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+      background: var(--bg); color: var(--fg);
+      font: 17px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased; text-align: center;
+    }
+    .card { width: 100%; max-width: 360px; background: var(--card); border-radius: 24px; padding: 32px 24px; box-shadow: 0 4px 16px rgb(15 23 42 / .06); }
+    img { width: 64px; height: 64px; border-radius: 18px; }
+    h1 { margin: 20px 0 6px; font-size: 24px; letter-spacing: -.02em; }
+    p { margin: 0; color: var(--muted); font-size: 15px; }
+    button {
+      margin-top: 24px; width: 100%; height: 52px; border: 0; border-radius: 16px;
+      background: var(--primary); color: var(--on-primary); font: inherit; font-weight: 600; cursor: pointer;
+    }
+    button:active { transform: scale(.98); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="/static/icons/icon-192.png" alt="">
+    <h1>You're offline</h1>
+    <p>This screen hasn't been saved yet. Pages you opened recently are still available. Reconnect to log meals and workouts.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+  <script>window.addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>

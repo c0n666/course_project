@@ -2,256 +2,273 @@
 {% import '_ui.html' as ui %}
 {% block title %}Register — Nutrition Tracker{% endblock %}
 
+{#- Radio card: big tappable option (name/value are the backend contract) -#}
+{% macro choice(name, value, title, desc='', checked=false, extra_class='', icon_path='') -%}
+<label class="relative block">
+  <input type="radio" name="{{ name }}" value="{{ value }}" class="peer sr-only {{ extra_class }}" {% if checked %}checked{% endif %}>
+  <span class="press flex items-center gap-3 rounded-2xl border-2 border-line bg-surface px-4 min-h-[60px] py-3 transition-colors
+               peer-checked:border-primary peer-checked:bg-primary/5 peer-focus-visible:ring-4 peer-focus-visible:ring-primary/25">
+    {% if icon_path %}
+    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-fg-muted">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}"/></svg>
+    </span>
+    {% endif %}
+    <span class="min-w-0 flex-1">
+      <span class="block text-[15px] font-semibold">{{ title }}</span>
+      {% if desc %}<span class="block text-[13px] text-fg-muted">{{ desc }}</span>{% endif %}
+    </span>
+    <span class="choice-check inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-line text-transparent" aria-hidden="true">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+    </span>
+  </span>
+</label>
+{%- endmacro %}
+
 {% block content %}
-<div class="min-h-[80vh] flex items-center justify-center py-4">
-  <div class="w-full max-w-2xl">
-    <div class="text-center mb-8">
-      <div class="mx-auto mb-4 h-14 w-14 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white shadow-card">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+<style>
+  /* checkmark inside a selected choice card */
+  input:checked + span .choice-check { border-color: rgb(var(--primary)); background: rgb(var(--primary)); color: rgb(var(--on-primary)); }
+</style>
+
+<div class="mx-auto w-full max-w-xl">
+  <form method="post" action="{{ url_for('register') }}" id="regForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# ---------- Progress ---------- #}
+    <div class="mb-6">
+      <div class="flex items-center gap-1.5" aria-hidden="true">
+        {% for n in [1, 2, 3] %}
+        <span class="step-seg h-1.5 flex-1 rounded-full bg-line transition-colors" data-seg="{{ n }}"></span>
+        {% endfor %}
       </div>
-      <h1 class="{{ ui.h1 }}">Create your account</h1>
-      <p class="mt-1 text-sm text-slate-500">A few quick steps for athletes and trainers</p>
+      <p class="mt-4 text-[13px] font-semibold uppercase tracking-wide text-fg-muted" id="stepCounter" aria-live="polite">Step 1 of 3</p>
+      <h1 id="stepTitle" tabindex="-1" class="mt-1 text-[28px] font-bold tracking-tight outline-none">Create your account</h1>
     </div>
 
-    <form method="post" action="{{ url_for('register') }}" id="regForm" class="{{ ui.card }} overflow-hidden" novalidate>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-      {# ---------- Stepper ---------- #}
-      <ol class="flex items-center gap-2 sm:gap-3 px-5 sm:px-8 pt-6 sm:pt-8" aria-label="Registration steps">
-        {% for n, text in [(1, 'Account'), (2, 'Body metrics'), (3, 'Goals')] %}
-        <li class="flex items-center gap-2 sm:gap-3 {{ 'flex-1' if not loop.last else '' }}">
-          <button type="button" data-step-indicator="{{ n }}" data-state="{{ 'active' if n == 1 else 'todo' }}"
-                  class="step-tab group flex items-center gap-2 rounded-full pr-1 min-h-[44px] disabled:cursor-not-allowed disabled:opacity-40">
-            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors
-                         bg-slate-100 text-slate-500
-                         group-data-[state=active]:bg-brand-600 group-data-[state=active]:text-white group-data-[state=active]:ring-4 group-data-[state=active]:ring-brand-500/15
-                         group-data-[state=done]:bg-brand-50 group-data-[state=done]:text-brand-700">
-              <span class="group-data-[state=done]:hidden">{{ n }}</span>
-              <svg class="hidden group-data-[state=done]:block w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-            </span>
-            <span class="text-sm font-medium whitespace-nowrap text-slate-500 group-data-[state=active]:text-ink group-data-[state=active]:font-semibold
-                         hidden sm:inline group-data-[state=active]:inline">{{ text }}</span>
-          </button>
-          {% if not loop.last %}<span class="h-px flex-1 bg-slate-200" aria-hidden="true"></span>{% endif %}
-        </li>
-        {% endfor %}
-      </ol>
-
-      <div class="p-5 sm:p-8">
-        <!-- Step 1 -->
-        <div class="reg-step" data-step="1">
-          <div class="space-y-5">
-            <div>
-              <label for="r-email" class="{{ ui.label }}">Email</label>
-              <input type="email" id="r-email" name="email" required autocomplete="email" class="{{ ui.input }}" placeholder="you@university.edu">
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label for="r-password" class="{{ ui.label }}">Password</label>
-                <input type="password" id="r-password" name="password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
-                <p class="{{ ui.hint }}">At least 6 characters</p>
-              </div>
-              <div>
-                <label for="r-confirm" class="{{ ui.label }}">Confirm password</label>
-                <input type="password" id="r-confirm" name="confirm_password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
-                <p id="confirmHint" class="mt-1.5 text-xs font-medium text-red-600 hidden" role="alert">Passwords do not match</p>
-              </div>
-            </div>
-            <div>
-              <label for="roleSelect" class="{{ ui.label }}">Role</label>
-              <select name="role" id="roleSelect" class="{{ ui.input }}">
-                <option value="user">Athlete / User</option>
-                <option value="trainer">Trainer</option>
-              </select>
-            </div>
-            <div id="trainer-select" class="{% if not trainers %}hidden{% endif %}">
-              <label for="r-trainer" class="{{ ui.label }}">Assign trainer <span class="font-normal text-slate-400">(optional)</span></label>
-              <select name="trainer_id" id="r-trainer" class="{{ ui.input }}">
-                <option value="">— None —</option>
-                {% for t in trainers %}
-                <option value="{{ t.id }}">{{ t.email }}</option>
-                {% endfor %}
-              </select>
-            </div>
+    <!-- Step 1 -->
+    <div class="reg-step" data-step="1" data-title="Create your account">
+      <div class="space-y-5">
+        <div>
+          <label for="r-email" class="{{ ui.label }}">Email</label>
+          <input type="email" id="r-email" name="email" required autocomplete="email" autocapitalize="off" spellcheck="false"
+                 class="{{ ui.input }}" placeholder="you@university.edu">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label for="r-password" class="{{ ui.label }}">Password</label>
+            <input type="password" id="r-password" name="password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
+            <p class="{{ ui.hint }}">At least 6 characters</p>
+          </div>
+          <div>
+            <label for="r-confirm" class="{{ ui.label }}">Confirm password</label>
+            <input type="password" id="r-confirm" name="confirm_password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
+            <p id="confirmHint" class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400" hidden role="alert">Passwords do not match</p>
           </div>
         </div>
 
-        <!-- Step 2 (athletes only) -->
-        <div class="reg-step hidden" data-step="2" id="stepMetrics">
-          <div class="space-y-5">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label for="r-gender" class="{{ ui.label }}">Gender</label>
-                <select name="gender" id="r-gender" class="metric-field {{ ui.input }}">
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                </select>
-              </div>
-              <div>
-                <label for="r-birth" class="{{ ui.label }}">Birth date</label>
-                <input type="date" name="birth_date" id="r-birth" class="metric-field {{ ui.input }}">
-              </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label for="r-height" class="{{ ui.label }}">Height (cm)</label>
-                <input type="number" name="height" id="r-height" step="0.1" min="100" max="250" inputmode="decimal" class="metric-field {{ ui.input }}">
-              </div>
-              <div>
-                <label for="r-weight" class="{{ ui.label }}">Current weight (kg)</label>
-                <input type="number" name="weight" id="r-weight" step="0.1" min="30" max="300" inputmode="decimal" class="metric-field {{ ui.input }}">
-              </div>
-            </div>
-            <div>
-              <label for="r-activity" class="{{ ui.label }}">Activity level</label>
-              <select name="activity_level" id="r-activity" class="metric-field {{ ui.input }}">
-                <option value="sedentary">Sedentary (little or no exercise)</option>
-                <option value="light">Light (1–3 days/week)</option>
-                <option value="moderate">Moderate (3–5 days/week)</option>
-                <option value="active">Active (6–7 days/week)</option>
-              </select>
-            </div>
+        <fieldset id="roleSelect">
+          <legend class="{{ ui.label }}">I am</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {{ choice('role', 'user', 'Athlete', 'Track meals & workouts', checked=true,
+                      icon_path='m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z') }}
+            {{ choice('role', 'trainer', 'Trainer', 'Guide your athletes',
+                      icon_path='M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z') }}
           </div>
-        </div>
+        </fieldset>
 
-        <!-- Step 3 (athletes only) -->
-        <div class="reg-step hidden" data-step="3" id="stepGoals">
-          <div class="space-y-5">
-            <div>
-              <label for="r-goal" class="{{ ui.label }}">Goal type</label>
-              <select name="goal_type" id="r-goal" class="metric-field {{ ui.input }}">
-                <option value="weight_loss">Weight loss</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="muscle_gain">Muscle gain</option>
-              </select>
-            </div>
-            <div>
-              <label for="r-target" class="{{ ui.label }}">Target weight (kg)</label>
-              <input type="number" name="target_weight" id="r-target" step="0.1" min="30" max="300" inputmode="decimal" class="metric-field {{ ui.input }}">
-            </div>
-            <div class="flex gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-brand-800">
-              <svg class="w-5 h-5 shrink-0 text-brand-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
-              <p>Your daily calorie and macro targets will be calculated automatically using the Mifflin-St Jeor equation based on this data.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center gap-3">
-          <a href="{{ url_for('login') }}" class="text-center sm:text-left text-sm text-slate-500 hover:text-brand-600 py-2">Already have an account?</a>
-          <div class="flex gap-3 sm:ml-auto">
-            <button type="button" id="prevBtn" class="hidden {{ ui.btn_ghost }} flex-1 sm:flex-none">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-              Back
-            </button>
-            <button type="button" id="nextBtn" class="{{ ui.btn_primary }} flex-1 sm:flex-none">
-              Next
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-            </button>
-            <button type="submit" id="submitBtn" class="hidden {{ ui.btn_primary }} flex-1 sm:flex-none">Create account</button>
-          </div>
+        <div id="trainer-select" data-has-trainers="{{ '1' if trainers else '0' }}" {% if not trainers %}hidden{% endif %}>
+          <label for="r-trainer" class="{{ ui.label }}">Your trainer <span class="font-normal text-fg-muted">(optional)</span></label>
+          <select name="trainer_id" id="r-trainer" class="{{ ui.input }}">
+            <option value="">— None —</option>
+            {% for t in trainers %}
+            <option value="{{ t.id }}">{{ t.email }}</option>
+            {% endfor %}
+          </select>
         </div>
       </div>
-    </form>
-  </div>
+    </div>
+
+    <!-- Step 2 (athletes only) -->
+    <div class="reg-step" data-step="2" id="stepMetrics" data-title="About your body" hidden>
+      <div class="space-y-5">
+        <fieldset>
+          <legend class="{{ ui.label }}">Gender</legend>
+          <div class="grid grid-cols-2 gap-1 rounded-2xl bg-surface-2 p-1">
+            {% for value, text in [('male', 'Male'), ('female', 'Female')] %}
+            <label class="relative">
+              <input type="radio" name="gender" value="{{ value }}" class="metric-field peer sr-only" {% if loop.first %}checked{% endif %}>
+              <span class="press flex h-11 items-center justify-center rounded-xl text-[15px] font-semibold text-fg-muted
+                           peer-checked:bg-surface peer-checked:text-fg peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary">{{ text }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <div>
+          <label for="r-birth" class="{{ ui.label }}">Birth date</label>
+          <input type="date" name="birth_date" id="r-birth" class="metric-field {{ ui.input }}">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="r-height" class="{{ ui.label }}">Height, cm</label>
+            <input type="number" name="height" id="r-height" step="0.1" min="100" max="250" inputmode="decimal" placeholder="175" class="metric-field {{ ui.input }}">
+          </div>
+          <div>
+            <label for="r-weight" class="{{ ui.label }}">Weight, kg</label>
+            <input type="number" name="weight" id="r-weight" step="0.1" min="30" max="300" inputmode="decimal" placeholder="70" class="metric-field {{ ui.input }}">
+          </div>
+        </div>
+        <fieldset>
+          <legend class="{{ ui.label }}">Activity level</legend>
+          <div class="space-y-2">
+            {% for value, title, desc in [('sedentary', 'Sedentary', 'Little or no exercise'), ('light', 'Light', '1–3 days a week'), ('moderate', 'Moderate', '3–5 days a week'), ('active', 'Active', '6–7 days a week')] %}
+            {{ choice('activity_level', value, title, desc, checked=loop.first, extra_class='metric-field') }}
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+    </div>
+
+    <!-- Step 3 (athletes only) -->
+    <div class="reg-step" data-step="3" id="stepGoals" data-title="Your goal" hidden>
+      <div class="space-y-5">
+        <fieldset>
+          <legend class="sr-only">Goal type</legend>
+          <div class="space-y-2">
+            {% for value, title, desc, path in [
+              ('weight_loss', 'Weight loss', 'Calorie deficit, high protein', 'M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181'),
+              ('maintenance', 'Maintenance', 'Keep your current shape', 'M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5'),
+              ('muscle_gain', 'Muscle gain', 'Calorie surplus for growth', 'M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941'),
+            ] %}
+            {{ choice('goal_type', value, title, desc, checked=loop.first, extra_class='metric-field', icon_path=path) }}
+            {% endfor %}
+          </div>
+        </fieldset>
+        <div>
+          <label for="r-target" class="{{ ui.label }}">Target weight, kg</label>
+          <input type="number" name="target_weight" id="r-target" step="0.1" min="30" max="300" inputmode="decimal" placeholder="65" class="metric-field {{ ui.input }}">
+        </div>
+        <div class="flex gap-3 rounded-2xl bg-primary/10 p-4 text-sm text-fg">
+          <svg class="w-5 h-5 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
+          <p>Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data.</p>
+        </div>
+      </div>
+    </div>
+
+    {# ---------- Sticky actions ---------- #}
+    <div class="action-bar mt-8" style="bottom: calc(var(--safe-bottom) + 12px);">
+      <div class="flex gap-3">
+        <button type="button" id="prevBtn" hidden class="{{ ui.btn_secondary }} !h-14 !rounded-2xl !text-[17px] flex-1">Back</button>
+        <button type="button" id="nextBtn" class="{{ ui.btn_primary }} !h-14 !rounded-2xl !text-[17px] flex-[2]">Continue</button>
+        <button type="submit" id="submitBtn" hidden class="{{ ui.btn_primary }} !h-14 !rounded-2xl !text-[17px] flex-[2]">Create account</button>
+      </div>
+    </div>
+
+    <p class="mt-6 text-center text-[15px] text-fg-muted">
+      Already have an account?
+      <a href="{{ url_for('login') }}" class="font-semibold text-primary hover:text-primary-strong">Sign in</a>
+    </p>
+  </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const form = document.getElementById('regForm');
-  const roleSelect = document.getElementById('roleSelect');
-  const trainerSelect = document.getElementById('trainer-select');
-  const steps = document.querySelectorAll('.reg-step');
-  const tabs = document.querySelectorAll('.step-tab');
-  const metricFields = document.querySelectorAll('.metric-field');
-  const password = document.getElementById('r-password');
-  const confirmPw = document.getElementById('r-confirm');
-  const confirmHint = document.getElementById('confirmHint');
-  let current = 1;
-  const isTrainer = () => roleSelect.value === 'trainer';
-  const lastStep = () => (isTrainer() ? 1 : 3);
+  (function () {
+    const form = document.getElementById('regForm');
+    const trainerSelect = document.getElementById('trainer-select');
+    const steps = Array.from(document.querySelectorAll('.reg-step'));
+    const segs = Array.from(document.querySelectorAll('.step-seg'));
+    const metricFields = document.querySelectorAll('.metric-field');
+    const password = document.getElementById('r-password');
+    const confirmPw = document.getElementById('r-confirm');
+    const confirmHint = document.getElementById('confirmHint');
+    const title = document.getElementById('stepTitle');
+    const counter = document.getElementById('stepCounter');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    let current = 1;
 
-  function setMetricRequired(required) {
-    metricFields.forEach(f => { f.required = required; });
-  }
+    const isTrainer = () => (form.querySelector('input[name="role"]:checked') || {}).value === 'trainer';
+    const lastStep = () => (isTrainer() ? 1 : 3);
 
-  function checkPasswords() {
-    const mismatch = confirmPw.value && confirmPw.value !== password.value;
-    confirmPw.setCustomValidity(mismatch ? 'Passwords do not match' : '');
-    confirmHint.classList.toggle('hidden', !mismatch);
-  }
+    function setMetricRequired(required) { metricFields.forEach(f => { f.required = required; }); }
 
-  /* Validate every field in step n; show the browser message on the first invalid one. */
-  function stepValid(n) {
-    const fields = document.querySelector(`.reg-step[data-step="${n}"]`).querySelectorAll('input, select, textarea');
-    for (const f of fields) {
-      if (!f.checkValidity()) { f.reportValidity(); return false; }
+    function checkPasswords() {
+      const mismatch = confirmPw.value && confirmPw.value !== password.value;
+      confirmPw.setCustomValidity(mismatch ? 'Passwords do not match' : '');
+      confirmHint.hidden = !mismatch;
     }
-    return true;
-  }
 
-  function showStep(n, moveFocus = true) {
-    current = n;
-    steps.forEach(s => s.classList.toggle('hidden', parseInt(s.dataset.step) !== n));
-    tabs.forEach(t => {
-      const i = parseInt(t.dataset.stepIndicator);
-      t.dataset.state = i === n ? 'active' : (i < n ? 'done' : 'todo');
-      t.disabled = isTrainer() && i > 1;
-      if (i === n) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current');
+    /* Validate every field of step n; show the browser message on the first invalid one. */
+    function stepValid(n) {
+      const fields = steps[n - 1].querySelectorAll('input, select, textarea');
+      for (const f of fields) {
+        if (!f.checkValidity()) {
+          if (f.type === 'radio') f.closest('label').scrollIntoView({ block: 'center' });
+          f.reportValidity();
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function showStep(n, moveFocus = true) {
+      current = n;
+      const total = lastStep();
+      steps.forEach((s, i) => { s.hidden = i + 1 !== n; });
+      segs.forEach((s, i) => {
+        s.hidden = i + 1 > total;
+        s.classList.toggle('bg-primary', i + 1 <= n);
+        s.classList.toggle('bg-line', i + 1 > n);
+      });
+      title.textContent = steps[n - 1].dataset.title;
+      counter.textContent = `Step ${n} of ${total}`;
+      prevBtn.hidden = n === 1;
+      nextBtn.hidden = n === total;
+      submitBtn.hidden = n !== total;
+      if (moveFocus) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        title.focus({ preventScroll: true });
+      }
+    }
+
+    function goTo(n) {
+      for (let i = current; i < n; i++) {
+        if (!stepValid(i)) { if (i !== current) showStep(i); return; }
+      }
+      showStep(n);
+    }
+
+    form.addEventListener('change', (e) => {
+      if (e.target.name !== 'role') return;
+      trainerSelect.hidden = isTrainer() || trainerSelect.dataset.hasTrainers !== '1';
+      setMetricRequired(!isTrainer());
+      showStep(isTrainer() ? 1 : current, false);
     });
-    document.getElementById('prevBtn').classList.toggle('hidden', n === 1);
-    document.getElementById('nextBtn').classList.toggle('hidden', n === lastStep());
-    document.getElementById('submitBtn').classList.toggle('hidden', n !== lastStep());
-    const first = document.querySelector(`.reg-step[data-step="${n}"] input, .reg-step[data-step="${n}"] select`);
-    if (moveFocus && first && document.activeElement && document.activeElement.closest('.reg-step, #nextBtn, #prevBtn, .step-tab')) first.focus();
-  }
 
-  function goTo(n) {
-    // Moving forward requires every step up to the target to be valid.
-    for (let i = current; i < n; i++) {
-      if (!stepValid(i)) { if (i !== current) showStep(i); return; }
-    }
-    showStep(n);
-  }
+    password.addEventListener('input', checkPasswords);
+    confirmPw.addEventListener('input', checkPasswords);
+    nextBtn.addEventListener('click', () => { if (current < lastStep()) goTo(current + 1); });
+    prevBtn.addEventListener('click', () => { if (current > 1) showStep(current - 1); });
 
-  roleSelect.addEventListener('change', () => {
-    trainerSelect.classList.toggle('hidden', roleSelect.value !== 'user');
-    setMetricRequired(!isTrainer());
-    showStep(isTrainer() ? 1 : current, false);
-  });
+    // Enter on an intermediate step advances instead of submitting.
+    form.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT' && current < lastStep()) {
+        e.preventDefault();
+        goTo(current + 1);
+      }
+    });
 
-  password.addEventListener('input', checkPasswords);
-  confirmPw.addEventListener('input', checkPasswords);
+    form.addEventListener('submit', (e) => {
+      checkPasswords();
+      for (let i = 1; i <= lastStep(); i++) {
+        if (!stepValid(i)) { e.preventDefault(); if (i !== current) { showStep(i); stepValid(i); } return; }
+      }
+    });
 
-  document.getElementById('nextBtn').addEventListener('click', () => {
-    if (isTrainer()) return;
-    if (current < 3) goTo(current + 1);
-  });
-  document.getElementById('prevBtn').addEventListener('click', () => {
-    if (current > 1) showStep(current - 1);
-  });
-  tabs.forEach(tab => tab.addEventListener('click', () => {
-    const n = parseInt(tab.dataset.stepIndicator);
-    if (isTrainer() && n > 1) return;
-    n > current ? goTo(n) : showStep(n);
-  }));
-
-  // Enter on an intermediate step advances instead of submitting.
-  form.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.tagName === 'INPUT' && current < lastStep()) {
-      e.preventDefault();
-      goTo(current + 1);
-    }
-  });
-
-  form.addEventListener('submit', (e) => {
-    checkPasswords();
-    for (let i = 1; i <= lastStep(); i++) {
-      if (!stepValid(i)) { e.preventDefault(); if (i !== current) { showStep(i); stepValid(i); } return; }
-    }
-  });
-
-  setMetricRequired(true);
-  showStep(1);
+    setMetricRequired(true);
+    showStep(1, false);
+  })();
 </script>
 {% endblock %}

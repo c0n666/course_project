@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from functools import wraps
 
 import click
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from sqlalchemy import event
@@ -109,7 +109,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(_exc):
-        flash("Сесія застаріла або запит недійсний. Оновіть сторінку та спробуйте ще раз.", "error")
+        flash("Your session expired or the request was invalid. Refresh the page and try again.", "error")
         return redirect(url_for("index"))
 
     @app.teardown_appcontext
@@ -371,6 +371,14 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("dashboard"))
         return redirect(url_for("login"))
 
+    @app.route("/sw.js")
+    def service_worker():
+        # Served from the site root (not /static/) so the worker's scope covers every page.
+        response = send_from_directory(app.static_folder, "js/sw.js", mimetype="application/javascript")
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if current_user.is_authenticated:
@@ -408,9 +416,9 @@ def register_routes(app: Flask) -> None:
             if not email or not password:
                 errors.append("Email and password are required.")
             elif "@" not in email or len(email) > 255:
-                errors.append("Введіть коректний email.")
+                errors.append("Enter a valid email address.")
             if password and len(password) < 6:
-                errors.append("Пароль має містити щонайменше 6 символів.")
+                errors.append("Password must be at least 6 characters.")
             if password != confirm:
                 errors.append("Passwords do not match.")
             if User.query.filter_by(email=email).first():
@@ -446,7 +454,7 @@ def register_routes(app: Flask) -> None:
                         db.session.get(User, int(trainer_id)) if trainer_id.isdigit() else None
                     )
                     if not trainer or trainer.role != "trainer":
-                        errors.append("Обраного тренера не знайдено.")
+                        errors.append("The selected trainer was not found.")
 
             if errors:
                 for msg in errors:
@@ -587,19 +595,19 @@ def register_routes(app: Flask) -> None:
 
         profile = Profile.query.filter_by(user_id=current_user.id).first()
         if not profile_complete(profile):
-            flash("Заповніть профіль (вага, зріст, активність), щоб запустити AI-аналіз.", "error")
+            flash("Complete your profile (weight, height, activity) to run the AI analysis.", "error")
             return redirect(url_for("profile_page"))
 
         try:
             result = generate_ai_report(current_user.id, days=7)
             flash(
-                f"AI-звіт готовий: оцінка {result['ai_grade']}. "
-                f"Три рекомендації надіслано тренеру на затвердження.",
+                f"AI report ready: grade {result['ai_grade']}. "
+                f"Three recommendations were sent to your trainer for approval.",
                 "success",
             )
         except Exception:
             db.session.rollback()
-            flash("Не вдалося згенерувати AI-звіт. Спробуйте пізніше.", "error")
+            flash("Could not generate the AI report. Please try again later.", "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
@@ -618,16 +626,16 @@ def register_routes(app: Flask) -> None:
 
         rec = get_pending_recommendation_for_athlete(rec_id, current_user.id)
         if not rec:
-            flash("Рекомендацію не знайдено або її не можна видалити.", "error")
+            flash("Recommendation not found or it cannot be deleted.", "error")
             return redirect(url_for("dashboard"))
 
         try:
             db.session.delete(rec)
             db_commit_with_retry()
-            flash("Рекомендацію видалено.", "success")
+            flash("Recommendation deleted.", "success")
         except OperationalError:
             db.session.rollback()
-            flash("Не вдалося видалити. Спробуйте ще раз.", "error")
+            flash("Could not delete. Please try again.", "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
@@ -693,7 +701,7 @@ def register_routes(app: Flask) -> None:
                 db_commit_with_retry()
                 flash("Profile updated. Daily targets recalculated.", "success")
             except OperationalError:
-                flash("Не вдалося зберегти профіль. Спробуйте ще раз.", "error")
+                flash("Could not save your profile. Please try again.", "error")
             return redirect(url_for("profile_page"))
 
         progress = (
@@ -726,11 +734,11 @@ def register_routes(app: Flask) -> None:
 
             error = None
             if request.form.get("date") and parse_date_strict(request.form.get("date")) is None:
-                error = "Невірна дата."
+                error = "Invalid date."
             elif portion_val is None or portion_val <= 0:
                 error = "Enter a valid portion in grams."
             elif meal_type not in MEAL_TYPES:
-                error = "Оберіть коректний прийом їжі."
+                error = "Choose a valid meal type."
             product = db.session.get(Product, int(product_id)) if product_id.isdigit() else None
             if error is None and not product:
                 error = "Please select a product."
@@ -758,7 +766,7 @@ def register_routes(app: Flask) -> None:
                 db_commit_with_retry()
                 flash(f"Logged {product.name} ({portion_val} g).", "success")
             except OperationalError:
-                flash("Не вдалося зберегти запис. Спробуйте ще раз.", "error")
+                flash("Could not save the entry. Please try again.", "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
 
         return render_template(
@@ -777,7 +785,7 @@ def register_routes(app: Flask) -> None:
             FoodLog.query.filter_by(id=entry_id, user_id=current_user.id).first()
         )
         if not entry:
-            flash("Запис не знайдено або доступ заборонено.", "error")
+            flash("Entry not found or access denied.", "error")
             return redirect(url_for("dashboard"))
 
         log_date = entry.date.isoformat()
@@ -788,12 +796,12 @@ def register_routes(app: Flask) -> None:
                 synchronize_session=False
             )
             db_commit_with_retry()
-            flash("Запис видалено.", "success")
+            flash("Entry deleted.", "success")
         except OperationalError:
             db.session.rollback()
             flash(
-                "База даних тимчасово зайнята. Закрийте DB Browser/SQLite Studio, "
-                "перезапустіть сервер і спробуйте знову.",
+                "The database is temporarily busy. Close DB Browser/SQLite Studio, "
+                "restart the server and try again.",
                 "error",
             )
 
@@ -831,7 +839,7 @@ def register_routes(app: Flask) -> None:
             db_commit_with_retry()
             flash("Workout logged.", "success")
         except OperationalError:
-            flash("Не вдалося зберегти тренування. Спробуйте ще раз.", "error")
+            flash("Could not save the workout. Please try again.", "error")
         return redirect(url_for("dashboard", date=selected.isoformat()))
 
     @app.route("/trainer")

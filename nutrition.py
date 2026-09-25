@@ -19,9 +19,9 @@ ACTIVITY_MULTIPLIERS = {
 }
 
 GOAL_LABELS = {
-    "weight_loss": "Схуднення",
-    "maintenance": "Підтримка форми",
-    "muscle_gain": "Набір маси",
+    "weight_loss": "Weight loss",
+    "maintenance": "Maintenance",
+    "muscle_gain": "Muscle gain",
 }
 
 

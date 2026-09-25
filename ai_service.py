@@ -400,7 +400,9 @@ def _rule_based_analysis(ctx: NutritionContext) -> dict[str, Any]:
     prot_pct = ctx.adherence.get("proteins", 0)
     fat_pct = ctx.adherence.get("fats", 0)
     carb_pct = ctx.adherence.get("carbs", 0)
-    goal_label = GOAL_LABELS.get(ctx.goal.goal_type, "підтримка") if ctx.goal else "підтримка"
+    # The fallback report text is Ukrainian, so it keeps Ukrainian goal names (UI labels are English).
+    goal_names_uk = {"weight_loss": "схуднення", "maintenance": "підтримка форми", "muscle_gain": "набір маси"}
+    goal_label = goal_names_uk.get(ctx.goal.goal_type, "підтримка") if ctx.goal else "підтримка"
 
     cal_comment = "калорійність у цільовому коридорі"
     if cal_pct < 85:

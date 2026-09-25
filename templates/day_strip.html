@@ -1,0 +1,56 @@
+{#- Week strip (Mon–Sun) around selected_date. Needs: selected_date, today, date_nav.
+    Links are plain GET ?date=YYYY-MM-DD on date_nav.base_url (same GET form contract as before). -#}
+{% set sel_ord = selected_date.toordinal() %}
+{% set week_start = sel_ord - selected_date.weekday() %}
+{% set prev_week = selected_date.fromordinal(sel_ord - 7) %}
+{% set next_week = selected_date.fromordinal(sel_ord + 7) %}
+{% set prev_week_url = date_nav.base_url ~ '?date=' ~ prev_week.isoformat() %}
+{% set next_week_url = date_nav.base_url ~ '?date=' ~ next_week.isoformat() %}
+
+<nav class="day-strip mb-5" aria-label="Choose day" data-swipe-prev="{{ prev_week_url }}" data-swipe-next="{{ next_week_url }}">
+  <div class="flex items-center justify-between mb-2 px-1">
+    <p class="text-[15px] font-semibold text-fg">{{ selected_date.strftime('%B %Y') }}</p>
+    <div class="flex items-center gap-1">
+      {% if selected_date != today %}
+      <a href="{{ date_nav.today_url }}" class="press inline-flex items-center h-9 px-3 rounded-full bg-primary/10 text-sm font-semibold text-primary">Today</a>
+      {% endif %}
+      <form method="get" action="{{ date_nav.base_url }}" class="relative">
+        <label for="nav-date" class="press inline-flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-2" title="Pick a date">
+          <span class="sr-only">Date</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+        </label>
+        <input type="date" id="nav-date" name="date" value="{{ selected_date.isoformat() }}"
+               onchange="this.form.submit()"
+               onclick="try { this.showPicker(); } catch (e) {}"
+               class="absolute inset-0 w-9 h-9 opacity-0 cursor-pointer">
+      </form>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-1">
+    <a href="{{ prev_week_url }}" class="press hidden sm:inline-flex shrink-0 h-11 w-8 items-center justify-center rounded-xl text-fg-subtle hover:text-fg" aria-label="Previous week">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+    </a>
+    <ol class="grid flex-1 grid-cols-7 gap-1">
+      {% for i in range(7) %}
+      {% set d = selected_date.fromordinal(week_start + i) %}
+      {% set is_sel = d == selected_date %}
+      {% set is_today = d == today %}
+      <li>
+        <a href="{{ date_nav.base_url }}?date={{ d.isoformat() }}"
+           class="day-chip press flex flex-col items-center justify-center gap-0.5 h-16 rounded-2xl transition-colors
+                  {{ 'hover:bg-surface-2' if not is_sel else '' }} {{ 'opacity-50' if d > today else '' }}"
+           {% if is_sel %}aria-current="date"{% endif %}
+           aria-label="{{ d.strftime('%A, %B %d') }}{% if is_today %} (today){% endif %}">
+          <span class="day-dow text-[11px] font-semibold uppercase text-fg-muted">{{ d.strftime('%a')[:2] }}</span>
+          <span class="text-[17px] font-semibold tabular-nums {{ 'text-primary' if is_today and not is_sel else '' }}">{{ d.day }}</span>
+          <span class="h-1 w-1 rounded-full {{ 'bg-current' if is_today else 'bg-transparent' }}" aria-hidden="true"></span>
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+    <a href="{{ next_week_url }}" class="press hidden sm:inline-flex shrink-0 h-11 w-8 items-center justify-center rounded-xl text-fg-subtle hover:text-fg" aria-label="Next week">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+    </a>
+  </div>
+</nav>
