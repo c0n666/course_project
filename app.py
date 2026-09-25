@@ -9,10 +9,10 @@ from datetime import date, datetime, timedelta
 from functools import wraps
 
 import click
-from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
-from sqlalchemy import event
+from sqlalchemy import event, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.pool import NullPool
@@ -21,6 +21,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from models import (
     SOURCE_QUICK,
     SOURCE_SEED,
+    SOURCE_USER,
+    FavoriteProduct,
     FoodLog,
     Goal,
     Micronutrient,
@@ -33,8 +35,9 @@ from models import (
     Workout,
     db,
 )
+import food_db
 from ai_service import generate_ai_report
-from seed_foods import GENERIC_FOODS
+from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
 from nutrition import calculate_daily_targets, goal_progress, predict_weight_trend
 
 logger = logging.getLogger(__name__)
@@ -112,7 +115,10 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(_exc):
-        flash("Your session expired or the request was invalid. Refresh the page and try again.", "error")
+        message = "Your session expired or the request was invalid. Refresh the page and try again."
+        if request.is_json or request.accept_mimetypes.best == "application/json":
+            return jsonify(error=message), 400  # fetch() callers need JSON, not a redirect
+        flash(message, "error")
         return redirect(url_for("index"))
 
     @app.teardown_appcontext
@@ -181,6 +187,57 @@ def food_logs_for_day(user_id: int, day: date | None = None) -> list[FoodLog]:
         .order_by(FoodLog.id.desc())
         .all()
     )
+
+
+def product_payload(product: Product, favorite_ids=frozenset(), portion: float | None = None) -> dict:
+    """JSON-friendly product for the Log Food picker (values per 100 g)."""
+    return {
+        "id": product.id,
+        "name": product.name,
+        "brand": product.brand,
+        "label": product.display_name,
+        "kcal": float(product.calories_per_100g),
+        "p": float(product.proteins),
+        "f": float(product.fats),
+        "c": float(product.carbs),
+        "source": product.source,
+        "terms": product.search_terms or product.name.lower(),
+        "favorite": product.id in favorite_ids,
+        "portion": portion,
+    }
+
+
+def favorite_ids_for(user_id: int) -> set[int]:
+    return {pid for (pid,) in db.session.query(FavoriteProduct.product_id).filter_by(user_id=user_id)}
+
+
+def recent_products_for(user_id: int, limit: int = 12) -> list[tuple[Product, float]]:
+    """Most recently logged distinct products with the portion used last time."""
+    last_ids = (
+        db.session.query(func.max(FoodLog.id))
+        .filter(FoodLog.user_id == user_id)
+        .group_by(FoodLog.product_id)
+        .order_by(func.max(FoodLog.id).desc())
+        .limit(limit * 2)  # headroom for quick-add entries filtered out below
+        .all()
+    )
+    logs = (
+        FoodLog.query.options(joinedload(FoodLog.product))
+        .filter(FoodLog.id.in_([i for (i,) in last_ids]))
+        .order_by(FoodLog.id.desc())
+        .all()
+    )
+    return [(log.product, float(log.portion_grams)) for log in logs if log.product.source != SOURCE_QUICK][:limit]
+
+
+def meal_counts_for_day(user_id: int, day: date) -> dict[str, dict]:
+    """{meal_type: {"count", "kcal"}} for one day — used to offer copying a previous day."""
+    out: dict[str, dict] = {}
+    for log in food_logs_for_day(user_id, day):
+        item = out.setdefault(log.meal_type, {"count": 0, "kcal": 0.0})
+        item["count"] += 1
+        item["kcal"] += log.calories
+    return out
 
 
 def daily_nutrition_summary(user_id: int, day: date | None = None) -> dict:
@@ -588,6 +645,7 @@ def register_routes(app: Flask) -> None:
             chart_calories_json=json.dumps(trend),
             chart_weight_json=json.dumps(weight_trend),
             weight_meta=weight_trend.get("meta", {}),
+            copy_from_meals=meal_counts_for_day(current_user.id, selected_date - timedelta(days=1)),
         )
 
     @app.route("/dashboard/ai-report", methods=["POST"])
@@ -721,17 +779,43 @@ def register_routes(app: Flask) -> None:
             goal_progress=progress,
         )
 
-    @app.route("/log-food", methods=["GET", "POST"])
-    @login_required
-    def log_food():
+    def _log_food_context(selected_date: date, preselect_id: int | None = None) -> dict:
+        uid = current_user.id
         # Shared catalogue + the athlete's own foods; quick-add entries are not browsable.
         products = (
-            Product.visible_to(current_user.id)
+            Product.visible_to(uid)
             .filter(Product.source != SOURCE_QUICK)
             .order_by(Product.name)
             .all()
         )
-        today = date.today()
+        favorite_ids = favorite_ids_for(uid)
+        recent = recent_products_for(uid)
+        favorites = [p for p in products if p.id in favorite_ids]
+        my_products = [p for p in products if p.source == SOURCE_USER and p.created_by_id == uid]
+        preselected = db.session.get(Product, preselect_id) if preselect_id else None
+        if preselected and (not preselected.is_visible_to(uid) or preselected.source == SOURCE_QUICK):
+            preselected = None
+        # Instant client-side search covers the built-in and personal catalogue;
+        # cached Open Food Facts items are found through /api/products/search.
+        local_catalogue = [p for p in products if p.source != "off" or p.id in favorite_ids]
+        return {
+            "products": products,
+            "today": date.today(),
+            "selected_date": selected_date,
+            "date_nav": date_nav_context("log_food", selected_date),
+            "food_logs": food_logs_for_day(uid, selected_date),
+            "recent_products": [product_payload(p, favorite_ids, portion) for p, portion in recent],
+            "favorite_products": [product_payload(p, favorite_ids) for p in favorites],
+            "my_products": [product_payload(p, favorite_ids) for p in my_products],
+            "catalogue": [product_payload(p, favorite_ids) for p in local_catalogue],
+            "preselected": product_payload(preselected, favorite_ids) if preselected else None,
+            "copy_from_date": selected_date - timedelta(days=1),
+            "copy_from_meals": meal_counts_for_day(uid, selected_date - timedelta(days=1)),
+        }
+
+    @app.route("/log-food", methods=["GET", "POST"])
+    @login_required
+    def log_food():
         selected_date = parse_selected_date(
             request.form.get("date") if request.method == "POST" else request.args.get("date")
         )
@@ -756,14 +840,7 @@ def register_routes(app: Flask) -> None:
 
             if error:
                 flash(error, "error")
-                return render_template(
-                    "log_food.html",
-                    products=products,
-                    today=today,
-                    selected_date=selected_date,
-                    date_nav=date_nav_context("log_food", selected_date),
-                    food_logs=food_logs_for_day(current_user.id, selected_date),
-                ), 400
+                return render_template("log_food.html", **_log_food_context(selected_date)), 400
 
             entry = FoodLog(
                 user_id=current_user.id,
@@ -780,14 +857,157 @@ def register_routes(app: Flask) -> None:
                 flash("Could not save the entry. Please try again.", "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
 
+        preselect = request.args.get("product", "")
         return render_template(
             "log_food.html",
-            products=products,
-            today=today,
-            selected_date=selected_date,
-            date_nav=date_nav_context("log_food", selected_date),
-            food_logs=food_logs_for_day(current_user.id, selected_date),
+            **_log_food_context(selected_date, int(preselect) if preselect.isdigit() else None),
         )
+
+    # ------------------------------------------------------------------ food database API
+
+    @app.route("/api/products/search")
+    @login_required
+    def api_product_search():
+        query = request.args.get("q", "").strip()[:80]
+        remote = request.args.get("remote", "1") != "0"
+        results = food_db.search_products(query, current_user.id, limit=25, remote=remote)
+        favorite_ids = favorite_ids_for(current_user.id)
+        return jsonify(results=[product_payload(p, favorite_ids) for p in results])
+
+    @app.route("/api/products/barcode/<code>")
+    @login_required
+    def api_product_barcode(code: str):
+        if not food_db.normalize_barcode(code):
+            return jsonify(error="That doesn't look like a barcode."), 400
+        if food_db.is_blocked_barcode(code):
+            return jsonify(error="Products from Russia and Belarus are not supported."), 422
+        product = food_db.find_by_barcode(code, current_user.id)
+        if not product:
+            return jsonify(error="Product not found."), 404
+        return jsonify(product=product_payload(product, favorite_ids_for(current_user.id)))
+
+    @app.route("/favorites/<int:product_id>/toggle", methods=["POST"])
+    @login_required
+    def toggle_favorite(product_id: int):
+        product = db.session.get(Product, product_id)
+        if not product or not product.is_visible_to(current_user.id) or product.source == SOURCE_QUICK:
+            return jsonify(error="Product not found."), 404
+        fav = FavoriteProduct.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+        if fav:
+            db.session.delete(fav)
+        else:
+            db.session.add(FavoriteProduct(user_id=current_user.id, product_id=product_id))
+        db_commit_with_retry()
+        return jsonify(favorite=fav is None)
+
+    @app.route("/products/new", methods=["POST"])
+    @login_required
+    def create_product():
+        selected = parse_selected_date(request.form.get("date"))
+        back = url_for("log_food", date=selected.isoformat())
+        name = request.form.get("name", "").strip()[:255]
+        brand = request.form.get("brand", "").strip()[:255] or None
+        kcal = parse_number(request.form.get("calories_per_100g"), 0, 950)
+        macros = [parse_number(request.form.get(f) or "0", 0, 100) for f in ("proteins", "fats", "carbs")]
+        raw_barcode = request.form.get("barcode", "").strip()
+        barcode = food_db.normalize_barcode(raw_barcode)
+
+        error = None
+        if not name:
+            error = "Give the food a name."
+        elif kcal is None:
+            error = "Enter calories per 100 g (0–950)."
+        elif any(m is None for m in macros):
+            error = "Protein, fat and carbs must be between 0 and 100 g."
+        elif raw_barcode and not barcode:
+            error = "That doesn't look like a barcode."
+        elif barcode and Product.query.filter_by(barcode=barcode).first():
+            error = "A product with this barcode already exists."
+        if error:
+            flash(error, "error")
+            return redirect(back)
+
+        product = Product(
+            name=name, brand=brand, barcode=barcode,
+            calories_per_100g=kcal, proteins=macros[0], fats=macros[1], carbs=macros[2],
+            source=SOURCE_USER, created_by_id=current_user.id,
+        )
+        product.refresh_search_terms()
+        db.session.add(product)
+        db_commit_with_retry()
+        flash(f"Saved \u201c{name}\u201d to My foods.", "success")
+        return redirect(url_for("log_food", date=selected.isoformat(), product=product.id))
+
+    @app.route("/log-food/quick", methods=["POST"])
+    @login_required
+    def quick_add():
+        selected = parse_selected_date(request.form.get("date"))
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("log_food", date=selected.isoformat())
+        kcal = parse_number(request.form.get("calories"), 1, 5000)
+        meal_type = request.form.get("meal_type", "")
+        macros = [parse_number(request.form.get(f) or "0", 0, 500) for f in ("proteins", "fats", "carbs")]
+        if kcal is None:
+            flash("Enter calories between 1 and 5000.", "error")
+            return redirect(back)
+        if meal_type not in MEAL_TYPES:
+            flash("Choose a valid meal type.", "error")
+            return redirect(back)
+        if any(m is None for m in macros):
+            flash("Macros must be between 0 and 500 g.", "error")
+            return redirect(back)
+
+        # A private one-off product logged as a 100 g portion keeps FoodLog unchanged.
+        name = request.form.get("name", "").strip()[:80] or "Quick add"
+        product = Product(
+            name=name, calories_per_100g=kcal, proteins=macros[0], fats=macros[1], carbs=macros[2],
+            source=SOURCE_QUICK, created_by_id=current_user.id,
+        )
+        product.refresh_search_terms()
+        db.session.add(product)
+        db.session.flush()
+        db.session.add(FoodLog(user_id=current_user.id, date=selected, meal_type=meal_type,
+                               product_id=product.id, portion_grams=100))
+        try:
+            db_commit_with_retry()
+            flash(f"Added {kcal:.0f} kcal to {meal_type}.", "success")
+        except OperationalError:
+            flash("Could not save the entry. Please try again.", "error")
+        return redirect(back)
+
+    @app.route("/log-food/copy", methods=["POST"])
+    @login_required
+    def copy_meals():
+        to_date = parse_selected_date(request.form.get("date"))
+        from_date = parse_date_strict(request.form.get("from_date")) or (to_date - timedelta(days=1))
+        meal_type = request.form.get("meal_type", "all")
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("log_food", date=to_date.isoformat())
+        if meal_type != "all" and meal_type not in MEAL_TYPES:
+            flash("Choose a valid meal type.", "error")
+            return redirect(back)
+        if from_date == to_date:
+            flash("Pick a different day to copy from.", "error")
+            return redirect(back)
+
+        query = FoodLog.query.filter_by(user_id=current_user.id, date=from_date)
+        if meal_type != "all":
+            query = query.filter_by(meal_type=meal_type)
+        source_logs = query.order_by(FoodLog.id).all()
+        if not source_logs:
+            flash("Nothing to copy from that day.", "info")
+            return redirect(back)
+        for log in source_logs:
+            db.session.add(FoodLog(user_id=current_user.id, date=to_date, meal_type=log.meal_type,
+                                   product_id=log.product_id, portion_grams=log.portion_grams))
+        try:
+            db_commit_with_retry()
+            what = "meals" if meal_type == "all" else meal_type
+            noun = "item" if len(source_logs) == 1 else "items"
+            flash(f"Copied {len(source_logs)} {noun} ({what}) from {from_date.strftime('%b %d')}.", "success")
+        except OperationalError:
+            flash("Could not copy. Please try again.", "error")
+        return redirect(back)
 
     @app.route("/log-food/delete/<int:entry_id>", methods=["POST"])
     @login_required
@@ -1275,6 +1495,10 @@ def _seed_generic_foods() -> None:
             Product(name=name, calories_per_100g=kcal, proteins=protein, fats=fat, carbs=carbs, source=SOURCE_SEED)
         )
         added += 1
+    db.session.flush()
+    # Search terms (with Ukrainian names) for every built-in product, incl. PRODUCT_SEED ones.
+    for product in Product.query.filter(Product.created_by_id.is_(None), Product.source == SOURCE_SEED):
+        product.refresh_search_terms(UK_SEARCH_NAMES.get(product.name))
     db.session.commit()
     if added:
         print(f"Seeded {added} generic foods.")

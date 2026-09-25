@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint, or_
+from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint, event, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
@@ -101,6 +101,9 @@ class Product(db.Model):
     brand: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
     source: Mapped[str] = mapped_column(db.String(10), nullable=False, default=SOURCE_SEED)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    # Lower-cased "name brand aliases" for search: SQLite's LOWER()/LIKE only fold ASCII,
+    # so Cyrillic queries ("йогурт" vs "Йогурт") must match a Python-lowered copy.
+    search_terms: Mapped[str | None] = mapped_column(db.String(600), nullable=True)
 
     food_logs: Mapped[list["FoodLog"]] = relationship(back_populates="product")
     micronutrient_links: Mapped[list["ProductMicronutrient"]] = relationship(
@@ -115,6 +118,10 @@ class Product(db.Model):
 
     def is_visible_to(self, user_id: int) -> bool:
         return self.created_by_id is None or self.created_by_id == user_id
+
+    def refresh_search_terms(self, aliases: str | None = None) -> None:
+        parts = (self.name, self.brand, aliases)
+        self.search_terms = " ".join(p for p in parts if p).lower()[:600]
 
     @property
     def display_name(self) -> str:
@@ -134,6 +141,13 @@ class Product(db.Model):
 
     def carb_for_portion(self, grams: float) -> float:
         return self._per_portion(self.carbs, grams)
+
+
+@event.listens_for(Product, "before_insert")
+def _default_search_terms(_mapper, _connection, product: Product) -> None:
+    """Every product is searchable, whichever code path created it."""
+    if not product.search_terms:
+        product.refresh_search_terms()
 
 
 class ProductMicronutrient(db.Model):

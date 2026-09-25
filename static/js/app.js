@@ -416,6 +416,20 @@
     if (last && !document.querySelector('.fixed.inset-0:not(.hidden)')) dismissToast(last);
   });
 
+  /* JSON POST with the Flask-WTF CSRF token (from <meta name="csrf-token">) */
+  App.post = async function (url, data) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': token, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data || {}),
+      credentials: 'same-origin',
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status });
+    return body;
+  };
+
   /* Client-side toast (same look as server flash messages) */
   App.toast = function (message, kind = 'info') {
     let region = document.querySelector('.toast-region');

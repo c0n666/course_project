@@ -5,8 +5,23 @@
 {% set page_back_url = url_for('dashboard', date=selected_date.isoformat()) %}
 {% block title %}Log Food — Nutrition Tracker{% endblock %}
 
+{% macro meal_segments(name_prefix, checked_first=true) -%}
+<div class="grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
+  {% for value, text in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('dinner', 'Dinner'), ('snack', 'Snack')] %}
+  <label class="relative">
+    <input type="radio" name="meal_type" value="{{ value }}" class="peer sr-only" required data-meal-radio="{{ name_prefix }}" {% if checked_first and loop.first %}checked{% endif %}>
+    <span class="press flex flex-col items-center justify-center gap-1 h-14 rounded-xl text-[13px] font-semibold text-fg-muted
+                 peer-checked:bg-surface peer-checked:text-fg peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+      <span class="h-2 w-2 rounded-full {{ ui.meal_dots[value] }}" aria-hidden="true"></span>{{ text }}
+    </span>
+  </label>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
 {% block content %}
 {% set log_url = url_for('log_food', date=selected_date.isoformat()) %}
+{% set icon_star = 'M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z' %}
 
 {# Desktop header (mobile uses the app bar with Cancel) #}
 <div class="hidden lg:block mb-6">
@@ -19,63 +34,78 @@
 
 {% include 'day_strip.html' %}
 
+{# Quick actions #}
+<div class="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+  <button type="button" data-sheet-open="scanSheet" data-scan-open
+          class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
+    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"/></svg>
+    Scan barcode
+  </button>
+  <button type="button" data-sheet-open="quickSheet"
+          class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
+    <svg class="w-6 h-6 text-kcal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg>
+    Quick add
+  </button>
+  <button type="button" data-sheet-open="createSheet"
+          class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
+    <svg class="w-6 h-6 text-carbs" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    Create food
+  </button>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
   {# ============================================================ Form #}
   <section class="lg:col-span-3" aria-labelledby="form-heading">
     <h2 id="form-heading" class="sr-only">New entry</h2>
-    {% if products %}
-    <form method="post" action="{{ log_url }}" id="logFoodForm" class="space-y-6">
+    <form method="post" action="{{ log_url }}" id="logFoodForm" class="space-y-6" novalidate>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+      {# Selected product (was a radio group; same field name) #}
+      <input type="hidden" name="product_id" id="product_id" value="{{ preselected.id if preselected else '' }}">
 
-      {# Meal type — segmented radios (name/value unchanged) #}
       <fieldset>
         <legend id="meal_type" class="{{ ui.section_title }}">Meal</legend>
-        <div class="grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
-          {% for value, text in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('dinner', 'Dinner'), ('snack', 'Snack')] %}
-          <label class="relative">
-            <input type="radio" name="meal_type" value="{{ value }}" class="peer sr-only" required {% if loop.first %}checked{% endif %}>
-            <span class="press flex flex-col items-center justify-center gap-1 h-14 rounded-xl text-[13px] font-semibold text-fg-muted
-                         peer-checked:bg-surface peer-checked:text-fg peer-checked:shadow-sm
-                         peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
-              <span class="h-2 w-2 rounded-full {{ ui.meal_dots[value] }}" aria-hidden="true"></span>{{ text }}
-            </span>
-          </label>
-          {% endfor %}
-        </div>
+        {{ meal_segments('main') }}
       </fieldset>
 
-      {# Product — searchable radio list (name="product_id" unchanged) #}
-      <fieldset id="product_id">
-        <legend class="{{ ui.section_title }}">Product</legend>
-        <div class="relative mb-2">
+      {# ---------- Product picker ---------- #}
+      <div id="picker">
+        <p class="{{ ui.section_title }}">Food</p>
+
+        <div id="selectedCard" class="{{ ui.card }} mb-3 flex items-center gap-3 p-4 ring-2 ring-primary/40" hidden aria-live="polite">
+          <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[15px] font-semibold" id="selectedName"></p>
+            <p class="text-[13px] text-fg-muted tabular-nums" id="selectedMeta"></p>
+          </div>
+          <button type="button" id="clearSelected" class="press h-9 px-3 rounded-full bg-surface-2 text-sm font-semibold">Change</button>
+        </div>
+
+        <div class="relative mb-3">
           <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-          <label for="productSearch" class="sr-only">Search products</label>
-          <input type="search" id="productSearch" placeholder="Search products" autocomplete="off" enterkeyhint="search"
+          <label for="productSearch" class="sr-only">Search foods</label>
+          <input type="search" id="productSearch" placeholder="Search foods or brands" autocomplete="off" enterkeyhint="search"
                  class="{{ ui.input }} pl-11">
         </div>
-        <div class="{{ ui.list }} max-h-[22rem] overflow-y-auto overscroll-contain" id="productList">
-          {% for p in products %}
-          <label class="product-row flex items-center gap-3 px-4 min-h-[60px] py-2 cursor-pointer has-[:checked]:bg-primary/10"
-                 data-name="{{ p.name|lower }}">
-            <input type="radio" name="product_id" value="{{ p.id }}" required class="peer sr-only"
-                   data-cal="{{ p.calories_per_100g }}" data-p="{{ p.proteins }}" data-f="{{ p.fats }}" data-c="{{ p.carbs }}">
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-[15px] font-medium">{{ p.name }}</p>
-              <p class="text-[13px] text-fg-muted tabular-nums">{{ p.calories_per_100g }} kcal · P {{ p.proteins }} · F {{ p.fats }} · C {{ p.carbs }} <span class="text-fg-subtle">/ 100 g</span></p>
-            </div>
-            <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-line text-transparent
-                         peer-checked:border-primary peer-checked:bg-primary peer-checked:text-on-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40" aria-hidden="true">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-            </span>
-          </label>
-          {% endfor %}
-          <p id="noProducts" hidden class="px-4 py-8 text-center text-sm text-fg-muted">No products match your search.</p>
-        </div>
-      </fieldset>
 
-      {# Portion stepper #}
-      <div>
+        <div data-segments-scope>
+          <div id="pickerTabs" data-segments role="tablist" aria-label="Food lists" class="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
+            {% for key, label in [('recent', 'Recent'), ('favorites', 'Favorites'), ('mine', 'My foods')] %}
+            <button type="button" role="tab" data-segment="{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}"
+                    class="press h-9 rounded-lg text-[13px] font-semibold text-fg-muted aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm">{{ label }}</button>
+            {% endfor %}
+          </div>
+          <div data-segment-panel="recent" data-list="recent"></div>
+          <div data-segment-panel="favorites" data-list="favorites" hidden></div>
+          <div data-segment-panel="mine" data-list="mine" hidden></div>
+        </div>
+        <div id="searchResults" hidden aria-live="polite"></div>
+      </div>
+
+      {# ---------- Portion ---------- #}
+      <div id="portionBlock">
         <label for="portion_grams" class="{{ ui.section_title }} block">Portion</label>
         <div class="{{ ui.card }} p-4">
           <div class="flex items-center gap-3">
@@ -128,93 +158,199 @@
         <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">Save meal</button>
       </div>
     </form>
-    {% else %}
-    <div class="{{ ui.card }} px-6 py-10 text-center">
-      <p class="text-[15px] font-semibold">No products in the database</p>
-      <p class="mt-1 text-sm text-fg-muted">Run <code class="rounded bg-surface-2 px-1.5 py-0.5 text-xs">flask init-db</code> to seed sample data.</p>
-    </div>
-    {% endif %}
   </section>
 
   {# ============================================================ Day log #}
-  <section class="lg:col-span-2" aria-labelledby="day-heading">
-    <div class="flex items-center justify-between mb-2 px-1">
-      <h2 id="day-heading" class="{{ ui.h2 }}">Logged {{ 'today' if selected_date == today else selected_date.strftime('%b %d') }}</h2>
+  <aside class="lg:col-span-2 space-y-6">
+    <section aria-labelledby="day-heading">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <h2 id="day-heading" class="{{ ui.h2 }}">Logged {{ 'today' if selected_date == today else selected_date.strftime('%b %d') }}</h2>
+        {% if food_logs %}
+        <span class="{{ ui.badge }} bg-orange-500/15 text-orange-700 dark:text-orange-300 tabular-nums">{{ "%.0f"|format(food_logs|sum(attribute='calories')) }} kcal</span>
+        {% endif %}
+      </div>
       {% if food_logs %}
-      <span class="{{ ui.badge }} bg-orange-500/15 text-orange-700 dark:text-orange-300 tabular-nums">{{ "%.0f"|format(food_logs|sum(attribute='calories')) }} kcal</span>
+      <div class="{{ ui.list }}">
+        {% for log in food_logs %}{{ ui.food_row(log, log_url, show_meal=true) }}{% endfor %}
+      </div>
+      <p class="touch-only mt-2 px-1 text-xs text-fg-subtle">Swipe an entry left to delete it.</p>
+      {% else %}
+      <div class="{{ ui.card }} px-6 py-8 text-center text-sm text-fg-muted">Nothing logged for this day yet.</div>
       {% endif %}
-    </div>
-    {% if food_logs %}
-    <div class="{{ ui.list }}">
-      {% for log in food_logs %}{{ ui.food_row(log, log_url, show_meal=true) }}{% endfor %}
-    </div>
-    <p class="touch-only mt-2 px-1 text-xs text-fg-subtle">Swipe an entry left to delete it.</p>
-    {% else %}
-    <div class="{{ ui.card }} px-6 py-8 text-center text-sm text-fg-muted">Nothing logged for this day yet.</div>
+    </section>
+
+    {% if copy_from_meals %}
+    <section aria-labelledby="copy-heading">
+      <h2 id="copy-heading" class="{{ ui.section_title }}">Copy from {{ copy_from_date.strftime('%A') }}</h2>
+      <div class="{{ ui.list }}">
+        {% for meal in ['breakfast', 'lunch', 'dinner', 'snack'] if meal in copy_from_meals %}
+        {% set info = copy_from_meals[meal] %}
+        <form method="post" action="{{ url_for('copy_meals') }}" class="{{ ui.list_row }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <input type="hidden" name="from_date" value="{{ copy_from_date.isoformat() }}">
+          <input type="hidden" name="meal_type" value="{{ meal }}">
+          <input type="hidden" name="next" value="{{ log_url }}">
+          <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ ui.meal_dots[meal] }}" aria-hidden="true"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-[15px] font-medium capitalize">{{ meal }}</p>
+            <p class="text-[13px] text-fg-muted tabular-nums">{{ info.count }} {{ 'item' if info.count == 1 else 'items' }} · {{ "%.0f"|format(info.kcal) }} kcal</p>
+          </div>
+          <button type="submit" class="press h-9 px-4 rounded-full bg-primary/10 text-sm font-semibold text-primary">Copy</button>
+        </form>
+        {% endfor %}
+      </div>
+    </section>
     {% endif %}
-  </section>
+  </aside>
 </div>
+
+{# ============================================================ Sheets #}
+
+{# Barcode scanner #}
+<div id="scanSheet" class="sheet" hidden aria-hidden="true">
+  <div class="sheet-backdrop" data-sheet-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+    <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
+      <h2 id="scanTitle" class="text-[17px] font-semibold">Scan barcode</h2>
+      <span class="w-16" aria-hidden="true"></span>
+    </div>
+    <div class="sheet-body px-4 pb-5">
+      <div class="relative overflow-hidden rounded-2xl bg-black aspect-[4/3]" id="scanViewport">
+        <video id="scanVideo" class="h-full w-full object-cover" playsinline muted></video>
+        <div class="pointer-events-none absolute inset-x-10 top-1/2 -translate-y-1/2 h-28 rounded-2xl ring-2 ring-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,.35)]" aria-hidden="true"></div>
+      </div>
+      <p id="scanStatus" class="mt-3 text-center text-sm text-fg-muted" role="status">Point the camera at a barcode.</p>
+      <div id="scanNotFound" hidden class="mt-3 rounded-2xl bg-surface-2 p-4 text-center">
+        <p class="text-[15px] font-semibold">Not in the database yet</p>
+        <p class="mt-1 text-sm text-fg-muted">Add it once and it will be ready next time.</p>
+        <button type="button" id="scanCreate" class="{{ ui.btn_primary }} mt-3 w-full">Create this food</button>
+      </div>
+      <form id="manualBarcode" class="mt-4 flex gap-2">
+        <label for="manualCode" class="sr-only">Barcode number</label>
+        <input id="manualCode" inputmode="numeric" autocomplete="off" placeholder="Or type the barcode number" class="{{ ui.input }} flex-1">
+        <button type="submit" class="{{ ui.btn_secondary }} shrink-0">Find</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Quick add calories #}
+<div id="quickSheet" class="sheet" hidden aria-hidden="true">
+  <div class="sheet-backdrop" data-sheet-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="quickTitle">
+    <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
+      <h2 id="quickTitle" class="text-[17px] font-semibold">Quick add</h2>
+      <span class="w-16" aria-hidden="true"></span>
+    </div>
+    <div class="sheet-body px-4 pb-5">
+      <form method="post" action="{{ url_for('quick_add') }}" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+        <input type="hidden" name="next" value="{{ log_url }}">
+        {{ meal_segments('quick') }}
+        <div>
+          <label for="q-kcal" class="{{ ui.label }}">Calories</label>
+          <div class="relative">
+            <input type="number" id="q-kcal" name="calories" required min="1" max="5000" step="1" inputmode="numeric" placeholder="350" class="{{ ui.input }} pr-14">
+            <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-fg-muted">kcal</span>
+          </div>
+        </div>
+        <div>
+          <label for="q-name" class="{{ ui.label }}">Label <span class="font-normal text-fg-muted">(optional)</span></label>
+          <input type="text" id="q-name" name="name" maxlength="80" placeholder="e.g. Restaurant lunch" class="{{ ui.input }}">
+        </div>
+        <details class="group">
+          <summary class="press cursor-pointer list-none text-sm font-semibold text-primary">+ Add macros</summary>
+          <div class="mt-3 grid grid-cols-3 gap-3">
+            {% for field, label in [('proteins', 'Protein'), ('fats', 'Fat'), ('carbs', 'Carbs')] %}
+            <div>
+              <label for="q-{{ field }}" class="{{ ui.label }}">{{ label }}, g</label>
+              <input type="number" id="q-{{ field }}" name="{{ field }}" min="0" max="500" step="0.1" inputmode="decimal" class="{{ ui.input }}">
+            </div>
+            {% endfor %}
+          </div>
+        </details>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Create a custom food #}
+<div id="createSheet" class="sheet" hidden aria-hidden="true">
+  <div class="sheet-backdrop" data-sheet-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+    <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
+      <h2 id="createTitle" class="text-[17px] font-semibold">Create food</h2>
+      <span class="w-16" aria-hidden="true"></span>
+    </div>
+    <div class="sheet-body px-4 pb-5">
+      <form method="post" action="{{ url_for('create_product') }}" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="c-name" class="{{ ui.label }}">Name</label>
+            <input type="text" id="c-name" name="name" required maxlength="255" placeholder="e.g. Homemade granola" class="{{ ui.input }}">
+          </div>
+          <div>
+            <label for="c-brand" class="{{ ui.label }}">Brand <span class="font-normal text-fg-muted">(optional)</span></label>
+            <input type="text" id="c-brand" name="brand" maxlength="255" class="{{ ui.input }}">
+          </div>
+        </div>
+        <p class="{{ ui.section_title }} !mb-0">Per 100 g</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {% for field, label, mx in [('calories_per_100g', 'Calories', 950), ('proteins', 'Protein, g', 100), ('fats', 'Fat, g', 100), ('carbs', 'Carbs, g', 100)] %}
+          <div>
+            <label for="c-{{ field }}" class="{{ ui.label }}">{{ label }}</label>
+            <input type="number" id="c-{{ field }}" name="{{ field }}" {% if loop.first %}required{% endif %} min="0" max="{{ mx }}" step="0.1" inputmode="decimal" class="{{ ui.input }}">
+          </div>
+          {% endfor %}
+        </div>
+        <div>
+          <label for="c-barcode" class="{{ ui.label }}">Barcode <span class="font-normal text-fg-muted">(optional)</span></label>
+          <input type="text" id="c-barcode" name="barcode" inputmode="numeric" maxlength="20" autocomplete="off" class="{{ ui.input }}">
+        </div>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">Save to My foods</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Row template for the picker (filled by static/js/log_food.js) #}
+<template id="productRowTpl">
+  <div class="product-row flex items-center">
+    <button type="button" role="radio" aria-checked="false" data-pick
+            class="press flex min-w-0 flex-1 items-center gap-3 px-4 min-h-[60px] py-2 text-left aria-checked:bg-primary/10">
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-[15px] font-medium" data-name></span>
+        <span class="block text-[13px] text-fg-muted tabular-nums" data-meta></span>
+      </span>
+      <span data-check class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-line text-transparent" aria-hidden="true">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+      </span>
+    </button>
+    <button type="button" data-star aria-pressed="false"
+            class="press mr-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-subtle aria-pressed:text-amber-500">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_star }}"/></svg>
+    </button>
+  </div>
+</template>
+
+{# Data for the picker #}
+<script type="application/json" id="pickerData">{{ {
+  'catalogue': catalogue, 'recent': recent_products, 'favorites': favorite_products,
+  'mine': my_products, 'preselected': preselected,
+  'urls': {'search': url_for('api_product_search'), 'barcode': url_for('api_product_barcode', code='CODE'),
+           'favorite': url_for('toggle_favorite', product_id=0)},
+  'selectedDate': selected_date.isoformat(), 'isToday': selected_date == today
+}|tojson }}</script>
 {% endblock %}
 
 {% block scripts %}
-<script>
-  (function () {
-    const form = document.getElementById('logFoodForm');
-    if (!form) return;
-    const portion = document.getElementById('portion_grams');
-    const macros = document.getElementById('macros');
-    const est = document.getElementById('est-cal');
-    const rows = Array.from(document.querySelectorAll('.product-row'));
-    const search = document.getElementById('productSearch');
-    const empty = document.getElementById('noProducts');
-    const fmt = (n) => (Math.round(n * 10) / 10).toString();
-
-    function selected() { return form.querySelector('input[name="product_id"]:checked'); }
-
-    function updatePreview() {
-      const opt = selected();
-      const g = parseFloat(portion.value) || 0;
-      document.querySelectorAll('[data-portion]').forEach(b => b.setAttribute('aria-pressed', String(parseFloat(b.dataset.portion) === g)));
-      if (!opt) { macros.hidden = true; est.textContent = ''; return; }
-      macros.hidden = false;
-      const k = g / 100;
-      document.getElementById('m-p').textContent = fmt(parseFloat(opt.dataset.p) * k);
-      document.getElementById('m-f').textContent = fmt(parseFloat(opt.dataset.f) * k);
-      document.getElementById('m-c').textContent = fmt(parseFloat(opt.dataset.c) * k);
-      est.textContent = g > 0 ? `≈ ${Math.round(parseFloat(opt.dataset.cal) * k)} kcal` : '';
-    }
-
-    form.addEventListener('change', (e) => { if (e.target.name === 'product_id') updatePreview(); });
-    portion.addEventListener('input', updatePreview);
-    document.querySelectorAll('[data-portion]').forEach(b => b.addEventListener('click', () => {
-      portion.value = b.dataset.portion; updatePreview();
-    }));
-    document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
-      const next = Math.max(1, (parseFloat(portion.value) || 0) + parseFloat(b.dataset.step));
-      portion.value = next; updatePreview();
-    }));
-
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      let shown = 0;
-      rows.forEach(r => {
-        const match = !q || r.dataset.name.includes(q) || r.querySelector('input').checked;
-        r.hidden = !match; if (match) shown++;
-      });
-      empty.hidden = shown > 0;
-    });
-    // Enter in the search box must not submit the form
-    search.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
-
-    // Pre-select the meal by time of day when logging for today
-    {% if selected_date == today %}
-    const h = new Date().getHours();
-    const guess = h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 21 ? 'dinner' : 'snack';
-    const radio = form.querySelector(`input[name="meal_type"][value="${guess}"]`);
-    if (radio) radio.checked = true;
-    {% endif %}
-
-    updatePreview();
-  })();
-</script>
+<script src="{{ url_for('static', filename='js/log_food.js') }}"></script>
 {% endblock %}
