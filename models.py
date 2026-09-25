@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
@@ -49,6 +49,9 @@ class Profile(db.Model):
     weight: Mapped[float | None] = mapped_column(Numeric(5, 2))
     activity_level: Mapped[str | None] = mapped_column(db.String(20))
     medical_notes: Mapped[str | None] = mapped_column(Text)
+    # None = use the default (weight-based) water goal / calculated calorie target.
+    water_goal_ml: Mapped[int | None] = mapped_column(nullable=True)
+    calorie_target_override: Mapped[int | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="profile")
 
@@ -77,6 +80,14 @@ class Micronutrient(db.Model):
     product_links: Mapped[list["ProductMicronutrient"]] = relationship(back_populates="micronutrient")
 
 
+# Product.source values
+SOURCE_SEED = "seed"    # built-in catalogue
+SOURCE_OFF = "off"      # cached from Open Food Facts
+SOURCE_USER = "user"    # custom food created by an athlete (private)
+SOURCE_QUICK = "quick"  # "quick add" calories entry (private, hidden from lists)
+PRIVATE_SOURCES = (SOURCE_USER, SOURCE_QUICK)
+
+
 class Product(db.Model):
     __tablename__ = "products"
 
@@ -86,12 +97,28 @@ class Product(db.Model):
     proteins: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     fats: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     carbs: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    barcode: Mapped[str | None] = mapped_column(db.String(32), unique=True, index=True, nullable=True)
+    brand: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
+    source: Mapped[str] = mapped_column(db.String(10), nullable=False, default=SOURCE_SEED)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     food_logs: Mapped[list["FoodLog"]] = relationship(back_populates="product")
     micronutrient_links: Mapped[list["ProductMicronutrient"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )
+
+    @classmethod
+    def visible_to(cls, user_id: int):
+        """Query of products a user may see/log: shared catalogue + their own private foods."""
+        return cls.query.filter(or_(cls.created_by_id.is_(None), cls.created_by_id == user_id))
+
+    def is_visible_to(self, user_id: int) -> bool:
+        return self.created_by_id is None or self.created_by_id == user_id
+
+    @property
+    def display_name(self) -> str:
+        return f"{self.name} · {self.brand}" if self.brand else self.name
 
     def _per_portion(self, per_100g: float, grams: float) -> float:
         return float(per_100g) * grams / 100.0
@@ -198,3 +225,35 @@ class Recommendation(db.Model):
     status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="pending")
 
     report: Mapped["Report"] = relationship(back_populates="recommendations")
+
+
+class FavoriteProduct(db.Model):
+    __tablename__ = "favorite_products"
+    __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_favorite_product"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    product: Mapped["Product"] = relationship()
+
+
+class WaterLog(db.Model):
+    __tablename__ = "water_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(db.Date, nullable=False, default=date.today, index=True)
+    amount_ml: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+
+
+class WeightLog(db.Model):
+    __tablename__ = "weight_logs"
+    __table_args__ = (UniqueConstraint("user_id", "date", name="uq_weight_log_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(db.Date, nullable=False, default=date.today)
+    weight_kg: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)

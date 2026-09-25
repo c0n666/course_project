@@ -19,6 +19,8 @@ from sqlalchemy.pool import NullPool
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import (
+    SOURCE_QUICK,
+    SOURCE_SEED,
     FoodLog,
     Goal,
     Micronutrient,
@@ -32,6 +34,7 @@ from models import (
     db,
 )
 from ai_service import generate_ai_report
+from seed_foods import GENERIC_FOODS
 from nutrition import calculate_daily_targets, goal_progress, predict_weight_trend
 
 logger = logging.getLogger(__name__)
@@ -721,7 +724,13 @@ def register_routes(app: Flask) -> None:
     @app.route("/log-food", methods=["GET", "POST"])
     @login_required
     def log_food():
-        products = Product.query.order_by(Product.name).all()
+        # Shared catalogue + the athlete's own foods; quick-add entries are not browsable.
+        products = (
+            Product.visible_to(current_user.id)
+            .filter(Product.source != SOURCE_QUICK)
+            .order_by(Product.name)
+            .all()
+        )
         today = date.today()
         selected_date = parse_selected_date(
             request.form.get("date") if request.method == "POST" else request.args.get("date")
@@ -740,6 +749,8 @@ def register_routes(app: Flask) -> None:
             elif meal_type not in MEAL_TYPES:
                 error = "Choose a valid meal type."
             product = db.session.get(Product, int(product_id)) if product_id.isdigit() else None
+            if product and not product.is_visible_to(current_user.id):
+                product = None  # another user's private food
             if error is None and not product:
                 error = "Please select a product."
 
@@ -1017,6 +1028,7 @@ def register_routes(app: Flask) -> None:
 
         _seed_micronutrients()
         _seed_products_and_links()
+        _seed_generic_foods()
 
         if User.query.count() == 0:
             trainer = User(
@@ -1250,6 +1262,22 @@ def _seed_products_and_links() -> None:
     if created_products:
         print("Seeded sample products.")
     print("Synced product micronutrient links.")
+
+
+def _seed_generic_foods() -> None:
+    """Add the built-in generic food catalogue (idempotent, keyed by name)."""
+    existing = {name for (name,) in db.session.query(Product.name).filter(Product.created_by_id.is_(None))}
+    added = 0
+    for name, kcal, protein, fat, carbs in GENERIC_FOODS:
+        if name in existing:
+            continue
+        db.session.add(
+            Product(name=name, calories_per_100g=kcal, proteins=protein, fats=fat, carbs=carbs, source=SOURCE_SEED)
+        )
+        added += 1
+    db.session.commit()
+    if added:
+        print(f"Seeded {added} generic foods.")
 
 
 app = create_app()
