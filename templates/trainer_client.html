@@ -39,6 +39,25 @@
     {% endfor %}
   </div>
 
+  {# ---------- Habits (read-only) ---------- #}
+  <dl class="grid grid-cols-3 gap-2 sm:gap-3 -mt-3 mb-6">
+    <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Logging streak</dt>
+      <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums">{{ streak.current }} <span class="text-[12px] font-medium text-fg-muted">{{ 'day' if streak.current == 1 else 'days' }}</span></dd>
+    </div>
+    <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Water today</dt>
+      <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ '{:,}'.format(water.total) }} <span class="text-[12px] font-medium text-fg-muted">/ {{ '{:,}'.format(water.goal) }} ml</span></dd>
+    </div>
+    <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Last weigh-in</dt>
+      <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums">
+        {% if weight_log %}{{ weight_log.weight }} <span class="text-[12px] font-medium text-fg-muted">kg<span class="hidden sm:inline"> · {{ weight_log.date.strftime('%b %d') }}{% if weight_log.change_7d is not none %} · {{ '%+.1f'|format(weight_log.change_7d) }} vs wk ago{% endif %}</span></span>
+        {% else %}<span class="text-[15px] font-medium text-fg-muted">—</span>{% endif %}
+      </dd>
+    </div>
+  </dl>
+
   {# ---------- Segmented control ---------- #}
   <div data-segments role="tablist" aria-label="Client sections" class="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1 max-w-sm">
     <button type="button" role="tab" data-segment="log" aria-selected="true"

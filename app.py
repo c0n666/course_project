@@ -32,13 +32,24 @@ from models import (
     Recommendation,
     Report,
     User,
+    WaterLog,
+    WeightLog,
     Workout,
     db,
 )
 import food_db
 from ai_service import generate_ai_report
 from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
-from nutrition import calculate_daily_targets, goal_progress, predict_weight_trend
+from nutrition import (
+    auto_water_goal_ml,
+    calculate_daily_targets,
+    goal_progress,
+    logging_streak,
+    predict_weight_trend,
+    water_goal_ml,
+    water_total_ml,
+    weight_summary,
+)
 
 logger = logging.getLogger(__name__)
 csrf = CSRFProtect()
@@ -238,6 +249,38 @@ def meal_counts_for_day(user_id: int, day: date) -> dict[str, dict]:
         item["count"] += 1
         item["kcal"] += log.calories
     return out
+
+
+def water_state(user_id: int, day: date, profile: Profile | None) -> dict:
+    """Water card data: total, goal, ring percent and whether there is an entry to undo."""
+    total = water_total_ml(user_id, day)
+    goal = water_goal_ml(profile)
+    return {
+        "total": total,
+        "goal": goal,
+        "pct": round(min(100.0, total / goal * 100), 1) if goal else 0.0,
+        "can_undo": WaterLog.query.filter_by(user_id=user_id, date=day).first() is not None,
+    }
+
+
+def record_weight(user_id: int, day: date, weight: float) -> None:
+    """Upsert the weigh-in for a day; the newest weigh-in also becomes profile.weight."""
+    entry = WeightLog.query.filter_by(user_id=user_id, date=day).first()
+    if entry:
+        entry.weight_kg = weight
+    else:
+        db.session.add(WeightLog(user_id=user_id, date=day, weight_kg=weight))
+    newer = WeightLog.query.filter(WeightLog.user_id == user_id, WeightLog.date > day).first()
+    if newer is None:
+        profile = Profile.query.filter_by(user_id=user_id).first()
+        if profile is None:
+            profile = Profile(user_id=user_id)
+            db.session.add(profile)
+        profile.weight = weight
+
+
+def wants_json() -> bool:
+    return request.is_json or request.accept_mimetypes.best == "application/json"
 
 
 def daily_nutrition_summary(user_id: int, day: date | None = None) -> dict:
@@ -646,6 +689,9 @@ def register_routes(app: Flask) -> None:
             chart_weight_json=json.dumps(weight_trend),
             weight_meta=weight_trend.get("meta", {}),
             copy_from_meals=meal_counts_for_day(current_user.id, selected_date - timedelta(days=1)),
+            water=water_state(current_user.id, selected_date, profile),
+            streak=logging_streak(current_user.id, today),
+            weight_log=weight_summary(current_user.id),
         )
 
     @app.route("/dashboard/ai-report", methods=["POST"])
@@ -724,10 +770,23 @@ def register_routes(app: Flask) -> None:
                 flash("Enter a valid current weight.", "error")
                 return redirect(url_for("profile_page"))
 
+            water_goal = None
+            raw_water_goal = request.form.get("water_goal_ml", "").strip()
+            if raw_water_goal:
+                water_goal = parse_number(raw_water_goal, 500, 6000, integer=True)
+                if water_goal is None:
+                    flash("Water goal must be a whole number between 500 and 6000 ml.", "error")
+                    return redirect(url_for("profile_page"))
+
             if profile is None:
                 profile = Profile(user_id=current_user.id)
                 db.session.add(profile)
+            old_weight = float(profile.weight) if profile.weight is not None else None
             profile.weight = new_weight
+            if old_weight != new_weight:
+                record_weight(current_user.id, date.today(), new_weight)
+            if "water_goal_ml" in request.form:
+                profile.water_goal_ml = water_goal
             new_goal_type = request.form.get("goal_type", "").strip()
             new_target = request.form.get("target_weight", "")
 
@@ -774,6 +833,7 @@ def register_routes(app: Flask) -> None:
         return render_template(
             "profile.html",
             profile=profile,
+            auto_water_goal=auto_water_goal_ml(profile),
             active_goal=active_goal,
             targets=targets,
             goal_progress=progress,
@@ -1009,6 +1069,74 @@ def register_routes(app: Flask) -> None:
             flash("Could not copy. Please try again.", "error")
         return redirect(back)
 
+    def _water_response(selected: date, message: str | None = None, error: str | None = None):
+        if wants_json():
+            if error:
+                return jsonify(error=error), 400
+            profile = Profile.query.filter_by(user_id=current_user.id).first()
+            return jsonify(water_state(current_user.id, selected, profile))
+        if error or message:
+            flash(error or message, "error" if error else "success")
+        return redirect(url_for("dashboard", date=selected.isoformat()))
+
+    @app.route("/water", methods=["POST"])
+    @login_required
+    def add_water():
+        data = request.get_json(silent=True) or request.form
+        selected = parse_selected_date(data.get("date"))
+        if selected > date.today():
+            return _water_response(date.today(), error="You can't log water for a future day.")
+        amount = parse_number(data.get("amount_ml"), 50, 2000, integer=True)
+        if amount is None:
+            return _water_response(selected, error="Enter between 50 and 2000 ml.")
+        db.session.add(WaterLog(user_id=current_user.id, date=selected, amount_ml=amount))
+        try:
+            db_commit_with_retry()
+        except OperationalError:
+            return _water_response(selected, error="Could not save. Please try again.")
+        return _water_response(selected, message=f"Added {amount} ml of water.")
+
+    @app.route("/water/undo", methods=["POST"])
+    @login_required
+    def undo_water():
+        data = request.get_json(silent=True) or request.form
+        selected = parse_selected_date(data.get("date"))
+        entry = (
+            WaterLog.query.filter_by(user_id=current_user.id, date=selected)
+            .order_by(WaterLog.id.desc())
+            .first()
+        )
+        if not entry:
+            return _water_response(selected, error="Nothing to undo for this day.")
+        amount = entry.amount_ml
+        db.session.delete(entry)
+        try:
+            db_commit_with_retry()
+        except OperationalError:
+            return _water_response(selected, error="Could not undo. Please try again.")
+        return _water_response(selected, message=f"Removed {amount} ml.")
+
+    @app.route("/weight", methods=["POST"])
+    @login_required
+    def log_weight():
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("dashboard")
+        weight = parse_number(request.form.get("weight_kg"), 30, 300)
+        day = parse_date_strict(request.form.get("date")) or date.today()
+        if weight is None:
+            flash("Enter a weight between 30 and 300 kg.", "error")
+            return redirect(back)
+        if day > date.today():
+            flash("You can't log weight for a future day.", "error")
+            return redirect(back)
+        record_weight(current_user.id, day, weight)
+        try:
+            db_commit_with_retry()
+            flash(f"Logged {weight:.1f} kg for {day.strftime('%b %d')}.", "success")
+        except OperationalError:
+            flash("Could not save your weight. Please try again.", "error")
+        return redirect(back)
+
     @app.route("/log-food/delete/<int:entry_id>", methods=["POST"])
     @login_required
     def delete_food_log(entry_id: int):
@@ -1159,6 +1287,9 @@ def register_routes(app: Flask) -> None:
             pending_recommendations=pending_recs,
             recent_recommendations=recent_recs,
             latest_ai_report=client_ai_report,
+            water=water_state(client.id, today, profile),
+            streak=logging_streak(client.id, today),
+            weight_log=weight_summary(client.id),
         )
 
     @app.route("/trainer/client/<int:client_id>/recommend", methods=["POST"])

@@ -5,9 +5,11 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import joinedload
 
-from models import FoodLog, Goal, Profile, Workout, db
+from models import FoodLog, Goal, Profile, WaterLog, WeightLog, Workout, db
 
 KCAL_PER_KG = 7700
+WATER_ML_PER_KG = 33
+DEFAULT_WATER_GOAL_ML = 2000
 HISTORY_DAYS = 7
 KCAL_TDEE_DROP_PER_KG = 24
 
@@ -119,6 +121,75 @@ def goal_progress(profile: Profile | None, goal: Goal | None) -> dict | None:
         "target_weight": round(target, 1),
         "percent": round(percent, 1),
         "goal_label": GOAL_LABELS.get(goal.goal_type, goal.goal_type),
+    }
+
+
+def auto_water_goal_ml(profile: Profile | None) -> int:
+    """33 ml per kg of body weight, rounded to 50 ml; 2000 ml without a weight."""
+    if profile is None or not profile.weight or float(profile.weight) <= 0:
+        return DEFAULT_WATER_GOAL_ML
+    return int(round(float(profile.weight) * WATER_ML_PER_KG / 50) * 50)
+
+
+def water_goal_ml(profile: Profile | None) -> int:
+    if profile is not None and profile.water_goal_ml:
+        return int(profile.water_goal_ml)
+    return auto_water_goal_ml(profile)
+
+
+def water_total_ml(user_id: int, day: date) -> int:
+    total = (
+        db.session.query(db.func.coalesce(db.func.sum(WaterLog.amount_ml), 0))
+        .filter(WaterLog.user_id == user_id, WaterLog.date == day)
+        .scalar()
+    )
+    return int(total)
+
+
+def logging_streak(user_id: int, today: date | None = None) -> dict:
+    """Consecutive days with at least one food log, ending today (or yesterday if today is empty)."""
+    today = today or date.today()
+    days = {
+        d for (d,) in db.session.query(FoodLog.date)
+        .filter(FoodLog.user_id == user_id, FoodLog.date <= today)
+        .distinct()
+    }
+
+    current = 0
+    day = today if today in days else today - timedelta(days=1)
+    while day in days:
+        current += 1
+        day -= timedelta(days=1)
+
+    best = run = 0
+    previous = None
+    for d in sorted(days):
+        run = run + 1 if previous and d - previous == timedelta(days=1) else 1
+        best = max(best, run)
+        previous = d
+    return {"current": current, "best": best}
+
+
+def weight_summary(user_id: int) -> dict | None:
+    """Latest weigh-in and the change versus the closest weigh-in at least 7 days earlier."""
+    latest = (
+        WeightLog.query.filter_by(user_id=user_id).order_by(WeightLog.date.desc()).first()
+    )
+    if latest is None:
+        return None
+    baseline = (
+        WeightLog.query.filter(
+            WeightLog.user_id == user_id,
+            WeightLog.date <= latest.date - timedelta(days=7),
+        )
+        .order_by(WeightLog.date.desc())
+        .first()
+    )
+    weight = float(latest.weight_kg)
+    return {
+        "weight": round(weight, 1),
+        "date": latest.date,
+        "change_7d": round(weight - float(baseline.weight_kg), 1) if baseline else None,
     }
 
 

@@ -456,6 +456,43 @@
   };
 
   /* =====================================================================
+     Water card: +ml / undo without a reload (plain POST forms without JS)
+     ===================================================================== */
+  function renderWater(card, state) {
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+    card.querySelector('[data-water-total]').textContent = fmt(state.total);
+    card.querySelector('[data-water-goal]').textContent = fmt(state.goal);
+    const ring = card.querySelector('[data-water-ring]');
+    ring.classList.remove('ring-progress');  // the load animation would pin the old offset
+    ring.style.transition = 'stroke-dashoffset .5s cubic-bezier(.2, .8, .2, 1), opacity .2s';
+    ring.style.strokeDashoffset = String(100 - state.pct);
+    ring.style.opacity = state.pct > 0 ? '1' : '0';
+    const undo = card.querySelector('[data-water-undo]');
+    if (undo) undo.disabled = !state.can_undo;
+  }
+  function setupWater() {
+    $$('form[data-water-form]').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();  // runs before the document-level spinner handler, which then skips
+        const btn = e.submitter || form.querySelector('button');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        haptic();
+        const data = Object.fromEntries(new FormData(form));
+        delete data.csrf_token;  // App.post sends it as a header
+        let state = null;
+        try {
+          state = await App.post(form.action, data);
+        } catch (err) {
+          App.toast(err.message || 'Could not save. Please try again.', 'error');
+        }
+        btn.disabled = false;
+        if (state) renderWater(form.closest('[data-water]'), state);  // also sets Undo's disabled state
+      });
+    });
+  }
+
+  /* =====================================================================
      Offline support: service worker, offline pill, no POST while offline
      ===================================================================== */
   if ('serviceWorker' in navigator && window.isSecureContext) {
@@ -498,6 +535,7 @@
     syncThemeControls();
     updateOnlineState();
     setupSegments();
+    setupWater();
     setupLargeTitle();
     setupSwipeNav();
     if (isIOS() && !isStandalone()) revealInstall();
