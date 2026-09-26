@@ -2,8 +2,8 @@
 {% import '_ui.html' as ui %}
 {% set page_back_url = url_for('dashboard') + '#coach' %}
 {% set page_back_label = 'Coach' %}
-{% set page_bar_title = 'Chat with coach' %}
-{% block title %}Coach chat — Nutrition Tracker{% endblock %}
+{% set page_bar_title = coach_name %}
+{% block title %}{{ coach_name }} — Kolos{% endblock %}
 
 {% set suggestions = [
   'Що мені з\'їсти на вечерю, щоб добрати білок?',
@@ -27,11 +27,11 @@
   <div class="mb-4 flex items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white" aria-hidden="true">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+        {{ ui.zernia_mark('w-7 h-7') }}
       </span>
       <div>
-        <h1 class="text-[17px] font-semibold">AI coach</h1>
-        <p class="text-[13px] text-fg-muted">{{ 'Sees your food log, targets and weight' if coach_ai else 'Not connected yet' }}</p>
+        <h1 class="text-[17px] font-semibold">{{ coach_name }}</h1>
+        <p class="text-[13px] text-fg-muted">{{ 'Your AI nutrition coach · sees your log, targets and weight' if coach_ai else 'Not connected yet' }}</p>
       </div>
     </div>
     {% if messages %}
@@ -46,7 +46,7 @@
   {# ---------- Conversation ---------- #}
   <div id="chatLog" class="flex flex-col gap-3 pb-4" role="log" aria-live="polite" aria-label="Conversation">
     <div class="{{ bubble_ai }}">
-      <p>Привіт! Я бачу твій журнал їжі, цілі та вагу. Питай, що з'їсти, як добрати білок чи чому стоїть вага.</p>
+      <p>Привіт! Я <strong>Зернятко</strong> — твій AI-коуч у Kolos. Бачу твій журнал їжі, цілі та вагу. Питай, що з'їсти, як добрати білок чи чому стоїть вага. Рухаємось маленькими кроками!</p>
     </div>
     {% for m in messages %}
     {% if m.role == 'assistant' %}
@@ -60,7 +60,7 @@
 
   {% if not coach_ai %}
   <p class="mb-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-    The AI coach is not connected yet. Add a free <strong>GEMINI_API_KEY</strong> or <strong>GROQ_API_KEY</strong> on the server to start chatting.
+    {{ coach_name }} is not connected yet. Add a free <strong>GEMINI_API_KEY</strong> or <strong>GROQ_API_KEY</strong> on the server to start chatting.
   </p>
   {% endif %}
 
@@ -75,9 +75,9 @@
   {# ---------- Composer (plain POST without JS) ---------- #}
   <form id="chatForm" method="post" action="{{ url_for('coach_chat_page') }}" class="action-bar flex items-end gap-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="chatInput" class="sr-only">Message to the coach</label>
+    <label for="chatInput" class="sr-only">Message to {{ coach_name }}</label>
     <textarea id="chatInput" name="message" rows="1" maxlength="{{ max_chars }}" required
-              placeholder="Ask about your diet…" enterkeyhint="send" {% if not coach_ai %}disabled{% endif %}
+              placeholder="Ask {{ coach_name }}…" enterkeyhint="send" {% if not coach_ai %}disabled{% endif %}
               class="max-h-40 min-h-[48px] flex-1 resize-none rounded-3xl border border-line bg-surface px-4 py-3 text-base text-fg shadow-card outline-none placeholder:text-fg-subtle focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:opacity-60">{{ prefill }}</textarea>
     <button type="submit" aria-label="Send" {% if not coach_ai %}disabled{% endif %}
             class="press inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary shadow-sm disabled:opacity-50">
@@ -89,7 +89,7 @@
 <template id="bubbleAi"><div class="{{ bubble_ai }}"></div></template>
 <template id="bubbleMe"><div class="{{ bubble_me }}"></div></template>
 <template id="bubbleTyping">
-  <div class="{{ bubble_ai }} inline-flex w-auto items-center gap-1.5 self-start" role="status" aria-label="Coach is typing">
+  <div class="{{ bubble_ai }} inline-flex w-auto items-center gap-1.5 self-start" role="status" aria-label="{{ coach_name }} is typing">
     <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
   </div>
 </template>

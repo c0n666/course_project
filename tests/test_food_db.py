@@ -117,7 +117,7 @@ def test_find_by_barcode_fetches_once_then_uses_cache(app, monkeypatch):
 
     def fake_urlopen(req, timeout=None):
         calls.append(req.full_url)
-        assert req.get_header("User-agent").startswith("NutritionWorkout/")
+        assert req.get_header("User-agent").startswith("Kolos/")
         return _json_resp({"status": 1, "product": _off_product()})
 
     monkeypatch.setattr(food_db.urllib.request, "urlopen", fake_urlopen)

@@ -1,7 +1,7 @@
 {
-  "name": "Nutrition & Workout",
-  "short_name": "Nutrition",
-  "description": "Track meals, macros and workouts — with trainer guidance and AI diet analysis.",
+  "name": "Kolos — nutrition & training",
+  "short_name": "Kolos",
+  "description": "Track meals, macros and workouts — with trainer guidance and Zernia, your AI nutrition coach.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

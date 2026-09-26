@@ -33,7 +33,7 @@ OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
 OFF_FIELDS = "code,product_name,product_name_uk,brands,nutriments,countries_tags"
 # OFF asks every client to identify itself: AppName/Version (contact).
-USER_AGENT = os.environ.get("OFF_USER_AGENT", "").strip() or "NutritionWorkout/1.0 (course project)"
+USER_AGENT = os.environ.get("OFF_USER_AGENT", "").strip() or "Kolos/1.0 (course project)"
 TIMEOUT_SECONDS = 8
 
 MIN_REMOTE_QUERY = 3        # characters before we ask OFF

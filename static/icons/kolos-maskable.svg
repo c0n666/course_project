@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Kolos</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.15" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512"  fill="url(#bg)"/>
+  <rect width="512" height="512"  fill="url(#glow)"/>
+  <g transform="rotate(12 256 256) translate(256 256) scale(0.72) translate(-246 -262)">
+    <path d="M256 470 L256 170" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+    <path d="M212.3,330.0 C235.5,338.8 258.7,390.9 249.7,414.0 C226.5,405.2 203.3,353.1 212.3,330.0Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M212.3 330.0 L193.2 275.2" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M299.7,330.0 C308.7,353.1 285.5,405.2 262.3,414.0 C253.3,390.9 276.5,338.8 299.7,330.0Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M299.7 330.0 L318.8 275.2" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M213.6,277.2 C236.1,285.8 258.6,336.3 249.9,358.8 C227.4,350.2 204.9,299.7 213.6,277.2Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M213.6 277.2 L195.1 224.1" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M298.4,277.2 C307.1,299.7 284.6,350.2 262.1,358.8 C253.4,336.3 275.9,285.8 298.4,277.2Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M298.4 277.2 L316.9 224.1" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M215.8,227.3 C237.1,235.4 258.5,283.4 250.2,304.7 C228.9,296.6 207.5,248.6 215.8,227.3Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M215.8 227.3 L198.2 176.9" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M296.2,227.3 C304.5,248.6 283.1,296.6 261.8,304.7 C253.5,283.4 274.9,235.4 296.2,227.3Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M296.2 227.3 L313.8 176.9" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M218.8,180.3 C238.6,187.8 258.3,232.1 250.7,251.7 C230.9,244.2 211.2,199.9 218.8,180.3Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M218.8 180.3 L202.6 133.7" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M293.2,180.3 C300.8,199.9 281.1,244.2 261.3,251.7 C253.7,232.1 273.4,187.8 293.2,180.3Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M293.2 180.3 L309.4 133.7" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M222.8,138.1 C240.4,144.8 258.0,184.4 251.2,201.9 C233.6,195.2 216.0,155.6 222.8,138.1Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M222.8 138.1 L208.3 96.4" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M289.2,138.1 C296.0,155.6 278.4,195.2 260.8,201.9 C254.0,184.4 271.6,144.8 289.2,138.1Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M289.2 138.1 L303.7 96.4" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <path d="M256.0,80.0 C271.3,95.2 271.3,144.8 256.0,160.0 C240.7,144.8 240.7,95.2 256.0,80.0Z" fill="#fff" stroke="#0E8C63" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M256 80 L256 24" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+  </g>
+</svg>
