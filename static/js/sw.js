@@ -1,8 +1,8 @@
-/* Nutrition & Workout — service worker (served at /sw.js, scope "/").
+/* Kolos — service worker (served at /sw.js, scope "/").
    Pages: network-first, fall back to the last saved copy, then to the offline screen.
    Static files and CDN scripts: stale-while-revalidate.
    POST requests are never touched. Saved pages are wiped on sign-out. */
-const VERSION = 'v1';
+const VERSION = 'v2';  // bump to refresh cached app files on installed PWAs
 const STATIC_CACHE = `static-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
 const CDN_CACHE = `cdn-${VERSION}`;

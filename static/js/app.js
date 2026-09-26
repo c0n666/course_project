@@ -1,4 +1,4 @@
-/* Nutrition & Workout — native-like app behaviour.
+/* Kolos — native-like app behaviour.
    Sheets, action-sheet confirms, in-page views, collapsing title, submit feedback,
    install prompt, toasts and theme-aware chart defaults. No dependencies. */
 (function () {
@@ -416,6 +416,20 @@
     if (last && !document.querySelector('.fixed.inset-0:not(.hidden)')) dismissToast(last);
   });
 
+  /* JSON POST with the Flask-WTF CSRF token (from <meta name="csrf-token">) */
+  App.post = async function (url, data) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': token, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data || {}),
+      credentials: 'same-origin',
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status });
+    return body;
+  };
+
   /* Client-side toast (same look as server flash messages) */
   App.toast = function (message, kind = 'info') {
     let region = document.querySelector('.toast-region');
@@ -440,6 +454,43 @@
     region.appendChild(el);
     setupToast(el);
   };
+
+  /* =====================================================================
+     Water card: +ml / undo without a reload (plain POST forms without JS)
+     ===================================================================== */
+  function renderWater(card, state) {
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+    card.querySelector('[data-water-total]').textContent = fmt(state.total);
+    card.querySelector('[data-water-goal]').textContent = fmt(state.goal);
+    const ring = card.querySelector('[data-water-ring]');
+    ring.classList.remove('ring-progress');  // the load animation would pin the old offset
+    ring.style.transition = 'stroke-dashoffset .5s cubic-bezier(.2, .8, .2, 1), opacity .2s';
+    ring.style.strokeDashoffset = String(100 - state.pct);
+    ring.style.opacity = state.pct > 0 ? '1' : '0';
+    const undo = card.querySelector('[data-water-undo]');
+    if (undo) undo.disabled = !state.can_undo;
+  }
+  function setupWater() {
+    $$('form[data-water-form]').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();  // runs before the document-level spinner handler, which then skips
+        const btn = e.submitter || form.querySelector('button');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        haptic();
+        const data = Object.fromEntries(new FormData(form));
+        delete data.csrf_token;  // App.post sends it as a header
+        let state = null;
+        try {
+          state = await App.post(form.action, data);
+        } catch (err) {
+          App.toast(err.message || 'Could not save. Please try again.', 'error');
+        }
+        btn.disabled = false;
+        if (state) renderWater(form.closest('[data-water]'), state);  // also sets Undo's disabled state
+      });
+    });
+  }
 
   /* =====================================================================
      Offline support: service worker, offline pill, no POST while offline
@@ -484,6 +535,7 @@
     syncThemeControls();
     updateOnlineState();
     setupSegments();
+    setupWater();
     setupLargeTitle();
     setupSwipeNav();
     if (isIOS() && !isStandalone()) revealInstall();

@@ -1,28 +1,20 @@
 """
-AI nutrition analysis: aggregates FoodLog data, builds a prompt, and persists Report + Recommendations.
-
-Set GEMINI_API_KEY in the environment to call Google Gemini; otherwise a rule-based
-analyzer uses real macro/micronutrient deficits from the database.
+Nutrition analytics shared by the AI coach: aggregates FoodLog data into daily averages,
+target adherence and micronutrient deficits, plus a deterministic rule-based analysis
+used when the AI coach is unavailable (see coach_agent.py).
 """
 
 from __future__ import annotations
 
-import json
-import logging
-import os
-import re
-import urllib.error
-import urllib.request
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.orm import joinedload
 
-from models import FoodLog, Goal, Micronutrient, Product, ProductMicronutrient, Profile, Recommendation, Report, User, db
-from nutrition import GOAL_LABELS, calculate_bmr, calculate_daily_targets, calculate_tdee
+from models import FoodLog, Goal, Micronutrient, Product, ProductMicronutrient, Profile
+from nutrition import calculate_bmr, calculate_daily_targets, calculate_tdee
 
-logger = logging.getLogger(__name__)
 
 DAILY_MICRONUTRIENT_TARGETS: dict[str, float] = {
     "Potassium": 3400,
@@ -38,12 +30,6 @@ DAILY_MICRONUTRIENT_TARGETS: dict[str, float] = {
 }
 
 IRON_TARGET_MALE = 8.0
-# gemini-1.5-flash has been shut down; override with GEMINI_MODEL if needed.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
-GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent"
-)
 
 
 @dataclass
@@ -219,56 +205,6 @@ def collect_nutrition_context(user_id: int, days: int = 7) -> NutritionContext:
     )
 
 
-def build_analysis_prompt(ctx: NutritionContext) -> str:
-    """Text prompt for an LLM (or logging) describing the athlete's nutrition window."""
-    user = db.session.get(User, ctx.user_id)
-    email = user.email if user else f"user#{ctx.user_id}"
-    goal_label = GOAL_LABELS.get(ctx.goal.goal_type, "—") if ctx.goal else "—"
-    weight = float(ctx.profile.weight) if ctx.profile and ctx.profile.weight else 0
-    target_weight = float(ctx.goal.target_weight) if ctx.goal else None
-
-    micro_lines = [
-        f"  - {m['name']}: {m['daily_avg']} {m['unit']}/day ({m['percent_of_target']}% of RDA)"
-        for m in ctx.micronutrient_daily_avg
-    ]
-
-    return f"""You are a sports nutrition AI assistant. Analyze the athlete's last {ctx.days} days of food logs.
-
-Athlete: {email}
-Weight: {weight} kg | Goal: {goal_label} | Target weight: {target_weight or '—'} kg
-BMR: {ctx.bmr} kcal | TDEE: {ctx.tdee} kcal
-Days with logged meals: {ctx.days_with_logs} / {ctx.days}
-
-Daily targets (kcal / protein / fat / carbs g):
-  {ctx.targets.get('calories', '—')} / {ctx.targets.get('proteins', '—')} / {ctx.targets.get('fats', '—')} / {ctx.targets.get('carbs', '—')}
-
-Actual daily averages:
-  Calories: {ctx.daily_averages.get('calories', 0)} kcal ({ctx.adherence.get('calories', 0)}% of target)
-  Protein: {ctx.daily_averages.get('proteins', 0)} g ({ctx.adherence.get('proteins', 0)}%)
-  Fat: {ctx.daily_averages.get('fats', 0)} g ({ctx.adherence.get('fats', 0)}%)
-  Carbs: {ctx.daily_averages.get('carbs', 0)} g ({ctx.adherence.get('carbs', 0)}%)
-
-Micronutrients (daily average vs reference):
-{chr(10).join(micro_lines)}
-
-Macro adherence (% of target): calories {ctx.adherence.get('calories', 0)}%, protein {ctx.adherence.get('proteins', 0)}%, fat {ctx.adherence.get('fats', 0)}%, carbs {ctx.adherence.get('carbs', 0)}%.
-
-Rules for recommendations (Ukrainian):
-- Tip 1 MUST address calories or macros (protein if <85%, or calorie surplus during weight_loss).
-- Tip 2: second macro issue (fats/carbs) if relevant.
-- Tip 3: worst micronutrient deficit only if macros are acceptable.
-
-Detected issues: {json.dumps(ctx.deficits, ensure_ascii=False)}
-
-Respond in Ukrainian. Return ONLY valid JSON:
-{{
-  "ai_grade": "A+" | "A" | "B+" | "B" | "B-" | "C+" | "C" | "C-" | "D",
-  "nutrition_summary": "2-4 sentences: calorie target adherence, protein/fat/carbs balance, then micronutrients",
-  "recommendations": ["macro tip", "macro or micro tip", "micro tip if needed"]
-}}
-"""
-
-
 def _score_from_context(ctx: NutritionContext) -> float:
     if ctx.days_with_logs == 0:
         return 35.0
@@ -383,7 +319,7 @@ def _build_recommendations(ctx: NutritionContext) -> list[str]:
     return tips[:3]
 
 
-def _rule_based_analysis(ctx: NutritionContext) -> dict[str, Any]:
+def rule_based_analysis(ctx: NutritionContext) -> dict[str, Any]:
     """Deterministic analyzer that mimics AI output from real deficits."""
     score = _score_from_context(ctx)
     grade = _grade_from_score(score)
@@ -433,147 +369,3 @@ def _rule_based_analysis(ctx: NutritionContext) -> dict[str, Any]:
     )
 
     return {"ai_grade": grade, "nutrition_summary": summary, "recommendations": tips}
-
-
-def _parse_ai_json(text: str) -> dict[str, Any] | None:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            return None
-        try:
-            data = json.loads(match.group())
-        except json.JSONDecodeError:
-            return None
-
-    if not isinstance(data, dict):
-        return None
-    recs = data.get("recommendations")
-    if not isinstance(recs, list) or len(recs) < 1:
-        return None
-    return {
-        "ai_grade": str(data.get("ai_grade", "B")).strip()[:10],
-        "nutrition_summary": str(data.get("nutrition_summary", "")).strip(),
-        "recommendations": [str(r).strip() for r in recs[:3]],
-    }
-
-
-def _call_gemini(prompt: str) -> dict[str, Any] | None:
-    """Call Gemini; return None on any HTTP, network or parsing error (caller falls back)."""
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        return None
-
-    payload = json.dumps(
-        {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.4,
-                # 2.5+ models spend part of this budget on thinking tokens.
-                "maxOutputTokens": 4096,
-                "responseMimeType": "application/json",
-            },
-        }
-    ).encode("utf-8")
-
-    # Key goes in a header, not the URL, so it never ends up in logs or error messages.
-    req = urllib.request.Request(
-        GEMINI_URL,
-        data=payload,
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-        candidates = body.get("candidates") or []
-        if not candidates:
-            return None
-        parts = (candidates[0].get("content") or {}).get("parts") or []
-        text = "".join(
-            p.get("text", "") for p in parts if isinstance(p, dict) and not p.get("thought")
-        )
-        return _parse_ai_json(text) if text else None
-    except urllib.error.HTTPError as exc:
-        logger.warning("Gemini API returned HTTP %s; using rule-based analyzer.", exc.code)
-    except Exception as exc:  # network errors, timeouts, malformed responses
-        logger.warning("Gemini API call failed (%s); using rule-based analyzer.", type(exc).__name__)
-    return None
-
-
-def analyze_nutrition(ctx: NutritionContext, prompt: str | None = None) -> dict[str, Any]:
-    """Run Gemini for summary/grade if configured; recommendations always prioritized locally."""
-    prompt = prompt or build_analysis_prompt(ctx)
-    tips = _build_recommendations(ctx)
-    gemini_result = _call_gemini(prompt)
-    if gemini_result and gemini_result.get("nutrition_summary"):
-        return {
-            "ai_grade": gemini_result["ai_grade"],
-            "nutrition_summary": gemini_result["nutrition_summary"],
-            "recommendations": tips,
-            "engine": "gemini",
-        }
-    result = _rule_based_analysis(ctx)
-    result["engine"] = "local"
-    return result
-
-
-def _archive_pending_recommendations(user_id: int) -> int:
-    """Archive stale pending recommendations before issuing a new AI report."""
-    pending = (
-        Recommendation.query.join(Report)
-        .filter(Report.user_id == user_id, Recommendation.status == "pending")
-        .all()
-    )
-    for rec in pending:
-        rec.status = "archived"
-    if pending:
-        db.session.flush()
-    return len(pending)
-
-
-def generate_ai_report(user_id: int, days: int = 7) -> dict[str, Any]:
-    """
-    Analyze the athlete's nutrition for the last `days` days, persist Report + 3 pending Recommendations.
-    Returns report metadata for the UI.
-    """
-    archived_count = _archive_pending_recommendations(user_id)
-    ctx = collect_nutrition_context(user_id, days=days)
-    prompt = build_analysis_prompt(ctx)
-    analysis = analyze_nutrition(ctx, prompt)
-
-    report = Report(
-        user_id=user_id,
-        nutrition_summary=analysis["nutrition_summary"],
-        ai_grade=analysis["ai_grade"],
-    )
-    db.session.add(report)
-    db.session.flush()
-
-    recommendations: list[Recommendation] = []
-    for idx, tip in enumerate(analysis["recommendations"][:3], start=1):
-        rec = Recommendation(
-            report_id=report.id,
-            content=f"[AI #{idx}] {tip}",
-            status="pending",
-        )
-        db.session.add(rec)
-        recommendations.append(rec)
-
-    db.session.commit()
-
-    return {
-        "report_id": report.id,
-        "ai_grade": report.ai_grade,
-        "nutrition_summary": report.nutrition_summary,
-        "recommendation_ids": [r.id for r in recommendations],
-        "engine": analysis["engine"],
-        "days_analyzed": days,
-        "days_with_logs": ctx.days_with_logs,
-        "archived_pending": archived_count,
-    }

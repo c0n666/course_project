@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -9,16 +10,22 @@ from datetime import date, datetime, timedelta
 from functools import wraps
 
 import click
-from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
-from sqlalchemy import event
+from markupsafe import Markup, escape
+from sqlalchemy import event, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.pool import NullPool
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import (
+    SOURCE_QUICK,
+    SOURCE_SEED,
+    SOURCE_USER,
+    CoachMessage,
+    FavoriteProduct,
     FoodLog,
     Goal,
     Micronutrient,
@@ -28,11 +35,37 @@ from models import (
     Recommendation,
     Report,
     User,
+    WaterLog,
+    WeightLog,
     Workout,
     db,
 )
-from ai_service import generate_ai_report
-from nutrition import calculate_daily_targets, goal_progress, predict_weight_trend
+import food_db
+from coach_agent import (
+    APP_NAME,
+    CHAT_MAX_CHARS,
+    COACH_NAME,
+    ChatLimitError,
+    CoachError,
+    chat_history,
+    coach_available,
+    coach_chat,
+    generate_coach_report,
+    latest_coach_report,
+)
+from llm_providers import ProviderError
+from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
+from nutrition import (
+    auto_water_goal_ml,
+    calculate_daily_targets,
+    goal_progress,
+    logging_streak,
+    predict_weight_trend,
+    water_goal_ml,
+    water_total_ml,
+    weekly_checkin,
+    weight_summary,
+)
 
 logger = logging.getLogger(__name__)
 csrf = CSRFProtect()
@@ -109,7 +142,10 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(_exc):
-        flash("Your session expired or the request was invalid. Refresh the page and try again.", "error")
+        message = "Your session expired or the request was invalid. Refresh the page and try again."
+        if request.is_json or request.accept_mimetypes.best == "application/json":
+            return jsonify(error=message), 400  # fetch() callers need JSON, not a redirect
+        flash(message, "error")
         return redirect(url_for("index"))
 
     @app.teardown_appcontext
@@ -118,6 +154,12 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     with app.app_context():
         _enable_wal_on_existing_db()
+
+    app.add_template_filter(coach_markup, "coach_markup")
+
+    @app.context_processor
+    def _brand():
+        return {"app_name": APP_NAME, "coach_name": COACH_NAME}
 
     login_manager = LoginManager(app)
     login_manager.login_view = "login"
@@ -178,6 +220,143 @@ def food_logs_for_day(user_id: int, day: date | None = None) -> list[FoodLog]:
         .order_by(FoodLog.id.desc())
         .all()
     )
+
+
+def product_payload(product: Product, favorite_ids=frozenset(), portion: float | None = None) -> dict:
+    """JSON-friendly product for the Log Food picker (values per 100 g)."""
+    return {
+        "id": product.id,
+        "name": product.name,
+        "brand": product.brand,
+        "label": product.display_name,
+        "kcal": float(product.calories_per_100g),
+        "p": float(product.proteins),
+        "f": float(product.fats),
+        "c": float(product.carbs),
+        "source": product.source,
+        "terms": product.search_terms or product.name.lower(),
+        "favorite": product.id in favorite_ids,
+        "portion": portion,
+    }
+
+
+def favorite_ids_for(user_id: int) -> set[int]:
+    return {pid for (pid,) in db.session.query(FavoriteProduct.product_id).filter_by(user_id=user_id)}
+
+
+def recent_products_for(user_id: int, limit: int = 12) -> list[tuple[Product, float]]:
+    """Most recently logged distinct products with the portion used last time."""
+    last_ids = (
+        db.session.query(func.max(FoodLog.id))
+        .filter(FoodLog.user_id == user_id)
+        .group_by(FoodLog.product_id)
+        .order_by(func.max(FoodLog.id).desc())
+        .limit(limit * 2)  # headroom for quick-add entries filtered out below
+        .all()
+    )
+    logs = (
+        FoodLog.query.options(joinedload(FoodLog.product))
+        .filter(FoodLog.id.in_([i for (i,) in last_ids]))
+        .order_by(FoodLog.id.desc())
+        .all()
+    )
+    return [(log.product, float(log.portion_grams)) for log in logs if log.product.source != SOURCE_QUICK][:limit]
+
+
+def meal_counts_for_day(user_id: int, day: date) -> dict[str, dict]:
+    """{meal_type: {"count", "kcal"}} for one day — used to offer copying a previous day."""
+    out: dict[str, dict] = {}
+    for log in food_logs_for_day(user_id, day):
+        item = out.setdefault(log.meal_type, {"count": 0, "kcal": 0.0})
+        item["count"] += 1
+        item["kcal"] += log.calories
+    return out
+
+
+def water_state(user_id: int, day: date, profile: Profile | None) -> dict:
+    """Water card data: total, goal, ring percent and whether there is an entry to undo."""
+    total = water_total_ml(user_id, day)
+    goal = water_goal_ml(profile)
+    return {
+        "total": total,
+        "goal": goal,
+        "pct": round(min(100.0, total / goal * 100), 1) if goal else 0.0,
+        "can_undo": WaterLog.query.filter_by(user_id=user_id, date=day).first() is not None,
+    }
+
+
+def record_weight(user_id: int, day: date, weight: float) -> None:
+    """Upsert the weigh-in for a day; the newest weigh-in also becomes profile.weight."""
+    entry = WeightLog.query.filter_by(user_id=user_id, date=day).first()
+    if entry:
+        entry.weight_kg = weight
+    else:
+        db.session.add(WeightLog(user_id=user_id, date=day, weight_kg=weight))
+    newer = WeightLog.query.filter(WeightLog.user_id == user_id, WeightLog.date > day).first()
+    if newer is None:
+        profile = Profile.query.filter_by(user_id=user_id).first()
+        if profile is None:
+            profile = Profile(user_id=user_id)
+            db.session.add(profile)
+        profile.weight = weight
+
+
+_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_BULLET = re.compile(r"^\s*(?:[-*•])\s+(.*)$")
+_NUMBERED = re.compile(r"^\s*\d+[.)]\s+(.*)$")
+
+
+def coach_markup(text: str) -> Markup:
+    """Render the coach's plain-text reply as safe HTML: paragraphs, "- " / "1." lists and **bold**.
+    Everything is escaped first, so model output can never inject markup."""
+    def inline(line: str) -> str:
+        return _BOLD.sub(r"<strong>\1</strong>", str(escape(line.strip().lstrip("#").strip())))
+
+    html, list_tag, paragraph = [], None, []
+
+    def flush_paragraph():
+        if paragraph:
+            html.append("<p>" + "<br>".join(paragraph) + "</p>")
+            paragraph.clear()
+
+    def close_list():
+        nonlocal list_tag
+        if list_tag:
+            html.append(f"</{list_tag}>")
+            list_tag = None
+
+    for line in (text or "").splitlines():
+        bullet, numbered = _BULLET.match(line), _NUMBERED.match(line)
+        if bullet or numbered:
+            flush_paragraph()
+            tag = "ul" if bullet else "ol"
+            if list_tag != tag:
+                close_list()
+                html.append(f"<{tag}>")
+                list_tag = tag
+            html.append(f"<li>{inline((bullet or numbered).group(1))}</li>")
+        elif line.strip():
+            close_list()
+            paragraph.append(inline(line))
+        else:
+            close_list()
+            flush_paragraph()
+    close_list()
+    flush_paragraph()
+    return Markup("".join(html))
+
+
+def chat_message_payload(message) -> dict:
+    return {
+        "id": message.id,
+        "role": message.role,
+        "html": str(coach_markup(message.content)) if message.role == "assistant" else None,
+        "text": message.content if message.role == "user" else None,
+    }
+
+
+def wants_json() -> bool:
+    return request.is_json or request.accept_mimetypes.best == "application/json"
 
 
 def daily_nutrition_summary(user_id: int, day: date | None = None) -> dict:
@@ -256,17 +435,6 @@ def get_pending_recommendation_for_trainer(rec_id: int, trainer_id: int) -> Reco
         return None
     client = get_trainer_client(trainer_id, rec.report.user_id)
     return rec if client else None
-
-
-def latest_ai_report(user_id: int) -> Report | None:
-    return (
-        Report.query.filter(
-            Report.user_id == user_id,
-            Report.ai_grade.isnot(None),
-        )
-        .order_by(Report.created_at.desc())
-        .first()
-    )
 
 
 def get_trainer_client(trainer_id: int, client_id: int) -> User | None:
@@ -563,7 +731,8 @@ def register_routes(app: Flask) -> None:
 
         return render_template(
             "dashboard.html",
-            latest_report=latest_ai_report(current_user.id),
+            coach_report=latest_coach_report(current_user.id),
+            coach_ai=coach_available(),
             calories_in=round(calories_in, 1),
             calories_burned=round(calories_burned, 1),
             net_calories=round(calories_in - calories_burned, 1),
@@ -585,7 +754,91 @@ def register_routes(app: Flask) -> None:
             chart_calories_json=json.dumps(trend),
             chart_weight_json=json.dumps(weight_trend),
             weight_meta=weight_trend.get("meta", {}),
+            copy_from_meals=meal_counts_for_day(current_user.id, selected_date - timedelta(days=1)),
+            water=water_state(current_user.id, selected_date, profile),
+            streak=logging_streak(current_user.id, today),
+            weight_log=weight_summary(current_user.id),
+            checkin=(
+                weekly_checkin(current_user.id, profile, active_goal)
+                if profile_complete(profile)
+                else None
+            ),
         )
+
+    @app.route("/coach/chat", methods=["GET", "POST"])
+    @login_required
+    def coach_chat_page():
+        if current_user.role == "trainer":
+            return redirect(url_for("trainer_dashboard"))
+        if request.method == "GET":
+            return render_template(
+                "coach_chat.html",
+                messages=chat_history(current_user.id),
+                coach_ai=coach_available(),
+                max_chars=CHAT_MAX_CHARS,
+                prefill=request.args.get("q", "")[:CHAT_MAX_CHARS],
+            )
+
+        data = request.get_json(silent=True) or request.form
+        message = str(data.get("message", "")).strip()
+        error, status = None, 200
+        if not message or len(message) > CHAT_MAX_CHARS:
+            error, status = f"Write a message of up to {CHAT_MAX_CHARS} characters.", 400
+        elif not coach_available():
+            error, status = f"{COACH_NAME} is not connected yet.", 503
+        else:
+            try:
+                asked, answered = coach_chat(current_user.id, message)
+            except ChatLimitError as exc:
+                error, status = str(exc), 429
+            except (CoachError, ProviderError) as exc:
+                app.logger.warning("coach chat failed: %s", exc)
+                db.session.rollback()
+                error, status = f"{COACH_NAME} couldn't answer right now. Please try again in a minute.", 502
+
+        if wants_json():
+            if error:
+                return jsonify(error=error), status
+            return jsonify(user=chat_message_payload(asked), reply=chat_message_payload(answered))
+        if error:
+            flash(error, "error")
+        return redirect(url_for("coach_chat_page") + "#latest")
+
+    @app.route("/coach/chat/clear", methods=["POST"])
+    @login_required
+    def clear_coach_chat():
+        CoachMessage.query.filter_by(user_id=current_user.id).delete()
+        db_commit_with_retry()
+        flash("Chat cleared.", "success")
+        return redirect(url_for("coach_chat_page"))
+
+    @app.route("/targets/adaptive", methods=["POST"])
+    @login_required
+    def apply_adaptive_target():
+        back = url_for("dashboard") + "#insights"
+        profile = Profile.query.filter_by(user_id=current_user.id).first()
+        if request.form.get("action") == "reset":
+            if profile and profile.calorie_target_override:
+                profile.calorie_target_override = None
+                db_commit_with_retry()
+                flash("Back to the calculated calorie target.", "success")
+            return redirect(back)
+
+        if not profile_complete(profile):
+            flash("Complete your profile first.", "error")
+            return redirect(url_for("profile_page"))
+        # Recomputed on the server: the form only says "apply", never the number.
+        checkin = weekly_checkin(current_user.id, profile, get_active_goal(current_user.id))
+        if not checkin["ready"]:
+            flash("Not enough data yet for a check-in.", "error")
+            return redirect(back)
+        profile.calorie_target_override = checkin["suggested_target"]
+        try:
+            db_commit_with_retry()
+            flash(f"New daily target: {checkin['suggested_target']} kcal.", "success")
+        except OperationalError:
+            flash("Could not save the target. Please try again.", "error")
+        return redirect(back)
 
     @app.route("/dashboard/ai-report", methods=["POST"])
     @login_required
@@ -599,20 +852,19 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("profile_page"))
 
         try:
-            result = generate_ai_report(current_user.id, days=7)
-            flash(
-                f"AI report ready: grade {result['ai_grade']}. "
-                f"Three recommendations were sent to your trainer for approval.",
-                "success",
-            )
-        except Exception:
+            report = generate_coach_report(current_user.id, days=7)
+            if report.engine == "local":
+                flash(f"Basic analysis ready ({COACH_NAME} is not connected).", "info")
+            else:
+                flash(f"{COACH_NAME} has finished your analysis.", "success")
+        except OperationalError:
             db.session.rollback()
-            flash("Could not generate the AI report. Please try again later.", "error")
+            flash("Could not save the analysis. Please try again.", "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
         )
-        return redirect(url_for("dashboard", date=selected.isoformat()))
+        return redirect(url_for("dashboard", date=selected.isoformat()) + "#coach")
 
     @app.route(
         "/recommendation/delete/<int:rec_id>",
@@ -663,10 +915,23 @@ def register_routes(app: Flask) -> None:
                 flash("Enter a valid current weight.", "error")
                 return redirect(url_for("profile_page"))
 
+            water_goal = None
+            raw_water_goal = request.form.get("water_goal_ml", "").strip()
+            if raw_water_goal:
+                water_goal = parse_number(raw_water_goal, 500, 6000, integer=True)
+                if water_goal is None:
+                    flash("Water goal must be a whole number between 500 and 6000 ml.", "error")
+                    return redirect(url_for("profile_page"))
+
             if profile is None:
                 profile = Profile(user_id=current_user.id)
                 db.session.add(profile)
+            old_weight = float(profile.weight) if profile.weight is not None else None
             profile.weight = new_weight
+            if old_weight != new_weight:
+                record_weight(current_user.id, date.today(), new_weight)
+            if "water_goal_ml" in request.form:
+                profile.water_goal_ml = water_goal
             new_goal_type = request.form.get("goal_type", "").strip()
             new_target = request.form.get("target_weight", "")
 
@@ -680,6 +945,8 @@ def register_routes(app: Flask) -> None:
                 if active_goal and active_goal.goal_type == new_goal_type:
                     active_goal.target_weight = target_val
                 else:
+                    # A check-in target was tuned for the old goal.
+                    profile.calorie_target_override = None
                     if active_goal:
                         active_goal.status = "completed"
                     db.session.add(
@@ -713,16 +980,50 @@ def register_routes(app: Flask) -> None:
         return render_template(
             "profile.html",
             profile=profile,
+            auto_water_goal=auto_water_goal_ml(profile),
             active_goal=active_goal,
             targets=targets,
             goal_progress=progress,
         )
 
+    def _log_food_context(selected_date: date, preselect_id: int | None = None,
+                          preselect_grams: float | None = None) -> dict:
+        uid = current_user.id
+        # Shared catalogue + the athlete's own foods; quick-add entries are not browsable.
+        products = (
+            Product.visible_to(uid)
+            .filter(Product.source != SOURCE_QUICK)
+            .order_by(Product.name)
+            .all()
+        )
+        favorite_ids = favorite_ids_for(uid)
+        recent = recent_products_for(uid)
+        favorites = [p for p in products if p.id in favorite_ids]
+        my_products = [p for p in products if p.source == SOURCE_USER and p.created_by_id == uid]
+        preselected = db.session.get(Product, preselect_id) if preselect_id else None
+        if preselected and (not preselected.is_visible_to(uid) or preselected.source == SOURCE_QUICK):
+            preselected = None
+        # Instant client-side search covers the built-in and personal catalogue;
+        # cached Open Food Facts items are found through /api/products/search.
+        local_catalogue = [p for p in products if p.source != "off" or p.id in favorite_ids]
+        return {
+            "products": products,
+            "today": date.today(),
+            "selected_date": selected_date,
+            "date_nav": date_nav_context("log_food", selected_date),
+            "food_logs": food_logs_for_day(uid, selected_date),
+            "recent_products": [product_payload(p, favorite_ids, portion) for p, portion in recent],
+            "favorite_products": [product_payload(p, favorite_ids) for p in favorites],
+            "my_products": [product_payload(p, favorite_ids) for p in my_products],
+            "catalogue": [product_payload(p, favorite_ids) for p in local_catalogue],
+            "preselected": product_payload(preselected, favorite_ids, preselect_grams) if preselected else None,
+            "copy_from_date": selected_date - timedelta(days=1),
+            "copy_from_meals": meal_counts_for_day(uid, selected_date - timedelta(days=1)),
+        }
+
     @app.route("/log-food", methods=["GET", "POST"])
     @login_required
     def log_food():
-        products = Product.query.order_by(Product.name).all()
-        today = date.today()
         selected_date = parse_selected_date(
             request.form.get("date") if request.method == "POST" else request.args.get("date")
         )
@@ -740,19 +1041,14 @@ def register_routes(app: Flask) -> None:
             elif meal_type not in MEAL_TYPES:
                 error = "Choose a valid meal type."
             product = db.session.get(Product, int(product_id)) if product_id.isdigit() else None
+            if product and not product.is_visible_to(current_user.id):
+                product = None  # another user's private food
             if error is None and not product:
                 error = "Please select a product."
 
             if error:
                 flash(error, "error")
-                return render_template(
-                    "log_food.html",
-                    products=products,
-                    today=today,
-                    selected_date=selected_date,
-                    date_nav=date_nav_context("log_food", selected_date),
-                    food_logs=food_logs_for_day(current_user.id, selected_date),
-                ), 400
+                return render_template("log_food.html", **_log_food_context(selected_date)), 400
 
             entry = FoodLog(
                 user_id=current_user.id,
@@ -769,14 +1065,230 @@ def register_routes(app: Flask) -> None:
                 flash("Could not save the entry. Please try again.", "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
 
+        # ?product=<id>&grams=<g>&meal=<type> pre-fills the form (used by coach suggestions).
+        preselect = request.args.get("product", "")
         return render_template(
             "log_food.html",
-            products=products,
-            today=today,
-            selected_date=selected_date,
-            date_nav=date_nav_context("log_food", selected_date),
-            food_logs=food_logs_for_day(current_user.id, selected_date),
+            **_log_food_context(
+                selected_date,
+                int(preselect) if preselect.isdigit() else None,
+                parse_number(request.args.get("grams"), 1, 2000),
+            ),
         )
+
+    # ------------------------------------------------------------------ food database API
+
+    @app.route("/api/products/search")
+    @login_required
+    def api_product_search():
+        query = request.args.get("q", "").strip()[:80]
+        remote = request.args.get("remote", "1") != "0"
+        results = food_db.search_products(query, current_user.id, limit=25, remote=remote)
+        favorite_ids = favorite_ids_for(current_user.id)
+        return jsonify(results=[product_payload(p, favorite_ids) for p in results])
+
+    @app.route("/api/products/barcode/<code>")
+    @login_required
+    def api_product_barcode(code: str):
+        if not food_db.normalize_barcode(code):
+            return jsonify(error="That doesn't look like a barcode."), 400
+        if food_db.is_blocked_barcode(code):
+            return jsonify(error="Products from Russia and Belarus are not supported."), 422
+        product = food_db.find_by_barcode(code, current_user.id)
+        if not product:
+            return jsonify(error="Product not found."), 404
+        return jsonify(product=product_payload(product, favorite_ids_for(current_user.id)))
+
+    @app.route("/favorites/<int:product_id>/toggle", methods=["POST"])
+    @login_required
+    def toggle_favorite(product_id: int):
+        product = db.session.get(Product, product_id)
+        if not product or not product.is_visible_to(current_user.id) or product.source == SOURCE_QUICK:
+            return jsonify(error="Product not found."), 404
+        fav = FavoriteProduct.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+        if fav:
+            db.session.delete(fav)
+        else:
+            db.session.add(FavoriteProduct(user_id=current_user.id, product_id=product_id))
+        db_commit_with_retry()
+        return jsonify(favorite=fav is None)
+
+    @app.route("/products/new", methods=["POST"])
+    @login_required
+    def create_product():
+        selected = parse_selected_date(request.form.get("date"))
+        back = url_for("log_food", date=selected.isoformat())
+        name = request.form.get("name", "").strip()[:255]
+        brand = request.form.get("brand", "").strip()[:255] or None
+        kcal = parse_number(request.form.get("calories_per_100g"), 0, 950)
+        macros = [parse_number(request.form.get(f) or "0", 0, 100) for f in ("proteins", "fats", "carbs")]
+        raw_barcode = request.form.get("barcode", "").strip()
+        barcode = food_db.normalize_barcode(raw_barcode)
+
+        error = None
+        if not name:
+            error = "Give the food a name."
+        elif kcal is None:
+            error = "Enter calories per 100 g (0–950)."
+        elif any(m is None for m in macros):
+            error = "Protein, fat and carbs must be between 0 and 100 g."
+        elif raw_barcode and not barcode:
+            error = "That doesn't look like a barcode."
+        elif barcode and Product.query.filter_by(barcode=barcode).first():
+            error = "A product with this barcode already exists."
+        if error:
+            flash(error, "error")
+            return redirect(back)
+
+        product = Product(
+            name=name, brand=brand, barcode=barcode,
+            calories_per_100g=kcal, proteins=macros[0], fats=macros[1], carbs=macros[2],
+            source=SOURCE_USER, created_by_id=current_user.id,
+        )
+        product.refresh_search_terms()
+        db.session.add(product)
+        db_commit_with_retry()
+        flash(f"Saved \u201c{name}\u201d to My foods.", "success")
+        return redirect(url_for("log_food", date=selected.isoformat(), product=product.id))
+
+    @app.route("/log-food/quick", methods=["POST"])
+    @login_required
+    def quick_add():
+        selected = parse_selected_date(request.form.get("date"))
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("log_food", date=selected.isoformat())
+        kcal = parse_number(request.form.get("calories"), 1, 5000)
+        meal_type = request.form.get("meal_type", "")
+        macros = [parse_number(request.form.get(f) or "0", 0, 500) for f in ("proteins", "fats", "carbs")]
+        if kcal is None:
+            flash("Enter calories between 1 and 5000.", "error")
+            return redirect(back)
+        if meal_type not in MEAL_TYPES:
+            flash("Choose a valid meal type.", "error")
+            return redirect(back)
+        if any(m is None for m in macros):
+            flash("Macros must be between 0 and 500 g.", "error")
+            return redirect(back)
+
+        # A private one-off product logged as a 100 g portion keeps FoodLog unchanged.
+        name = request.form.get("name", "").strip()[:80] or "Quick add"
+        product = Product(
+            name=name, calories_per_100g=kcal, proteins=macros[0], fats=macros[1], carbs=macros[2],
+            source=SOURCE_QUICK, created_by_id=current_user.id,
+        )
+        product.refresh_search_terms()
+        db.session.add(product)
+        db.session.flush()
+        db.session.add(FoodLog(user_id=current_user.id, date=selected, meal_type=meal_type,
+                               product_id=product.id, portion_grams=100))
+        try:
+            db_commit_with_retry()
+            flash(f"Added {kcal:.0f} kcal to {meal_type}.", "success")
+        except OperationalError:
+            flash("Could not save the entry. Please try again.", "error")
+        return redirect(back)
+
+    @app.route("/log-food/copy", methods=["POST"])
+    @login_required
+    def copy_meals():
+        to_date = parse_selected_date(request.form.get("date"))
+        from_date = parse_date_strict(request.form.get("from_date")) or (to_date - timedelta(days=1))
+        meal_type = request.form.get("meal_type", "all")
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("log_food", date=to_date.isoformat())
+        if meal_type != "all" and meal_type not in MEAL_TYPES:
+            flash("Choose a valid meal type.", "error")
+            return redirect(back)
+        if from_date == to_date:
+            flash("Pick a different day to copy from.", "error")
+            return redirect(back)
+
+        query = FoodLog.query.filter_by(user_id=current_user.id, date=from_date)
+        if meal_type != "all":
+            query = query.filter_by(meal_type=meal_type)
+        source_logs = query.order_by(FoodLog.id).all()
+        if not source_logs:
+            flash("Nothing to copy from that day.", "info")
+            return redirect(back)
+        for log in source_logs:
+            db.session.add(FoodLog(user_id=current_user.id, date=to_date, meal_type=log.meal_type,
+                                   product_id=log.product_id, portion_grams=log.portion_grams))
+        try:
+            db_commit_with_retry()
+            what = "meals" if meal_type == "all" else meal_type
+            noun = "item" if len(source_logs) == 1 else "items"
+            flash(f"Copied {len(source_logs)} {noun} ({what}) from {from_date.strftime('%b %d')}.", "success")
+        except OperationalError:
+            flash("Could not copy. Please try again.", "error")
+        return redirect(back)
+
+    def _water_response(selected: date, message: str | None = None, error: str | None = None):
+        if wants_json():
+            if error:
+                return jsonify(error=error), 400
+            profile = Profile.query.filter_by(user_id=current_user.id).first()
+            return jsonify(water_state(current_user.id, selected, profile))
+        if error or message:
+            flash(error or message, "error" if error else "success")
+        return redirect(url_for("dashboard", date=selected.isoformat()))
+
+    @app.route("/water", methods=["POST"])
+    @login_required
+    def add_water():
+        data = request.get_json(silent=True) or request.form
+        selected = parse_selected_date(data.get("date"))
+        if selected > date.today():
+            return _water_response(date.today(), error="You can't log water for a future day.")
+        amount = parse_number(data.get("amount_ml"), 50, 2000, integer=True)
+        if amount is None:
+            return _water_response(selected, error="Enter between 50 and 2000 ml.")
+        db.session.add(WaterLog(user_id=current_user.id, date=selected, amount_ml=amount))
+        try:
+            db_commit_with_retry()
+        except OperationalError:
+            return _water_response(selected, error="Could not save. Please try again.")
+        return _water_response(selected, message=f"Added {amount} ml of water.")
+
+    @app.route("/water/undo", methods=["POST"])
+    @login_required
+    def undo_water():
+        data = request.get_json(silent=True) or request.form
+        selected = parse_selected_date(data.get("date"))
+        entry = (
+            WaterLog.query.filter_by(user_id=current_user.id, date=selected)
+            .order_by(WaterLog.id.desc())
+            .first()
+        )
+        if not entry:
+            return _water_response(selected, error="Nothing to undo for this day.")
+        amount = entry.amount_ml
+        db.session.delete(entry)
+        try:
+            db_commit_with_retry()
+        except OperationalError:
+            return _water_response(selected, error="Could not undo. Please try again.")
+        return _water_response(selected, message=f"Removed {amount} ml.")
+
+    @app.route("/weight", methods=["POST"])
+    @login_required
+    def log_weight():
+        next_url = request.form.get("next", "").strip()
+        back = next_url if is_safe_local_path(next_url) else url_for("dashboard")
+        weight = parse_number(request.form.get("weight_kg"), 30, 300)
+        day = parse_date_strict(request.form.get("date")) or date.today()
+        if weight is None:
+            flash("Enter a weight between 30 and 300 kg.", "error")
+            return redirect(back)
+        if day > date.today():
+            flash("You can't log weight for a future day.", "error")
+            return redirect(back)
+        record_weight(current_user.id, day, weight)
+        try:
+            db_commit_with_retry()
+            flash(f"Logged {weight:.1f} kg for {day.strftime('%b %d')}.", "success")
+        except OperationalError:
+            flash("Could not save your weight. Please try again.", "error")
+        return redirect(back)
 
     @app.route("/log-food/delete/<int:entry_id>", methods=["POST"])
     @login_required
@@ -915,7 +1427,6 @@ def register_routes(app: Flask) -> None:
             .limit(5)
             .all()
         )
-        client_ai_report = latest_ai_report(client.id)
 
         return render_template(
             "trainer_client.html",
@@ -927,7 +1438,10 @@ def register_routes(app: Flask) -> None:
             today=today,
             pending_recommendations=pending_recs,
             recent_recommendations=recent_recs,
-            latest_ai_report=client_ai_report,
+            coach_report=latest_coach_report(client.id),
+            water=water_state(client.id, today, profile),
+            streak=logging_streak(client.id, today),
+            weight_log=weight_summary(client.id),
         )
 
     @app.route("/trainer/client/<int:client_id>/recommend", methods=["POST"])
@@ -995,15 +1509,16 @@ def register_routes(app: Flask) -> None:
 
     @app.cli.command("generate-ai-report")
     @click.argument("user_id", type=int)
-    @click.option("--days", default=7, type=click.IntRange(min=1), help="Number of days to analyze")
+    @click.option("--days", default=7, type=click.IntRange(min=1, max=28), help="Number of days to analyze")
     def cli_generate_ai_report(user_id: int, days: int):
-        """Generate AI nutrition report for a user (CLI)."""
+        """Run the AI coach analysis for a user (CLI)."""
         user = db.session.get(User, user_id)
         if not user:
             print(f"User {user_id} not found.")
             return
-        result = generate_ai_report(user_id, days=days)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        report = generate_coach_report(user_id, days=days)
+        print(f"engine: {report.engine}")
+        print(json.dumps(report.data, indent=2, ensure_ascii=False))
 
     @app.cli.command("init-db")
     def init_db():
@@ -1017,6 +1532,7 @@ def register_routes(app: Flask) -> None:
 
         _seed_micronutrients()
         _seed_products_and_links()
+        _seed_generic_foods()
 
         if User.query.count() == 0:
             trainer = User(
@@ -1250,6 +1766,26 @@ def _seed_products_and_links() -> None:
     if created_products:
         print("Seeded sample products.")
     print("Synced product micronutrient links.")
+
+
+def _seed_generic_foods() -> None:
+    """Add the built-in generic food catalogue (idempotent, keyed by name)."""
+    existing = {name for (name,) in db.session.query(Product.name).filter(Product.created_by_id.is_(None))}
+    added = 0
+    for name, kcal, protein, fat, carbs in GENERIC_FOODS:
+        if name in existing:
+            continue
+        db.session.add(
+            Product(name=name, calories_per_100g=kcal, proteins=protein, fats=fat, carbs=carbs, source=SOURCE_SEED)
+        )
+        added += 1
+    db.session.flush()
+    # Search terms (with Ukrainian names) for every built-in product, incl. PRODUCT_SEED ones.
+    for product in Product.query.filter(Product.created_by_id.is_(None), Product.source == SOURCE_SEED):
+        product.refresh_search_terms(UK_SEARCH_NAMES.get(product.name))
+    db.session.commit()
+    if added:
+        print(f"Seeded {added} generic foods.")
 
 
 app = create_app()

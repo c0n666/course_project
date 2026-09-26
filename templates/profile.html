@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
 {% set page_title = 'Me' %}
-{% block title %}Profile — Nutrition Tracker{% endblock %}
+{% block title %}Profile — Kolos{% endblock %}
 
 {% block content %}
 {% set row = 'flex items-center gap-3 px-4 min-h-[52px]' %}
@@ -41,7 +41,11 @@
           </div>
           {% endfor %}
         </div>
+        {% if targets.is_adaptive %}
+        <p class="mt-2 px-4 text-[13px] text-fg-muted">Adaptive target from your weekly check-in (calculated: {{ targets.calculated_calories }} kcal). <a href="{{ url_for('dashboard') }}#insights" class="font-semibold text-primary">Review</a></p>
+        {% else %}
         <p class="mt-2 px-4 text-[13px] text-fg-muted">BMR {{ targets.bmr }} · TDEE {{ targets.tdee }} kcal · recalculated when you save.</p>
+        {% endif %}
       </section>
       {% endif %}
 
@@ -84,7 +88,15 @@
               </select>
               <svg class="pointer-events-none absolute right-4 w-4 h-4 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"/></svg>
             </label>
+            <label for="p-water" class="{{ row }} cursor-text focus-within:bg-surface-2/60">
+              <span class="{{ row_label }}">Water goal</span>
+              <input type="number" id="p-water" name="water_goal_ml" step="50" min="500" max="6000" inputmode="numeric"
+                     value="{{ profile.water_goal_ml or '' }}" placeholder="{{ auto_water_goal }}"
+                     aria-describedby="p-water-hint" class="{{ row_input }}">
+              <span class="text-fg-muted">ml</span>
+            </label>
           </div>
+          <p id="p-water-hint" class="mt-2 px-4 text-[13px] text-fg-muted">Leave water goal empty to use {{ auto_water_goal }} ml (33 ml per kg).</p>
         </section>
 
         <section aria-labelledby="goal-heading">

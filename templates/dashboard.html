@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
+{% import '_coach.html' as coach %}
 {% set page_title = 'Today' if selected_date == today else selected_date.strftime('%A') %}
 {% set page_subtitle = selected_date.strftime('%A, %B %d') if selected_date == today else selected_date.strftime('%B %d, %Y') %}
-{% block title %}Dashboard — Nutrition Tracker{% endblock %}
+{% block title %}Dashboard — Kolos{% endblock %}
 
 {% block content %}
 {#- ---------- Derived display values ---------- -#}
@@ -52,9 +53,18 @@
     <section class="{{ ui.card }} p-5 sm:p-7 lg:col-span-2" aria-labelledby="today-heading">
       <div class="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h2 id="today-heading" class="{{ ui.h2 }}">Nutrition</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 id="today-heading" class="{{ ui.h2 }}">Nutrition</h2>
+            {% if streak.current %}
+            <span class="{{ ui.badge }} gap-1 !py-0.5 bg-orange-500/15 text-orange-700 dark:text-orange-300"
+                  title="Best streak: {{ streak.best }} {{ 'day' if streak.best == 1 else 'days' }}">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12.963 2.286a.75.75 0 0 0-1.071-.136 9.742 9.742 0 0 0-3.539 6.176 7.547 7.547 0 0 1-1.705-1.715.75.75 0 0 0-1.152-.082A9 9 0 1 0 15.68 4.534a7.46 7.46 0 0 1-2.717-2.248ZM15.75 14.25a3.75 3.75 0 1 1-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 0 1 1.925-3.546 3.75 3.75 0 0 1 3.255 3.718Z" clip-rule="evenodd"/></svg>
+              {{ streak.current }}-day streak
+            </span>
+            {% endif %}
+          </div>
           {% if targets %}
-          <p class="text-[13px] text-fg-muted mt-0.5">{{ targets.goal_label }} · BMR {{ targets.bmr }} · TDEE {{ targets.tdee }}</p>
+          <p class="text-[13px] text-fg-muted mt-0.5">{{ targets.goal_label }} · {% if targets.is_adaptive %}Adaptive target from check-in{% else %}BMR {{ targets.bmr }} · TDEE {{ targets.tdee }}{% endif %}</p>
           {% else %}
           <p class="text-[13px] text-fg-muted mt-0.5">Complete your profile to unlock targets</p>
           {% endif %}
@@ -149,6 +159,88 @@
     </div>
   </div>
 
+  {# ---------- Water & weight ---------- #}
+  <div class="mt-4 lg:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+    <section data-water class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="water-heading">
+      <div class="flex items-center gap-4">
+        <div class="relative shrink-0 w-[72px] h-[72px]" aria-hidden="true">
+          <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgb(14 165 233 / .16)" stroke-width="16"/>
+            <circle data-water-ring class="ring-progress" cx="60" cy="60" r="50" fill="none"
+                    stroke="#0EA5E9" stroke-width="16" stroke-linecap="round" pathLength="100"
+                    stroke-dasharray="100 100" stroke-dashoffset="{{ 100 - water.pct }}"
+                    style="opacity: {{ 1 if water.pct > 0 else 0 }}"/>
+          </svg>
+          <span class="absolute inset-0 flex items-center justify-center text-sky-500">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.69c-.28 0-.55.12-.74.33C9.64 4.79 5 10.2 5 14.5a7 7 0 0 0 14 0c0-4.3-4.64-9.71-6.26-11.48a1 1 0 0 0-.74-.33Z"/></svg>
+          </span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h2 id="water-heading" class="{{ ui.h2 }}">Water</h2>
+          <p class="mt-0.5 text-sm text-fg-muted tabular-nums" data-water-status role="status" aria-atomic="true">
+            <strong class="text-[22px] leading-none font-bold tracking-tight text-fg" data-water-total>{{ '{:,}'.format(water.total) }}</strong>
+            / <span data-water-goal>{{ '{:,}'.format(water.goal) }}</span> ml
+          </p>
+        </div>
+      </div>
+      {% if selected_date <= today %}
+      <div class="mt-4 grid grid-cols-3 gap-2">
+        {% for ml in [250, 500] %}
+        <form method="post" action="{{ url_for('add_water') }}" data-water-form>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <input type="hidden" name="amount_ml" value="{{ ml }}">
+          <button type="submit" aria-label="Add {{ ml }} ml of water"
+                  class="press w-full min-h-[44px] rounded-xl bg-sky-500/10 text-[15px] font-semibold text-sky-700 dark:text-sky-300">+{{ ml }}</button>
+        </form>
+        {% endfor %}
+        <form method="post" action="{{ url_for('undo_water') }}" data-water-form>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <button type="submit" data-water-undo {% if not water.can_undo %}disabled{% endif %}
+                  aria-label="Undo last water entry"
+                  class="press w-full min-h-[44px] rounded-xl bg-surface-2 text-[15px] font-semibold text-fg-muted disabled:opacity-40">Undo</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="mt-4 text-sm text-fg-muted">You can log water once this day comes.</p>
+      {% endif %}
+    </section>
+
+    {% set wl_weight = weight_log.weight if weight_log else (profile.weight|float|round(1) if profile and profile.weight else none) %}
+    <section class="{{ ui.card }} p-5 sm:p-6 flex flex-col" aria-labelledby="weight-card-heading">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 id="weight-card-heading" class="{{ ui.h2 }}">Weight</h2>
+          <p class="mt-0.5 text-sm text-fg-muted tabular-nums">
+            {% if wl_weight is not none %}
+            <strong class="text-[22px] leading-none font-bold tracking-tight text-fg">{{ wl_weight }}</strong> kg
+            {% else %}No weigh-ins yet{% endif %}
+          </p>
+        </div>
+        <button type="button" data-sheet-open="weightSheet"
+                class="press shrink-0 inline-flex min-h-[44px] items-center gap-1 rounded-full bg-primary/10 px-4 text-sm font-semibold text-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Log
+        </button>
+      </div>
+      <p class="mt-auto pt-4 text-[13px] text-fg-muted">
+        {% if weight_log %}
+          {% set ch = weight_log.change_7d %}
+          {% if ch is not none %}
+            {% set toward = active_goal and ((active_goal.goal_type == 'weight_loss' and ch < 0) or (active_goal.goal_type == 'muscle_gain' and ch > 0)) %}
+            <span class="font-semibold tabular-nums {{ 'text-emerald-600 dark:text-emerald-400' if toward else 'text-fg' }}">{{ '%+.1f'|format(ch) }} kg</span> vs a week earlier ·
+          {% endif %}
+          Last weigh-in {{ 'today' if weight_log.date == today else weight_log.date.strftime('%b %d') }}
+        {% elif wl_weight is not none %}
+          From your profile · log weigh-ins to track the trend
+        {% else %}
+          Log your first weigh-in to track the trend
+        {% endif %}
+      </p>
+    </section>
+  </div>
+
   {# ---------- Meals (grouped by meal type) ---------- #}
   <section class="mt-7" aria-labelledby="meals-heading">
     <div class="flex items-center justify-between mb-2 px-1">
@@ -184,7 +276,21 @@
       </span>
       <p class="mt-3 text-[15px] font-semibold">No meals logged for this day</p>
       <p class="mt-1 text-sm text-fg-muted">Add a meal to fill your rings.</p>
-      <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="{{ ui.btn_primary }} mt-5">Log food</a>
+      <div class="mt-5 flex flex-col sm:flex-row items-center justify-center gap-2">
+        <a href="{{ url_for('log_food', date=selected_date.isoformat()) }}" class="{{ ui.btn_primary }} w-full sm:w-auto">Log food</a>
+        {% if copy_from_meals %}
+        {% set copy_count = copy_from_meals.values()|sum(attribute='count') %}
+        <form method="post" action="{{ url_for('copy_meals') }}" class="w-full sm:w-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <input type="hidden" name="meal_type" value="all">
+          <input type="hidden" name="next" value="{{ day_url }}">
+          <button type="submit" class="{{ ui.btn_secondary }} w-full sm:w-auto">
+            Copy yesterday · {{ copy_count }} {{ 'item' if copy_count == 1 else 'items' }}
+          </button>
+        </form>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
   </section>
@@ -222,35 +328,108 @@
 {# ============================================================ INSIGHTS #}
 <div data-view="insights" data-view-title="Insights">
   <div class="space-y-4 lg:space-y-6">
-    {# AI analysis #}
-    <section class="relative overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7" aria-labelledby="ai-heading">
+    {# AI coach teaser (full analysis lives in the Coach tab) #}
+    <a href="#coach" data-tab="coach" aria-labelledby="ai-heading"
+       class="press relative block overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7">
       <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
       <div class="relative flex items-start gap-3">
         <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
+          {{ ui.zernia_mark('w-7 h-7') }}
         </span>
-        <div>
-          <h2 id="ai-heading" class="text-[17px] font-semibold">AI diet analysis</h2>
-          <p class="text-sm text-violet-100 mt-0.5">Last 7 days · calories, macros & micronutrients</p>
+        <div class="min-w-0 flex-1">
+          <h2 id="ai-heading" class="text-[17px] font-semibold">{{ coach_name }} · AI coach</h2>
+          <p class="text-sm text-violet-100 mt-0.5">{{ 'Latest analysis · ' ~ coach_report.created_at.strftime('%b %d') if coach_report else 'What to change in your diet, foods and dishes to add' }}</p>
         </div>
+        {% if coach_report and coach_report.grade %}
+        <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ coach_report.grade }}</span>
+        {% endif %}
       </div>
-      {% if latest_report %}
-      <div class="relative mt-5 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-4">
-        <div class="flex flex-wrap items-center gap-3 mb-2">
-          <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ latest_report.ai_grade }}</span>
-          <span class="text-xs text-violet-100">Latest · {{ latest_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-        </div>
-        <p class="text-[15px] leading-relaxed text-white/90">{{ latest_report.nutrition_summary }}</p>
-      </div>
+      {% if coach_report %}
+      <p class="relative mt-4 text-[15px] leading-relaxed text-white/90 line-clamp-3">{{ coach_report.summary }}</p>
       {% endif %}
-      <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}" class="relative mt-5">
+      <span class="relative mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+        {{ 'Open full analysis' if coach_report else 'Open coach' }}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      </span>
+    </a>
+
+    {% if checkin %}
+    <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="checkin-heading">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="checkin-heading" class="{{ ui.h2 }}">Weekly check-in</h2>
+          <p class="text-[13px] text-fg-muted mt-0.5">Your real energy needs from intake and weigh-ins · last {{ checkin.window_days }} days</p>
+        </div>
+        {% if targets and targets.is_adaptive %}
+        <span class="shrink-0 {{ ui.badge }} bg-primary/10 text-primary">Adaptive target on</span>
+        {% endif %}
+      </div>
+
+      {% if checkin.ready %}
+      <dl class="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+        {% for label, value, unit in [
+          ('Real TDEE', checkin.real_tdee, 'kcal'),
+          ('Avg intake', checkin.avg_intake, 'kcal'),
+          ('Weight', '%+.1f'|format(checkin.weight_change), 'kg'),
+        ] %}
+        <div class="rounded-2xl bg-surface-2 px-3 py-3">
+          <dt class="text-[12px] font-medium text-fg-muted">{{ label }}</dt>
+          <dd class="mt-1 text-[20px] leading-none font-bold tracking-tight tabular-nums">{{ value }} <span class="text-[12px] font-medium text-fg-muted">{{ unit }}</span></dd>
+        </div>
+        {% endfor %}
+      </dl>
+      <p class="mt-4 text-[15px] leading-relaxed">
+        {% if checkin.formula_tdee %}The formula estimate is {{ checkin.formula_tdee }} kcal. {% endif %}
+        For <strong>{{ checkin.goal_label|lower }}</strong> we suggest
+        <strong class="tabular-nums">{{ checkin.suggested_target }} kcal</strong> a day{% if targets and targets.calories == checkin.suggested_target %}
+        — that's your current target{% elif targets %} (now {{ targets.calories }}){% endif %}.
+      </p>
+      <div class="mt-5 flex flex-col sm:flex-row gap-2">
+        {% if not targets or targets.calories != checkin.suggested_target %}
+        <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="sm:w-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="{{ ui.btn_primary }} w-full sm:w-auto">Apply {{ checkin.suggested_target }} kcal</button>
+        </form>
+        {% endif %}
+        {% if targets and targets.is_adaptive %}
+        <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="sm:w-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="reset">
+          <button type="submit" class="{{ ui.btn_secondary }} w-full sm:w-auto">Use calculated ({{ targets.calculated_calories }})</button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      {% set logged_pct = [checkin.days_logged / checkin.min_days_logged * 100, 100]|min %}
+      {% set span_pct = [checkin.weigh_in_span / checkin.min_weigh_in_span * 100, 100]|min %}
+      <p class="mt-4 text-[15px] text-fg-muted">Keep logging — the check-in unlocks when you have:</p>
+      <ul class="mt-4 space-y-4">
+        {% for label, done, need, pct in [
+          ('Days with food logged', checkin.days_logged, checkin.min_days_logged, logged_pct),
+          ('Days between first and last weigh-in', checkin.weigh_in_span, checkin.min_weigh_in_span, span_pct),
+        ] %}
+        <li>
+          <div class="flex items-baseline justify-between mb-2 text-[15px]">
+            <span>{{ label }}</span>
+            <span class="text-sm tabular-nums text-fg-muted"><strong class="font-semibold text-fg">{{ [done, need]|min }}</strong> / {{ need }}</span>
+          </div>
+          <div class="h-2 rounded-full bg-primary/10 overflow-hidden" role="progressbar" aria-label="{{ label }}"
+               aria-valuemin="0" aria-valuemax="{{ need }}" aria-valuenow="{{ [done, need]|min }}">
+            <div class="bar-fill h-full rounded-full bg-primary" style="width: {{ pct }}%"></div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if targets and targets.is_adaptive %}
+      <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="mt-5">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit"
-                class="press w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 sm:h-11 px-5 rounded-xl bg-white text-violet-700 text-[15px] sm:text-sm font-semibold shadow-sm hover:bg-violet-50">
-          {{ 'Run a new report' if latest_report else 'Run AI report' }}
-        </button>
+        <input type="hidden" name="action" value="reset">
+        <button type="submit" class="{{ ui.btn_secondary }} w-full sm:w-auto">Use calculated target ({{ targets.calculated_calories }})</button>
       </form>
+      {% endif %}
+      {% endif %}
     </section>
+    {% endif %}
 
     {% if goal_progress %}
     <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="goal-heading">
@@ -317,7 +496,7 @@
         <canvas id="weightChart" aria-label="Weight forecast chart" role="img"></canvas>
       </div>
       <p class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-fg-muted">
-        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-fg" aria-hidden="true"></span> Estimated actual weight (from logs)</span>
+        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-fg" aria-hidden="true"></span> {{ 'Your weigh-ins' if weight_meta.actual_source == 'weigh_ins' else 'Estimated actual weight (from logs)' }}</span>
         <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-violet-500" aria-hidden="true"></span> System forecast (30 days)</span>
       </p>
     </section>
@@ -341,50 +520,94 @@
 
 {# ============================================================ COACH #}
 <div data-view="coach" data-view-title="Coach">
-  {% if recommendations %}
-  <p class="{{ ui.section_title }}">Awaiting approval · {{ recommendations|length }}</p>
-  <ul class="space-y-3">
-    {% for rec in recommendations %}
-    {% set is_ai = rec.content.startswith('[AI') %}
-    <li class="{{ ui.card }} p-4 sm:p-5">
-      <div class="flex items-start gap-3">
-        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full {{ 'bg-violet-500/15 text-violet-600 dark:text-violet-300' if is_ai else 'bg-primary/15 text-primary' }}">
-          {% if is_ai %}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
-          {% else %}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-          {% endif %}
+  <div class="space-y-4 lg:space-y-6">
+    <section class="relative overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7" aria-labelledby="coach-heading">
+      <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
+      <div class="relative flex items-start gap-3">
+        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+          {{ ui.zernia_mark('w-7 h-7') }}
         </span>
-        <div class="min-w-0 flex-1">
-          <p class="text-[13px] font-semibold {{ 'text-violet-600 dark:text-violet-300' if is_ai else 'text-primary' }}">
-            {{ 'AI · pending trainer review' if is_ai else 'From your trainer' }}
-          </p>
-          <p class="mt-1 text-[15px] leading-relaxed">{{ rec.content }}</p>
+        <div>
+          <h2 id="coach-heading" class="text-[17px] font-semibold">{{ coach_name }} · your AI coach</h2>
+          <p class="text-sm text-violet-100 mt-0.5">Looks at your food log, weight and water, then tells you what to change and what to eat.</p>
         </div>
       </div>
-      <div class="mt-3 flex justify-end">
-        <form method="post" action="/recommendation/delete/{{ rec.id }}"
-              data-confirm="Delete this recommendation?" data-confirm-action="Delete recommendation">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
-          <button type="submit" class="press inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ui.trash_path }}"/></svg>
-            Delete
-          </button>
-        </form>
+      <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}" class="relative mt-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+                class="press w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 sm:h-11 px-5 rounded-xl bg-white text-violet-700 text-[15px] sm:text-sm font-semibold shadow-sm hover:bg-violet-50">
+          {{ 'Run a new analysis' if coach_report else 'Analyze my last 7 days' }}
+        </button>
+        <p class="mt-2 text-[13px] text-violet-100">
+          {% if coach_ai %}Takes up to a minute.{% else %}Basic mode — {{ coach_name }} is not connected yet.{% endif %}
+        </p>
+      </form>
+    </section>
+
+    {# Chat entry #}
+    <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="chat-entry-heading">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 id="chat-entry-heading" class="{{ ui.h2 }}">Ask {{ coach_name }}</h2>
+          <p class="mt-0.5 text-[13px] text-fg-muted">Questions about your meals, calories left today or your weight</p>
+        </div>
+        <a href="{{ url_for('coach_chat_page') }}"
+           class="press shrink-0 inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 dark:text-violet-300">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
+          Open chat
+        </a>
       </div>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <div class="{{ ui.card }} px-6 py-12 text-center">
-    <span class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
-    </span>
-    <p class="mt-4 text-[17px] font-semibold">No recommendations yet</p>
-    <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">Tips from your trainer and AI suggestions will appear here.</p>
+      <div class="no-scrollbar mt-4 flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap">
+        {% for q in ['Що з\'їсти на вечерю?', 'Скільки калорій лишилось?', 'Ідея перекусу'] %}
+        <a href="{{ url_for('coach_chat_page', q=q) }}"
+           class="press shrink-0 inline-flex min-h-[40px] items-center rounded-full bg-surface-2 px-3.5 text-sm font-medium">{{ q }}</a>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if coach_report %}
+    {{ coach.report_body(coach_report, selected_date.isoformat()) }}
+    {% endif %}
+
+    {% if recommendations %}
+    <section>
+      <h2 class="{{ ui.section_title }}">From your trainer · {{ recommendations|length }}</h2>
+      <ul class="space-y-3">
+        {% for rec in recommendations %}
+        {% set is_ai = rec.content.startswith('[AI') %}
+        <li class="{{ ui.card }} p-4 sm:p-5">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full {{ 'bg-violet-500/15 text-violet-600 dark:text-violet-300' if is_ai else 'bg-primary/15 text-primary' }}">
+              {% if is_ai %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+              {% else %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+              {% endif %}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[13px] font-semibold {{ 'text-violet-600 dark:text-violet-300' if is_ai else 'text-primary' }}">
+                {{ 'AI · pending trainer review' if is_ai else 'From your trainer' }}
+              </p>
+              <p class="mt-1 text-[15px] leading-relaxed">{{ rec.content }}</p>
+            </div>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <form method="post" action="/recommendation/delete/{{ rec.id }}"
+                  data-confirm="Delete this recommendation?" data-confirm-action="Delete recommendation">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+              <button type="submit" class="press inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ui.trash_path }}"/></svg>
+                Delete
+              </button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {# ============================================================ Micronutrient sheet
@@ -423,6 +646,38 @@
     </div>
     <div class="px-5 pt-3 pb-4 border-t border-line">
       <button type="button" id="closeMicroModalFooter" data-sheet-close class="{{ ui.btn_secondary }} w-full">Done</button>
+    </div>
+  </div>
+</div>
+
+{# ============================================================ Log weight sheet #}
+<div id="weightSheet" class="sheet" hidden aria-hidden="true">
+  <div class="sheet-backdrop" data-sheet-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="weightSheetTitle">
+    <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
+      <h2 id="weightSheetTitle" class="text-[17px] font-semibold">Log weight</h2>
+      <span class="w-16" aria-hidden="true"></span>
+    </div>
+    <div class="sheet-body px-4 pb-5">
+      <form method="post" action="{{ url_for('log_weight') }}" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ day_url }}">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="wl-weight" class="{{ ui.label }}">Weight (kg)</label>
+            <input type="number" id="wl-weight" name="weight_kg" required step="0.1" min="30" max="300" inputmode="decimal"
+                   value="{{ wl_weight if wl_weight is not none else '' }}" class="{{ ui.input }}">
+          </div>
+          <div>
+            <label for="wl-date" class="{{ ui.label }}">Date</label>
+            <input type="date" id="wl-date" name="date" required max="{{ today.isoformat() }}"
+                   value="{{ (selected_date if selected_date <= today else today).isoformat() }}" class="{{ ui.input }}">
+          </div>
+        </div>
+        <p class="{{ ui.hint }} !mt-2">One weigh-in per day — logging again replaces it. The latest weigh-in updates your targets.</p>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">Save weight</button>
+      </form>
     </div>
   </div>
 </div>
@@ -521,7 +776,7 @@
     if (weightCanvas && weightData.labels && weightData.labels.length) {
       const datasets = [
         {
-          label: 'Estimated actual weight',
+          label: weightData.meta.actual_source === 'weigh_ins' ? 'Weigh-in' : 'Estimated actual weight',
           data: weightData.actual,
           borderColor: T.fg,
           backgroundColor: 'transparent',
@@ -529,7 +784,7 @@
           tension: 0.3,
           pointRadius: 3,
           pointBackgroundColor: T.fg,
-          spanGaps: false,
+          spanGaps: weightData.meta.actual_source === 'weigh_ins',  // connect weigh-ins across skipped days
         },
         {
           label: 'System forecast',

@@ -84,3 +84,16 @@
   {% endfor %}
 </div>
 {%- endmacro %}
+
+{#- Zernia (Зернятко), the AI coach: a smiling grain with a sprout. White on the violet coach surfaces. -#}
+{% macro zernia_mark(cls='w-6 h-6', face='#6D28D9') -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M12 21.2c-3.1 0-5-2.6-5-6 0-3.3 2.3-5.9 5-6.9 2.7 1 5 3.6 5 6.9 0 3.4-1.9 6-5 6Z" fill="currentColor"/>
+  <path d="M12 8.3V5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M12 6.4C11.6 4.2 9.6 2.9 7 3.1c.2 2.4 2.2 3.9 5 3.3Z" fill="currentColor"/>
+  <path d="M12 5.8c.5-2.3 2.6-3.6 5.2-3.3-.3 2.5-2.4 3.9-5.2 3.3Z" fill="currentColor"/>
+  <circle cx="10.3" cy="14.6" r=".85" fill="{{ face }}"/>
+  <circle cx="13.7" cy="14.6" r=".85" fill="{{ face }}"/>
+  <path d="M10.6 17.1c.8.7 2 .7 2.8 0" stroke="{{ face }}" stroke-width=".9" stroke-linecap="round"/>
+</svg>
+{%- endmacro %}
