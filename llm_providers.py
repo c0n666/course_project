@@ -22,7 +22,7 @@ from typing import Any
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-USER_AGENT = "NutritionWorkout/1.0"
+USER_AGENT = "Kolos/1.0"
 TIMEOUT = 60
 MAX_OUTPUT_TOKENS = 8192
 

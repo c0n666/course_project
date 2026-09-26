@@ -32,6 +32,9 @@ from nutrition import (
 
 logger = logging.getLogger(__name__)
 
+APP_NAME = "Kolos"
+COACH_NAME = "Zernia"        # shown in the English UI
+COACH_NAME_UK = "Зернятко"   # how the coach calls itself in Ukrainian
 COACH_LANGUAGE = os.environ.get("COACH_LANGUAGE", "").strip() or "Ukrainian"
 MAX_TURNS = 10
 MAX_NUDGES = 2
@@ -42,8 +45,13 @@ CHAT_DAILY_LIMIT = 40    # athlete messages per day, to stay inside the free pro
 MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"]
 GRADES = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"]
 
-SYSTEM_PROMPT = f"""You are the nutrition coach inside a nutrition and workout tracking app. You analyze \
-one athlete's logged data and give specific, practical advice on what to change in their diet.
+PERSONA = (f"Your name is {COACH_NAME_UK} ({COACH_NAME}), the AI nutrition coach inside {APP_NAME}, a "
+           "nutrition and workout tracking app. Like a grain that grows into a harvest, you believe in small "
+           "steady steps: warm, encouraging and down to earth, never preachy.")
+
+SYSTEM_PROMPT = f"""{PERSONA}
+
+You analyze one athlete's logged data and give specific, practical advice on what to change in their diet.
 
 How to work:
 - Look at the data with the tools before drawing conclusions. Start with get_profile_and_targets and \
@@ -67,8 +75,9 @@ a short actionable title plus one or two sentences of detail.
 Write all text for the athlete in {COACH_LANGUAGE}. Product names may stay as they are in the catalogue."""
 
 
-CHAT_SYSTEM_PROMPT = f"""You are the nutrition coach inside a nutrition and workout tracking app, chatting \
-with one athlete about their diet. Answer their question directly and practically.
+CHAT_SYSTEM_PROMPT = f"""{PERSONA}
+
+You are chatting with one athlete about their diet. Answer their question directly and practically.
 
 - Use the tools to look at the athlete's real data whenever the answer depends on it (what they ate, \
 targets, remaining calories today, weight trend, their latest analysis). Quote concrete numbers.
@@ -554,7 +563,7 @@ def generate_coach_report(user_id: int, days: int = 7, provider: Provider | None
     if data is None:
         data = _local_report(user_id, days)
     if error:
-        data["notice"] = "The AI coach is unavailable right now, so this is a basic automatic analysis."
+        data["notice"] = f"{COACH_NAME} is unavailable right now, so this is a basic automatic analysis."
 
     report = CoachReport(user_id=user_id, days=days, engine=engine[:40], grade=data["grade"],
                          summary=data["summary"] or "—", payload=json.dumps(data, ensure_ascii=False))

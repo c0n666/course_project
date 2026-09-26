@@ -3,7 +3,7 @@
 {% import '_coach.html' as coach %}
 {% set page_title = 'Today' if selected_date == today else selected_date.strftime('%A') %}
 {% set page_subtitle = selected_date.strftime('%A, %B %d') if selected_date == today else selected_date.strftime('%B %d, %Y') %}
-{% block title %}Dashboard — Nutrition Tracker{% endblock %}
+{% block title %}Dashboard — Kolos{% endblock %}
 
 {% block content %}
 {#- ---------- Derived display values ---------- -#}
@@ -334,10 +334,10 @@
       <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
       <div class="relative flex items-start gap-3">
         <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
+          {{ ui.zernia_mark('w-7 h-7') }}
         </span>
         <div class="min-w-0 flex-1">
-          <h2 id="ai-heading" class="text-[17px] font-semibold">AI coach</h2>
+          <h2 id="ai-heading" class="text-[17px] font-semibold">{{ coach_name }} · AI coach</h2>
           <p class="text-sm text-violet-100 mt-0.5">{{ 'Latest analysis · ' ~ coach_report.created_at.strftime('%b %d') if coach_report else 'What to change in your diet, foods and dishes to add' }}</p>
         </div>
         {% if coach_report and coach_report.grade %}
@@ -525,10 +525,10 @@
       <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
       <div class="relative flex items-start gap-3">
         <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
+          {{ ui.zernia_mark('w-7 h-7') }}
         </span>
         <div>
-          <h2 id="coach-heading" class="text-[17px] font-semibold">AI coach</h2>
+          <h2 id="coach-heading" class="text-[17px] font-semibold">{{ coach_name }} · your AI coach</h2>
           <p class="text-sm text-violet-100 mt-0.5">Looks at your food log, weight and water, then tells you what to change and what to eat.</p>
         </div>
       </div>
@@ -539,7 +539,7 @@
           {{ 'Run a new analysis' if coach_report else 'Analyze my last 7 days' }}
         </button>
         <p class="mt-2 text-[13px] text-violet-100">
-          {% if coach_ai %}Takes up to a minute.{% else %}Basic mode — the AI coach is not connected yet.{% endif %}
+          {% if coach_ai %}Takes up to a minute.{% else %}Basic mode — {{ coach_name }} is not connected yet.{% endif %}
         </p>
       </form>
     </section>
@@ -548,7 +548,7 @@
     <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="chat-entry-heading">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
-          <h2 id="chat-entry-heading" class="{{ ui.h2 }}">Ask your coach</h2>
+          <h2 id="chat-entry-heading" class="{{ ui.h2 }}">Ask {{ coach_name }}</h2>
           <p class="mt-0.5 text-[13px] text-fg-muted">Questions about your meals, calories left today or your weight</p>
         </div>
         <a href="{{ url_for('coach_chat_page') }}"

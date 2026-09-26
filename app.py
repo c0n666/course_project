@@ -42,7 +42,9 @@ from models import (
 )
 import food_db
 from coach_agent import (
+    APP_NAME,
     CHAT_MAX_CHARS,
+    COACH_NAME,
     ChatLimitError,
     CoachError,
     chat_history,
@@ -154,6 +156,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         _enable_wal_on_existing_db()
 
     app.add_template_filter(coach_markup, "coach_markup")
+
+    @app.context_processor
+    def _brand():
+        return {"app_name": APP_NAME, "coach_name": COACH_NAME}
 
     login_manager = LoginManager(app)
     login_manager.login_view = "login"
@@ -779,7 +785,7 @@ def register_routes(app: Flask) -> None:
         if not message or len(message) > CHAT_MAX_CHARS:
             error, status = f"Write a message of up to {CHAT_MAX_CHARS} characters.", 400
         elif not coach_available():
-            error, status = "The AI coach is not connected yet.", 503
+            error, status = f"{COACH_NAME} is not connected yet.", 503
         else:
             try:
                 asked, answered = coach_chat(current_user.id, message)
@@ -788,7 +794,7 @@ def register_routes(app: Flask) -> None:
             except (CoachError, ProviderError) as exc:
                 app.logger.warning("coach chat failed: %s", exc)
                 db.session.rollback()
-                error, status = "The coach couldn't answer right now. Please try again in a minute.", 502
+                error, status = f"{COACH_NAME} couldn't answer right now. Please try again in a minute.", 502
 
         if wants_json():
             if error:
@@ -848,9 +854,9 @@ def register_routes(app: Flask) -> None:
         try:
             report = generate_coach_report(current_user.id, days=7)
             if report.engine == "local":
-                flash("Basic analysis ready (the AI coach is not connected).", "info")
+                flash(f"Basic analysis ready ({COACH_NAME} is not connected).", "info")
             else:
-                flash("Your coach analysis is ready.", "success")
+                flash(f"{COACH_NAME} has finished your analysis.", "success")
         except OperationalError:
             db.session.rollback()
             flash("Could not save the analysis. Please try again.", "error")

@@ -1,4 +1,4 @@
-/* Nutrition & Workout — native-like app behaviour.
+/* Kolos — native-like app behaviour.
    Sheets, action-sheet confirms, in-page views, collapsing title, submit feedback,
    install prompt, toasts and theme-aware chart defaults. No dependencies. */
 (function () {

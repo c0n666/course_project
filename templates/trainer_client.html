@@ -114,7 +114,7 @@
   <div data-segment-panel="coaching" role="tabpanel" hidden class="space-y-6">
     {% if coach_report %}
     <section aria-labelledby="coach-heading">
-      <h2 id="coach-heading" class="{{ ui.section_title }}">Latest AI coach analysis · seen by the athlete</h2>
+      <h2 id="coach-heading" class="{{ ui.section_title }}">Latest analysis by {{ coach_name }} · seen by the athlete</h2>
       {{ coach.report_body(coach_report, today.isoformat(), can_log=false) }}
     </section>
     {% endif %}
