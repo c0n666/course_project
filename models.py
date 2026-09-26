@@ -294,3 +294,15 @@ class CoachReport(db.Model):
             return json.loads(self.payload or "{}")
         except ValueError:
             return {}
+
+
+class CoachMessage(db.Model):
+    """One turn of the athlete's chat with the AI coach."""
+
+    __tablename__ = "coach_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(db.String(10), nullable=False)  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, index=True)

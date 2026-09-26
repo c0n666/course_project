@@ -544,6 +544,27 @@
       </form>
     </section>
 
+    {# Chat entry #}
+    <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="chat-entry-heading">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 id="chat-entry-heading" class="{{ ui.h2 }}">Ask your coach</h2>
+          <p class="mt-0.5 text-[13px] text-fg-muted">Questions about your meals, calories left today or your weight</p>
+        </div>
+        <a href="{{ url_for('coach_chat_page') }}"
+           class="press shrink-0 inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 dark:text-violet-300">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
+          Open chat
+        </a>
+      </div>
+      <div class="no-scrollbar mt-4 flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap">
+        {% for q in ['Що з\'їсти на вечерю?', 'Скільки калорій лишилось?', 'Ідея перекусу'] %}
+        <a href="{{ url_for('coach_chat_page', q=q) }}"
+           class="press shrink-0 inline-flex min-h-[40px] items-center rounded-full bg-surface-2 px-3.5 text-sm font-medium">{{ q }}</a>
+        {% endfor %}
+      </div>
+    </section>
+
     {% if coach_report %}
     {{ coach.report_body(coach_report, selected_date.isoformat()) }}
     {% endif %}
