@@ -63,7 +63,7 @@
             {% endif %}
           </div>
           {% if targets %}
-          <p class="text-[13px] text-fg-muted mt-0.5">{{ targets.goal_label }} · BMR {{ targets.bmr }} · TDEE {{ targets.tdee }}</p>
+          <p class="text-[13px] text-fg-muted mt-0.5">{{ targets.goal_label }} · {% if targets.is_adaptive %}Adaptive target from check-in{% else %}BMR {{ targets.bmr }} · TDEE {{ targets.tdee }}{% endif %}</p>
           {% else %}
           <p class="text-[13px] text-fg-muted mt-0.5">Complete your profile to unlock targets</p>
           {% endif %}
@@ -357,6 +357,84 @@
       </form>
     </section>
 
+    {% if checkin %}
+    <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="checkin-heading">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="checkin-heading" class="{{ ui.h2 }}">Weekly check-in</h2>
+          <p class="text-[13px] text-fg-muted mt-0.5">Your real energy needs from intake and weigh-ins · last {{ checkin.window_days }} days</p>
+        </div>
+        {% if targets and targets.is_adaptive %}
+        <span class="shrink-0 {{ ui.badge }} bg-primary/10 text-primary">Adaptive target on</span>
+        {% endif %}
+      </div>
+
+      {% if checkin.ready %}
+      <dl class="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+        {% for label, value, unit in [
+          ('Real TDEE', checkin.real_tdee, 'kcal'),
+          ('Avg intake', checkin.avg_intake, 'kcal'),
+          ('Weight', '%+.1f'|format(checkin.weight_change), 'kg'),
+        ] %}
+        <div class="rounded-2xl bg-surface-2 px-3 py-3">
+          <dt class="text-[12px] font-medium text-fg-muted">{{ label }}</dt>
+          <dd class="mt-1 text-[20px] leading-none font-bold tracking-tight tabular-nums">{{ value }} <span class="text-[12px] font-medium text-fg-muted">{{ unit }}</span></dd>
+        </div>
+        {% endfor %}
+      </dl>
+      <p class="mt-4 text-[15px] leading-relaxed">
+        {% if checkin.formula_tdee %}The formula estimate is {{ checkin.formula_tdee }} kcal. {% endif %}
+        For <strong>{{ checkin.goal_label|lower }}</strong> we suggest
+        <strong class="tabular-nums">{{ checkin.suggested_target }} kcal</strong> a day{% if targets and targets.calories == checkin.suggested_target %}
+        — that's your current target{% elif targets %} (now {{ targets.calories }}){% endif %}.
+      </p>
+      <div class="mt-5 flex flex-col sm:flex-row gap-2">
+        {% if not targets or targets.calories != checkin.suggested_target %}
+        <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="sm:w-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="{{ ui.btn_primary }} w-full sm:w-auto">Apply {{ checkin.suggested_target }} kcal</button>
+        </form>
+        {% endif %}
+        {% if targets and targets.is_adaptive %}
+        <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="sm:w-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="reset">
+          <button type="submit" class="{{ ui.btn_secondary }} w-full sm:w-auto">Use calculated ({{ targets.calculated_calories }})</button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      {% set logged_pct = [checkin.days_logged / checkin.min_days_logged * 100, 100]|min %}
+      {% set span_pct = [checkin.weigh_in_span / checkin.min_weigh_in_span * 100, 100]|min %}
+      <p class="mt-4 text-[15px] text-fg-muted">Keep logging — the check-in unlocks when you have:</p>
+      <ul class="mt-4 space-y-4">
+        {% for label, done, need, pct in [
+          ('Days with food logged', checkin.days_logged, checkin.min_days_logged, logged_pct),
+          ('Days between first and last weigh-in', checkin.weigh_in_span, checkin.min_weigh_in_span, span_pct),
+        ] %}
+        <li>
+          <div class="flex items-baseline justify-between mb-2 text-[15px]">
+            <span>{{ label }}</span>
+            <span class="text-sm tabular-nums text-fg-muted"><strong class="font-semibold text-fg">{{ [done, need]|min }}</strong> / {{ need }}</span>
+          </div>
+          <div class="h-2 rounded-full bg-primary/10 overflow-hidden" role="progressbar" aria-label="{{ label }}"
+               aria-valuemin="0" aria-valuemax="{{ need }}" aria-valuenow="{{ [done, need]|min }}">
+            <div class="bar-fill h-full rounded-full bg-primary" style="width: {{ pct }}%"></div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if targets and targets.is_adaptive %}
+      <form method="post" action="{{ url_for('apply_adaptive_target') }}" class="mt-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reset">
+        <button type="submit" class="{{ ui.btn_secondary }} w-full sm:w-auto">Use calculated target ({{ targets.calculated_calories }})</button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </section>
+    {% endif %}
+
     {% if goal_progress %}
     <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="goal-heading">
       <div class="flex items-center justify-between gap-3 mb-5">
@@ -422,7 +500,7 @@
         <canvas id="weightChart" aria-label="Weight forecast chart" role="img"></canvas>
       </div>
       <p class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-fg-muted">
-        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-fg" aria-hidden="true"></span> Estimated actual weight (from logs)</span>
+        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-fg" aria-hidden="true"></span> {{ 'Your weigh-ins' if weight_meta.actual_source == 'weigh_ins' else 'Estimated actual weight (from logs)' }}</span>
         <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-violet-500" aria-hidden="true"></span> System forecast (30 days)</span>
       </p>
     </section>
@@ -658,7 +736,7 @@
     if (weightCanvas && weightData.labels && weightData.labels.length) {
       const datasets = [
         {
-          label: 'Estimated actual weight',
+          label: weightData.meta.actual_source === 'weigh_ins' ? 'Weigh-in' : 'Estimated actual weight',
           data: weightData.actual,
           borderColor: T.fg,
           backgroundColor: 'transparent',
@@ -666,7 +744,7 @@
           tension: 0.3,
           pointRadius: 3,
           pointBackgroundColor: T.fg,
-          spanGaps: false,
+          spanGaps: weightData.meta.actual_source === 'weigh_ins',  // connect weigh-ins across skipped days
         },
         {
           label: 'System forecast',

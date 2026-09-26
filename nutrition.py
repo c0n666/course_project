@@ -64,27 +64,38 @@ def calculate_tdee(profile: Profile | None) -> float:
     return calculate_bmr(profile) * multiplier
 
 
+GOAL_CALORIE_OFFSET = {"weight_loss": -500, "muscle_gain": 300, "maintenance": 0}
+MIN_CALORIE_TARGET = 1200
+
+
+def goal_calorie_target(tdee: float, goal_type: str) -> int:
+    return max(MIN_CALORIE_TARGET, round(tdee + GOAL_CALORIE_OFFSET.get(goal_type, 0)))
+
+
 def calculate_daily_targets(profile: Profile | None, goal: Goal | None) -> dict | None:
-    """Return daily calorie and macro targets, or None if the profile lacks body metrics."""
+    """Return daily calorie and macro targets, or None if the profile lacks body metrics.
+
+    profile.calorie_target_override (set from the weekly check-in) replaces the calorie
+    target; macros are split with the same goal percentages either way.
+    """
     if not has_body_metrics(profile):
         return None
     tdee = calculate_tdee(profile)
     goal_type = goal.goal_type if goal else "maintenance"
 
-    if goal_type == "weight_loss":
-        calories = tdee - 500
-        protein_pct, fat_pct, carb_pct = 0.30, 0.25, 0.45
-    elif goal_type == "muscle_gain":
-        calories = tdee + 300
+    if goal_type in ("weight_loss", "muscle_gain"):
         protein_pct, fat_pct, carb_pct = 0.30, 0.25, 0.45
     else:
-        calories = tdee
         protein_pct, fat_pct, carb_pct = 0.25, 0.30, 0.45
 
-    calories = max(1200, round(calories))
+    calculated = goal_calorie_target(tdee, goal_type)
+    override = profile.calorie_target_override
+    calories = max(MIN_CALORIE_TARGET, int(override)) if override else calculated
 
     return {
         "calories": calories,
+        "calculated_calories": calculated,
+        "is_adaptive": bool(override),
         "proteins": round(calories * protein_pct / 4, 1),
         "fats": round(calories * fat_pct / 9, 1),
         "carbs": round(calories * carb_pct / 4, 1),
@@ -191,6 +202,68 @@ def weight_summary(user_id: int) -> dict | None:
         "date": latest.date,
         "change_7d": round(weight - float(baseline.weight_kg), 1) if baseline else None,
     }
+
+
+CHECKIN_WINDOW_DAYS = 14
+CHECKIN_MIN_LOGGED_DAYS = 7
+CHECKIN_MIN_WEIGH_IN_SPAN = 7
+
+
+def weekly_checkin(user_id: int, profile: Profile | None, goal: Goal | None,
+                   today: date | None = None) -> dict:
+    """MacroFactor-style check-in: real TDEE = average intake − Δweight × 7700 / days.
+
+    Uses the last 14 complete days (today's log is still open). Needs ≥7 logged days
+    and two weigh-ins at least 7 days apart; otherwise returns progress towards that.
+    """
+    today = today or date.today()
+    start = today - timedelta(days=CHECKIN_WINDOW_DAYS)
+    end = today - timedelta(days=1)
+
+    intake_by_day: dict[date, float] = {}
+    logs = (
+        FoodLog.query.filter(FoodLog.user_id == user_id, FoodLog.date.between(start, end))
+        .options(joinedload(FoodLog.product))
+        .all()
+    )
+    for log in logs:
+        intake_by_day[log.date] = intake_by_day.get(log.date, 0.0) + log.calories
+
+    weigh_ins = (
+        WeightLog.query.filter(WeightLog.user_id == user_id, WeightLog.date.between(start, today))
+        .order_by(WeightLog.date)
+        .all()
+    )
+    span = (weigh_ins[-1].date - weigh_ins[0].date).days if len(weigh_ins) >= 2 else 0
+    result = {
+        "ready": False,
+        "days_logged": len(intake_by_day),
+        "weigh_ins": len(weigh_ins),
+        "weigh_in_span": span,
+        "min_days_logged": CHECKIN_MIN_LOGGED_DAYS,
+        "min_weigh_in_span": CHECKIN_MIN_WEIGH_IN_SPAN,
+        "window_days": CHECKIN_WINDOW_DAYS,
+    }
+    if len(intake_by_day) < CHECKIN_MIN_LOGGED_DAYS or span < CHECKIN_MIN_WEIGH_IN_SPAN:
+        return result
+
+    avg_intake = sum(intake_by_day.values()) / len(intake_by_day)
+    weight_change = float(weigh_ins[-1].weight_kg) - float(weigh_ins[0].weight_kg)
+    real_tdee = avg_intake - weight_change * KCAL_PER_KG / span
+    # Guard against implausible values from sparse or inaccurate logging.
+    real_tdee = min(6000.0, max(MIN_CALORIE_TARGET, real_tdee))
+    goal_type = goal.goal_type if goal else "maintenance"
+
+    result.update(
+        ready=True,
+        avg_intake=round(avg_intake),
+        weight_change=round(weight_change, 1),
+        real_tdee=round(real_tdee),
+        formula_tdee=round(calculate_tdee(profile)) if profile else None,
+        suggested_target=goal_calorie_target(real_tdee, goal_type),
+        goal_label=GOAL_LABELS.get(goal_type, goal_type),
+    )
+    return result
 
 
 def _daily_food_calories(user_id: int, day: date) -> float:
@@ -370,11 +443,23 @@ def predict_weight_trend(user_id: int, days_forecast: int = 30) -> dict:
     forecast: list[float | None] = []
 
     history_start = today - timedelta(days=HISTORY_DAYS - 1)
+    weigh_ins = {
+        w.date: float(w.weight_kg)
+        for w in WeightLog.query.filter(
+            WeightLog.user_id == user_id, WeightLog.date.between(history_start, today)
+        )
+    }
+    # Real weigh-ins win over the energy-balance estimate; days without one stay empty.
+    actual_source = "weigh_ins" if weigh_ins else "estimate"
     for offset in range(HISTORY_DAYS):
         day = history_start + timedelta(days=offset)
         labels.append(day.strftime("%d.%m"))
-        w = _estimate_weight_on_date(current_weight, today, day, user_id, profile)
-        actual.append(round(w, 2))
+        if weigh_ins:
+            w = weigh_ins.get(day)
+            actual.append(round(w, 2) if w is not None else None)
+        else:
+            w = _estimate_weight_on_date(current_weight, today, day, user_id, profile)
+            actual.append(round(w, 2))
         forecast.append(None)
 
     for step, projected in enumerate(forecast_weights, start=1):
@@ -398,5 +483,6 @@ def predict_weight_trend(user_id: int, days_forecast: int = 30) -> dict:
             "daily_delta_kg_day30": round(final_delta, 4),
             "current_weight": round(current_weight, 1),
             "model": "adaptive_tdee",
+            "actual_source": actual_source,
         },
     }

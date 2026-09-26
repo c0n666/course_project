@@ -41,7 +41,11 @@
           </div>
           {% endfor %}
         </div>
+        {% if targets.is_adaptive %}
+        <p class="mt-2 px-4 text-[13px] text-fg-muted">Adaptive target from your weekly check-in (calculated: {{ targets.calculated_calories }} kcal). <a href="{{ url_for('dashboard') }}#insights" class="font-semibold text-primary">Review</a></p>
+        {% else %}
         <p class="mt-2 px-4 text-[13px] text-fg-muted">BMR {{ targets.bmr }} · TDEE {{ targets.tdee }} kcal · recalculated when you save.</p>
+        {% endif %}
       </section>
       {% endif %}
 

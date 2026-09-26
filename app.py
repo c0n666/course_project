@@ -48,6 +48,7 @@ from nutrition import (
     predict_weight_trend,
     water_goal_ml,
     water_total_ml,
+    weekly_checkin,
     weight_summary,
 )
 
@@ -692,7 +693,40 @@ def register_routes(app: Flask) -> None:
             water=water_state(current_user.id, selected_date, profile),
             streak=logging_streak(current_user.id, today),
             weight_log=weight_summary(current_user.id),
+            checkin=(
+                weekly_checkin(current_user.id, profile, active_goal)
+                if profile_complete(profile)
+                else None
+            ),
         )
+
+    @app.route("/targets/adaptive", methods=["POST"])
+    @login_required
+    def apply_adaptive_target():
+        back = url_for("dashboard") + "#insights"
+        profile = Profile.query.filter_by(user_id=current_user.id).first()
+        if request.form.get("action") == "reset":
+            if profile and profile.calorie_target_override:
+                profile.calorie_target_override = None
+                db_commit_with_retry()
+                flash("Back to the calculated calorie target.", "success")
+            return redirect(back)
+
+        if not profile_complete(profile):
+            flash("Complete your profile first.", "error")
+            return redirect(url_for("profile_page"))
+        # Recomputed on the server: the form only says "apply", never the number.
+        checkin = weekly_checkin(current_user.id, profile, get_active_goal(current_user.id))
+        if not checkin["ready"]:
+            flash("Not enough data yet for a check-in.", "error")
+            return redirect(back)
+        profile.calorie_target_override = checkin["suggested_target"]
+        try:
+            db_commit_with_retry()
+            flash(f"New daily target: {checkin['suggested_target']} kcal.", "success")
+        except OperationalError:
+            flash("Could not save the target. Please try again.", "error")
+        return redirect(back)
 
     @app.route("/dashboard/ai-report", methods=["POST"])
     @login_required
@@ -800,6 +834,8 @@ def register_routes(app: Flask) -> None:
                 if active_goal and active_goal.goal_type == new_goal_type:
                     active_goal.target_weight = target_val
                 else:
+                    # A check-in target was tuned for the old goal.
+                    profile.calorie_target_override = None
                     if active_goal:
                         active_goal.status = "completed"
                     db.session.add(
