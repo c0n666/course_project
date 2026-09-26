@@ -1,11 +1,8 @@
-import io
 import re
-import urllib.error
 from datetime import date
 
-import ai_service
 from conftest import create_user, login
-from models import FoodLog, Product, Recommendation, Report, Workout, db
+from models import CoachReport, FoodLog, Product, Recommendation, Report, Workout, db
 
 
 def _setup_trainers(app):
@@ -137,7 +134,7 @@ def test_smoke_register_login_log_food_dashboard(app, client):
     with app.app_context():
         assert FoodLog.query.count() == 1
         assert Workout.query.count() == 1
-        assert Report.query.filter(Report.ai_grade.isnot(None)).count() == 1
+        assert CoachReport.query.filter_by(engine="local").count() == 1
 
 
 def test_workout_on_past_date_shows_on_that_day(app, client):
@@ -216,37 +213,6 @@ def test_csrf_blocks_post_without_token(csrf_app):
                                        "csrf_token": token})
     assert resp.status_code == 302
     assert client.get("/dashboard").status_code == 200
-
-
-# --- AI fallback --------------------------------------------------------------------
-
-def test_gemini_http_error_falls_back_to_rule_based(app, monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-
-    def boom(*_a, **_kw):
-        raise urllib.error.HTTPError(ai_service.GEMINI_URL, 404, "Not Found", {}, io.BytesIO(b""))
-
-    monkeypatch.setattr(ai_service.urllib.request, "urlopen", boom)
-    with app.app_context():
-        user = create_user("ai@user.test")
-        result = ai_service.generate_ai_report(user.id)
-    assert result["engine"] == "local"
-    assert result["ai_grade"]
-    assert "1.5" not in ai_service.GEMINI_MODEL
-
-
-def test_gemini_malformed_response_falls_back(app, monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-
-    class Resp(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a):
-            return False
-
-    monkeypatch.setattr(ai_service.urllib.request, "urlopen", lambda *a, **k: Resp(b"[1, 2]"))
-    assert ai_service._call_gemini("prompt") is None
 
 
 def test_service_worker_served_from_root_with_full_scope(client):

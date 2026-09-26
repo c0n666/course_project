@@ -1,0 +1,147 @@
+{#- AI coach report (CoachReport.data). Usage:
+    {% import '_coach.html' as coach %}{{ coach.report_body(report, day_iso, can_log=true) }}
+    can_log adds "Log" links that open Log Food with the product, portion and meal pre-filled. -#}
+{% import '_ui.html' as ui %}
+
+{% set meal_labels = {'breakfast': 'Breakfast', 'lunch': 'Lunch', 'dinner': 'Dinner', 'snack': 'Snack'} %}
+
+{% macro check_icon(cls) -%}
+<svg class="{{ cls }}" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+{%- endmacro %}
+
+{% macro alert_icon(cls) -%}
+<svg class="{{ cls }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+{%- endmacro %}
+
+{% macro report_body(report, day_iso, can_log=true) %}
+{% set d = report.data %}
+<div class="space-y-4 lg:space-y-6">
+  {# ---------- Summary ---------- #}
+  <section class="{{ ui.card }} p-5 sm:p-6" aria-labelledby="coach-summary-{{ report.id }}">
+    <div class="flex items-start gap-4">
+      {% if report.grade %}
+      <span class="inline-flex h-14 min-w-[3.5rem] shrink-0 items-center justify-center rounded-2xl bg-violet-500/15 px-2 text-2xl font-bold text-violet-700 dark:text-violet-300"
+            aria-label="Grade {{ report.grade }}">{{ report.grade }}</span>
+      {% endif %}
+      <div class="min-w-0">
+        <h3 id="coach-summary-{{ report.id }}" class="{{ ui.h2 }}">Summary</h3>
+        <p class="mt-0.5 text-[13px] text-fg-muted">
+          Last {{ report.days }} days · {{ report.created_at.strftime('%b %d, %H:%M') }}
+          {% if report.engine == 'local' %}· basic analysis{% endif %}
+        </p>
+      </div>
+    </div>
+    <p class="mt-4 text-[15px] leading-relaxed">{{ report.summary }}</p>
+    {% if d.notice %}
+    <p class="mt-3 flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2.5 text-[13px] text-amber-800 dark:text-amber-200">
+      {{ alert_icon('mt-0.5 h-4 w-4 shrink-0') }}{{ d.notice }}
+    </p>
+    {% endif %}
+  </section>
+
+  {# ---------- Findings ---------- #}
+  {% if d.highlights or d.issues %}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+    {% if d.highlights %}
+    <section class="{{ ui.card }} p-5 sm:p-6">
+      <h3 class="{{ ui.h2 }}">Going well</h3>
+      <ul class="mt-3 space-y-2.5">
+        {% for item in d.highlights %}
+        <li class="flex items-start gap-2.5 text-[15px] leading-snug">
+          <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">{{ check_icon('h-3 w-3') }}</span>
+          <span>{{ item }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if d.issues %}
+    <section class="{{ ui.card }} p-5 sm:p-6">
+      <h3 class="{{ ui.h2 }}">Needs attention</h3>
+      <ul class="mt-3 space-y-2.5">
+        {% for item in d.issues %}
+        <li class="flex items-start gap-2.5 text-[15px] leading-snug">
+          <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">{{ alert_icon('h-3.5 w-3.5') }}</span>
+          <span>{{ item }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ---------- Changes ---------- #}
+  {% if d.changes %}
+  <section aria-labelledby="coach-changes-{{ report.id }}">
+    <h3 id="coach-changes-{{ report.id }}" class="{{ ui.section_title }}">What to change</h3>
+    <ol class="{{ ui.list }}">
+      {% for c in d.changes %}
+      <li class="flex items-start gap-3 px-4 sm:px-5 py-3.5">
+        <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{{ loop.index }}</span>
+        <div class="min-w-0">
+          <p class="text-[15px] font-semibold leading-snug">{{ c.title }}</p>
+          {% if c.detail %}<p class="mt-1 text-sm leading-relaxed text-fg-muted">{{ c.detail }}</p>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endif %}
+
+  {# ---------- Foods ---------- #}
+  {% if d.foods %}
+  <section aria-labelledby="coach-foods-{{ report.id }}">
+    <h3 id="coach-foods-{{ report.id }}" class="{{ ui.section_title }}">Foods to add</h3>
+    <ul class="{{ ui.list }}">
+      {% for f in d.foods %}
+      <li class="{{ ui.list_row }} !items-start">
+        <div class="min-w-0 flex-1">
+          <p class="text-[15px] font-medium">{{ f.name }}</p>
+          <p class="text-[13px] tabular-nums text-fg-muted">{{ f.portion_grams }} g · {{ f.kcal }} kcal · P {{ ((f.protein_per_100g or 0) * f.portion_grams / 100)|round(1) }} g</p>
+          {% if f.reason %}<p class="mt-1 text-sm leading-snug text-fg-muted">{{ f.reason }}</p>{% endif %}
+        </div>
+        {% if can_log %}
+        <a href="{{ url_for('log_food', date=day_iso, product=f.product_id, grams=f.portion_grams) }}"
+           class="press shrink-0 inline-flex min-h-[44px] items-center gap-1 rounded-full bg-primary/10 px-4 text-sm font-semibold text-primary"
+           aria-label="Log {{ f.name }}, {{ f.portion_grams }} g">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Log
+        </a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {# ---------- Dishes ---------- #}
+  {% if d.dishes %}
+  <section aria-labelledby="coach-dishes-{{ report.id }}">
+    <h3 id="coach-dishes-{{ report.id }}" class="{{ ui.section_title }}">Dish ideas</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+      {% for dish in d.dishes %}
+      <article class="{{ ui.card }} p-5 sm:p-6">
+        <div class="flex items-start justify-between gap-3">
+          <h4 class="text-[17px] font-semibold leading-snug">{{ dish.name }}</h4>
+          <span class="shrink-0 {{ ui.badge }} {{ ui.meal_styles.get(dish.meal_type, ui.meal_default) }}">{{ meal_labels.get(dish.meal_type, dish.meal_type) }}</span>
+        </div>
+        {% if dish.kcal %}
+        <p class="mt-1 text-[13px] tabular-nums text-fg-muted">{{ dish.kcal }} kcal · P {{ dish.protein_g }} · F {{ dish.fat_g }} · C {{ dish.carbs_g }} g</p>
+        {% endif %}
+        {% if dish.why %}<p class="mt-3 text-sm leading-relaxed">{{ dish.why }}</p>{% endif %}
+        <ul class="mt-3 divide-y divide-line rounded-xl bg-surface-2 text-sm">
+          {% for ing in dish.ingredients %}
+          <li class="flex items-center justify-between gap-3 px-3 py-2">
+            <span class="min-w-0 truncate">{{ ing.name }}</span>
+            <span class="shrink-0 tabular-nums text-fg-muted">{{ ing.grams }} g</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endmacro %}

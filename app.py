@@ -38,7 +38,7 @@ from models import (
     db,
 )
 import food_db
-from ai_service import generate_ai_report
+from coach_agent import coach_available, generate_coach_report, latest_coach_report
 from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
 from nutrition import (
     auto_water_goal_ml,
@@ -362,17 +362,6 @@ def get_pending_recommendation_for_trainer(rec_id: int, trainer_id: int) -> Reco
     return rec if client else None
 
 
-def latest_ai_report(user_id: int) -> Report | None:
-    return (
-        Report.query.filter(
-            Report.user_id == user_id,
-            Report.ai_grade.isnot(None),
-        )
-        .order_by(Report.created_at.desc())
-        .first()
-    )
-
-
 def get_trainer_client(trainer_id: int, client_id: int) -> User | None:
     return User.query.filter_by(
         id=client_id, trainer_id=trainer_id, role="user"
@@ -667,7 +656,8 @@ def register_routes(app: Flask) -> None:
 
         return render_template(
             "dashboard.html",
-            latest_report=latest_ai_report(current_user.id),
+            coach_report=latest_coach_report(current_user.id),
+            coach_ai=coach_available(),
             calories_in=round(calories_in, 1),
             calories_burned=round(calories_burned, 1),
             net_calories=round(calories_in - calories_burned, 1),
@@ -740,20 +730,19 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("profile_page"))
 
         try:
-            result = generate_ai_report(current_user.id, days=7)
-            flash(
-                f"AI report ready: grade {result['ai_grade']}. "
-                f"Three recommendations were sent to your trainer for approval.",
-                "success",
-            )
-        except Exception:
+            report = generate_coach_report(current_user.id, days=7)
+            if report.engine == "local":
+                flash("Basic analysis ready (the AI coach is not connected).", "info")
+            else:
+                flash("Your coach analysis is ready.", "success")
+        except OperationalError:
             db.session.rollback()
-            flash("Could not generate the AI report. Please try again later.", "error")
+            flash("Could not save the analysis. Please try again.", "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
         )
-        return redirect(url_for("dashboard", date=selected.isoformat()))
+        return redirect(url_for("dashboard", date=selected.isoformat()) + "#coach")
 
     @app.route(
         "/recommendation/delete/<int:rec_id>",
@@ -875,7 +864,8 @@ def register_routes(app: Flask) -> None:
             goal_progress=progress,
         )
 
-    def _log_food_context(selected_date: date, preselect_id: int | None = None) -> dict:
+    def _log_food_context(selected_date: date, preselect_id: int | None = None,
+                          preselect_grams: float | None = None) -> dict:
         uid = current_user.id
         # Shared catalogue + the athlete's own foods; quick-add entries are not browsable.
         products = (
@@ -904,7 +894,7 @@ def register_routes(app: Flask) -> None:
             "favorite_products": [product_payload(p, favorite_ids) for p in favorites],
             "my_products": [product_payload(p, favorite_ids) for p in my_products],
             "catalogue": [product_payload(p, favorite_ids) for p in local_catalogue],
-            "preselected": product_payload(preselected, favorite_ids) if preselected else None,
+            "preselected": product_payload(preselected, favorite_ids, preselect_grams) if preselected else None,
             "copy_from_date": selected_date - timedelta(days=1),
             "copy_from_meals": meal_counts_for_day(uid, selected_date - timedelta(days=1)),
         }
@@ -953,10 +943,15 @@ def register_routes(app: Flask) -> None:
                 flash("Could not save the entry. Please try again.", "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
 
+        # ?product=<id>&grams=<g>&meal=<type> pre-fills the form (used by coach suggestions).
         preselect = request.args.get("product", "")
         return render_template(
             "log_food.html",
-            **_log_food_context(selected_date, int(preselect) if preselect.isdigit() else None),
+            **_log_food_context(
+                selected_date,
+                int(preselect) if preselect.isdigit() else None,
+                parse_number(request.args.get("grams"), 1, 2000),
+            ),
         )
 
     # ------------------------------------------------------------------ food database API
@@ -1310,7 +1305,6 @@ def register_routes(app: Flask) -> None:
             .limit(5)
             .all()
         )
-        client_ai_report = latest_ai_report(client.id)
 
         return render_template(
             "trainer_client.html",
@@ -1322,7 +1316,7 @@ def register_routes(app: Flask) -> None:
             today=today,
             pending_recommendations=pending_recs,
             recent_recommendations=recent_recs,
-            latest_ai_report=client_ai_report,
+            coach_report=latest_coach_report(client.id),
             water=water_state(client.id, today, profile),
             streak=logging_streak(client.id, today),
             weight_log=weight_summary(client.id),
@@ -1393,15 +1387,16 @@ def register_routes(app: Flask) -> None:
 
     @app.cli.command("generate-ai-report")
     @click.argument("user_id", type=int)
-    @click.option("--days", default=7, type=click.IntRange(min=1), help="Number of days to analyze")
+    @click.option("--days", default=7, type=click.IntRange(min=1, max=28), help="Number of days to analyze")
     def cli_generate_ai_report(user_id: int, days: int):
-        """Generate AI nutrition report for a user (CLI)."""
+        """Run the AI coach analysis for a user (CLI)."""
         user = db.session.get(User, user_id)
         if not user:
             print(f"User {user_id} not found.")
             return
-        result = generate_ai_report(user_id, days=days)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        report = generate_coach_report(user_id, days=days)
+        print(f"engine: {report.engine}")
+        print(json.dumps(report.data, indent=2, ensure_ascii=False))
 
     @app.cli.command("init-db")
     def init_db():
