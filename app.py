@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -12,6 +13,7 @@ import click
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
+from markupsafe import Markup, escape
 from sqlalchemy import event, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import joinedload
@@ -22,6 +24,7 @@ from models import (
     SOURCE_QUICK,
     SOURCE_SEED,
     SOURCE_USER,
+    CoachMessage,
     FavoriteProduct,
     FoodLog,
     Goal,
@@ -38,7 +41,17 @@ from models import (
     db,
 )
 import food_db
-from coach_agent import coach_available, generate_coach_report, latest_coach_report
+from coach_agent import (
+    CHAT_MAX_CHARS,
+    ChatLimitError,
+    CoachError,
+    chat_history,
+    coach_available,
+    coach_chat,
+    generate_coach_report,
+    latest_coach_report,
+)
+from llm_providers import ProviderError
 from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
 from nutrition import (
     auto_water_goal_ml,
@@ -139,6 +152,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     with app.app_context():
         _enable_wal_on_existing_db()
+
+    app.add_template_filter(coach_markup, "coach_markup")
 
     login_manager = LoginManager(app)
     login_manager.login_view = "login"
@@ -278,6 +293,60 @@ def record_weight(user_id: int, day: date, weight: float) -> None:
             profile = Profile(user_id=user_id)
             db.session.add(profile)
         profile.weight = weight
+
+
+_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_BULLET = re.compile(r"^\s*(?:[-*•])\s+(.*)$")
+_NUMBERED = re.compile(r"^\s*\d+[.)]\s+(.*)$")
+
+
+def coach_markup(text: str) -> Markup:
+    """Render the coach's plain-text reply as safe HTML: paragraphs, "- " / "1." lists and **bold**.
+    Everything is escaped first, so model output can never inject markup."""
+    def inline(line: str) -> str:
+        return _BOLD.sub(r"<strong>\1</strong>", str(escape(line.strip().lstrip("#").strip())))
+
+    html, list_tag, paragraph = [], None, []
+
+    def flush_paragraph():
+        if paragraph:
+            html.append("<p>" + "<br>".join(paragraph) + "</p>")
+            paragraph.clear()
+
+    def close_list():
+        nonlocal list_tag
+        if list_tag:
+            html.append(f"</{list_tag}>")
+            list_tag = None
+
+    for line in (text or "").splitlines():
+        bullet, numbered = _BULLET.match(line), _NUMBERED.match(line)
+        if bullet or numbered:
+            flush_paragraph()
+            tag = "ul" if bullet else "ol"
+            if list_tag != tag:
+                close_list()
+                html.append(f"<{tag}>")
+                list_tag = tag
+            html.append(f"<li>{inline((bullet or numbered).group(1))}</li>")
+        elif line.strip():
+            close_list()
+            paragraph.append(inline(line))
+        else:
+            close_list()
+            flush_paragraph()
+    close_list()
+    flush_paragraph()
+    return Markup("".join(html))
+
+
+def chat_message_payload(message) -> dict:
+    return {
+        "id": message.id,
+        "role": message.role,
+        "html": str(coach_markup(message.content)) if message.role == "assistant" else None,
+        "text": message.content if message.role == "user" else None,
+    }
 
 
 def wants_json() -> bool:
@@ -689,6 +758,53 @@ def register_routes(app: Flask) -> None:
                 else None
             ),
         )
+
+    @app.route("/coach/chat", methods=["GET", "POST"])
+    @login_required
+    def coach_chat_page():
+        if current_user.role == "trainer":
+            return redirect(url_for("trainer_dashboard"))
+        if request.method == "GET":
+            return render_template(
+                "coach_chat.html",
+                messages=chat_history(current_user.id),
+                coach_ai=coach_available(),
+                max_chars=CHAT_MAX_CHARS,
+                prefill=request.args.get("q", "")[:CHAT_MAX_CHARS],
+            )
+
+        data = request.get_json(silent=True) or request.form
+        message = str(data.get("message", "")).strip()
+        error, status = None, 200
+        if not message or len(message) > CHAT_MAX_CHARS:
+            error, status = f"Write a message of up to {CHAT_MAX_CHARS} characters.", 400
+        elif not coach_available():
+            error, status = "The AI coach is not connected yet.", 503
+        else:
+            try:
+                asked, answered = coach_chat(current_user.id, message)
+            except ChatLimitError as exc:
+                error, status = str(exc), 429
+            except (CoachError, ProviderError) as exc:
+                app.logger.warning("coach chat failed: %s", exc)
+                db.session.rollback()
+                error, status = "The coach couldn't answer right now. Please try again in a minute.", 502
+
+        if wants_json():
+            if error:
+                return jsonify(error=error), status
+            return jsonify(user=chat_message_payload(asked), reply=chat_message_payload(answered))
+        if error:
+            flash(error, "error")
+        return redirect(url_for("coach_chat_page") + "#latest")
+
+    @app.route("/coach/chat/clear", methods=["POST"])
+    @login_required
+    def clear_coach_chat():
+        CoachMessage.query.filter_by(user_id=current_user.id).delete()
+        db_commit_with_retry()
+        flash("Chat cleared.", "success")
+        return redirect(url_for("coach_chat_page"))
 
     @app.route("/targets/adaptive", methods=["POST"])
     @login_required

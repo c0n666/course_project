@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Callable
 
 from sqlalchemy.orm import joinedload
@@ -19,7 +19,7 @@ from sqlalchemy.orm import joinedload
 import food_db
 from ai_service import collect_nutrition_context, rule_based_analysis
 from llm_providers import Provider, ProviderError, get_provider
-from models import CoachReport, FoodLog, Goal, Product, Profile, WaterLog, WeightLog, db
+from models import CoachMessage, CoachReport, FoodLog, Goal, Product, Profile, WaterLog, WeightLog, db
 from nutrition import (
     GOAL_LABELS,
     calculate_age,
@@ -36,6 +36,9 @@ COACH_LANGUAGE = os.environ.get("COACH_LANGUAGE", "").strip() or "Ukrainian"
 MAX_TURNS = 10
 MAX_NUDGES = 2
 MAX_DAYS = 28
+CHAT_HISTORY = 20        # earlier chat turns sent back to the model
+CHAT_MAX_CHARS = 1000
+CHAT_DAILY_LIMIT = 40    # athlete messages per day, to stay inside the free provider quota
 MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"]
 GRADES = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"]
 
@@ -62,6 +65,20 @@ daily targets. Look the ingredients up with search_catalogue first.
 a short actionable title plus one or two sentences of detail.
 
 Write all text for the athlete in {COACH_LANGUAGE}. Product names may stay as they are in the catalogue."""
+
+
+CHAT_SYSTEM_PROMPT = f"""You are the nutrition coach inside a nutrition and workout tracking app, chatting \
+with one athlete about their diet. Answer their question directly and practically.
+
+- Use the tools to look at the athlete's real data whenever the answer depends on it (what they ate, \
+targets, remaining calories today, weight trend, their latest analysis). Quote concrete numbers.
+- When you suggest foods or meals, prefer products from the catalogue (search_catalogue) and give \
+portions in grams with approximate calories and protein.
+- Keep answers short: a few sentences or a short list. Plain text; you may use "- " bullets and **bold**.
+- Stay on nutrition, training and healthy habits; politely decline unrelated requests. You are not a \
+doctor: for symptoms or medical conditions, recommend seeing a professional.
+
+Answer in the language the athlete writes in; if unsure, use {COACH_LANGUAGE}."""
 
 
 def _obj(properties: dict, required: list[str] | None = None) -> dict:
@@ -156,6 +173,13 @@ TOOL_DEFINITIONS = [
         }),
     },
 ]
+LATEST_ANALYSIS_TOOL = {
+    "name": "get_latest_analysis",
+    "description": "The athlete's most recent coach analysis (summary, issues, suggested changes, "
+                   "foods and dishes), if they have run one.",
+    "input_schema": _obj({}),
+}
+
 SUBMIT_TOOL = {
     "name": "submit_report",
     "description": "Deliver the final analysis to the athlete. Call it once, after looking at the data.",
@@ -207,6 +231,7 @@ class CoachTools:
             "get_micronutrients": self.get_micronutrients,
             "get_weight_history": self.get_weight_history,
             "search_catalogue": self.search_catalogue,
+            "get_latest_analysis": self.get_latest_analysis,
         }
 
     def run(self, name: str, args: dict[str, Any]) -> str:
@@ -350,8 +375,30 @@ class CoachTools:
         products = food_db.search_products(query, self.user_id, limit=8, remote=False)
         return {"results": [_product_nutrition(p) for p in products]}
 
+    def get_latest_analysis(self) -> dict[str, Any]:
+        report = latest_coach_report(self.user_id)
+        if report is None:
+            return {"analysis": None, "note": "The athlete has not run an analysis yet."}
+        return {"created": report.created_at.isoformat(timespec="minutes"), "days": report.days,
+                "analysis": report.data}
+
 
 # --- the agent loop ---------------------------------------------------------------------
+
+def _answer_tool_calls(convo, tools: CoachTools, calls) -> None:
+    results = []
+    for call in calls:
+        if call.error:
+            results.append((call, f"Error: {call.error}", True))
+            continue
+        try:
+            results.append((call, tools.run(call.name, call.args), False))
+        except Exception as exc:  # a tool failure is reported to the model, not raised
+            logger.warning("coach tool %s failed: %s", call.name, exc)
+            db.session.rollback()
+            results.append((call, f"Error: {exc}", True))
+    convo.add_tool_results(results)
+
 
 def run_agent(provider: Provider, tools: CoachTools, task: str) -> dict[str, Any]:
     """Drive the tool-use loop until the model calls submit_report; returns its arguments."""
@@ -362,27 +409,32 @@ def run_agent(provider: Provider, tools: CoachTools, task: str) -> dict[str, Any
         submitted = next((c for c in reply.tool_calls if c.name == SUBMIT_TOOL["name"]), None)
         if submitted is not None and submitted.error is None:
             return submitted.args
-
         if reply.tool_calls:
-            results = []
-            for call in reply.tool_calls:
-                if call.error:
-                    results.append((call, f"Error: {call.error}", True))
-                    continue
-                try:
-                    results.append((call, tools.run(call.name, call.args), False))
-                except Exception as exc:  # a tool failure is reported to the model, not raised
-                    logger.warning("coach tool %s failed: %s", call.name, exc)
-                    db.session.rollback()
-                    results.append((call, f"Error: {exc}", True))
-            convo.add_tool_results(results)
+            _answer_tool_calls(convo, tools, reply.tool_calls)
             continue
-
         if nudges >= MAX_NUDGES:
             break
         nudges += 1
         convo.add_user("Deliver the analysis now by calling submit_report with the full report.")
     raise CoachError("The coach did not deliver a report.")
+
+
+def run_chat(provider: Provider, tools: CoachTools, history: list[dict[str, str]], message: str) -> str:
+    """One chat turn: let the model use the tools, then return its text answer."""
+    convo = provider.start(CHAT_SYSTEM_PROMPT, message, TOOL_DEFINITIONS + [LATEST_ANALYSIS_TOOL], history)
+    nudged = False
+    for _ in range(MAX_TURNS):
+        reply = convo.send()
+        if reply.tool_calls:
+            _answer_tool_calls(convo, tools, reply.tool_calls)
+            continue
+        if reply.text.strip():
+            return reply.text.strip()
+        if nudged:
+            break
+        nudged = True
+        convo.add_user("Please answer my last message.")
+    raise CoachError("The coach did not answer.")
 
 
 def _items(value: Any, limit: int) -> list:
@@ -517,3 +569,44 @@ def latest_coach_report(user_id: int) -> CoachReport | None:
         .order_by(CoachReport.created_at.desc(), CoachReport.id.desc())
         .first()
     )
+
+
+# --- chat ---------------------------------------------------------------------------------
+
+class ChatLimitError(CoachError):
+    """The athlete reached today's message limit."""
+
+
+def chat_history(user_id: int, limit: int = 50) -> list[CoachMessage]:
+    rows = (
+        CoachMessage.query.filter_by(user_id=user_id)
+        .order_by(CoachMessage.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return rows[::-1]
+
+
+def messages_today(user_id: int) -> int:
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    return CoachMessage.query.filter(
+        CoachMessage.user_id == user_id,
+        CoachMessage.role == "user",
+        CoachMessage.created_at >= today_start,
+    ).count()
+
+
+def coach_chat(user_id: int, message: str, provider: Provider | None = None) -> tuple[CoachMessage, CoachMessage]:
+    """Answer one athlete message and store both turns. Raises CoachError / ProviderError."""
+    provider = provider or get_provider()
+    if provider is None:
+        raise CoachError("The AI coach is not connected.")
+    if messages_today(user_id) >= CHAT_DAILY_LIMIT:
+        raise ChatLimitError(f"You've reached today's limit of {CHAT_DAILY_LIMIT} messages. Try again tomorrow.")
+    history = [{"role": m.role, "content": m.content} for m in chat_history(user_id, CHAT_HISTORY)]
+    answer = run_chat(provider, CoachTools(user_id), history, message)
+    asked = CoachMessage(user_id=user_id, role="user", content=message)
+    answered = CoachMessage(user_id=user_id, role="assistant", content=answer)
+    db.session.add_all([asked, answered])
+    db.session.commit()
+    return asked, answered

@@ -86,7 +86,9 @@ class Provider:
     def engine(self) -> str:
         return f"{self.name}:{self.model}"
 
-    def start(self, system: str, user_text: str, tools: list[dict[str, Any]]) -> "Conversation":
+    def start(self, system: str, user_text: str, tools: list[dict[str, Any]],
+              history: list[dict[str, str]] | None = None) -> "Conversation":
+        """Open a conversation. history: earlier turns as {"role": "user"|"assistant", "content": text}."""
         raise NotImplementedError
 
 
@@ -110,19 +112,24 @@ class GeminiProvider(Provider):
     model_env = "GEMINI_MODEL"
     default_model = "gemini-3.5-flash-lite"
 
-    def start(self, system, user_text, tools):
-        return GeminiConversation(self, system, user_text, tools)
+    def start(self, system, user_text, tools, history=None):
+        return GeminiConversation(self, system, user_text, tools, history or [])
 
 
 class GeminiConversation(Conversation):
-    def __init__(self, provider: GeminiProvider, system: str, user_text: str, tools: list[dict[str, Any]]):
+    def __init__(self, provider: GeminiProvider, system: str, user_text: str, tools: list[dict[str, Any]],
+                 history: list[dict[str, str]]):
         self.provider = provider
         self.system = system
         self.tools = [
             {"name": t["name"], "description": t["description"], "parametersJsonSchema": t["input_schema"]}
             for t in tools
         ]
-        self.contents: list[dict[str, Any]] = [{"role": "user", "parts": [{"text": user_text}]}]
+        self.contents: list[dict[str, Any]] = [
+            {"role": "model" if turn["role"] == "assistant" else "user", "parts": [{"text": turn["content"]}]}
+            for turn in history
+        ]
+        self.contents.append({"role": "user", "parts": [{"text": user_text}]})
 
     def send(self) -> Reply:
         data = _post_json(
@@ -186,12 +193,13 @@ class GroqProvider(Provider):
     model_env = "GROQ_MODEL"
     default_model = "openai/gpt-oss-120b"
 
-    def start(self, system, user_text, tools):
-        return GroqConversation(self, system, user_text, tools)
+    def start(self, system, user_text, tools, history=None):
+        return GroqConversation(self, system, user_text, tools, history or [])
 
 
 class GroqConversation(Conversation):
-    def __init__(self, provider: GroqProvider, system: str, user_text: str, tools: list[dict[str, Any]]):
+    def __init__(self, provider: GroqProvider, system: str, user_text: str, tools: list[dict[str, Any]],
+                 history: list[dict[str, str]]):
         self.provider = provider
         self.tools = [
             {"type": "function",
@@ -200,6 +208,7 @@ class GroqConversation(Conversation):
         ]
         self.messages: list[dict[str, Any]] = [
             {"role": "system", "content": system},
+            *({"role": turn["role"], "content": turn["content"]} for turn in history),
             {"role": "user", "content": user_text},
         ]
 
