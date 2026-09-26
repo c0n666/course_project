@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
+{% import '_coach.html' as coach %}
 {% set page_title = 'Today' if selected_date == today else selected_date.strftime('%A') %}
 {% set page_subtitle = selected_date.strftime('%A, %B %d') if selected_date == today else selected_date.strftime('%B %d, %Y') %}
 {% block title %}Dashboard — Nutrition Tracker{% endblock %}
@@ -327,35 +328,30 @@
 {# ============================================================ INSIGHTS #}
 <div data-view="insights" data-view-title="Insights">
   <div class="space-y-4 lg:space-y-6">
-    {# AI analysis #}
-    <section class="relative overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7" aria-labelledby="ai-heading">
+    {# AI coach teaser (full analysis lives in the Coach tab) #}
+    <a href="#coach" data-tab="coach" aria-labelledby="ai-heading"
+       class="press relative block overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7">
       <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
       <div class="relative flex items-start gap-3">
         <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
         </span>
-        <div>
-          <h2 id="ai-heading" class="text-[17px] font-semibold">AI diet analysis</h2>
-          <p class="text-sm text-violet-100 mt-0.5">Last 7 days · calories, macros & micronutrients</p>
+        <div class="min-w-0 flex-1">
+          <h2 id="ai-heading" class="text-[17px] font-semibold">AI coach</h2>
+          <p class="text-sm text-violet-100 mt-0.5">{{ 'Latest analysis · ' ~ coach_report.created_at.strftime('%b %d') if coach_report else 'What to change in your diet, foods and dishes to add' }}</p>
         </div>
+        {% if coach_report and coach_report.grade %}
+        <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ coach_report.grade }}</span>
+        {% endif %}
       </div>
-      {% if latest_report %}
-      <div class="relative mt-5 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-4">
-        <div class="flex flex-wrap items-center gap-3 mb-2">
-          <span class="inline-flex items-center justify-center min-w-[2.5rem] h-10 px-2 rounded-xl bg-white text-violet-700 text-lg font-bold">{{ latest_report.ai_grade }}</span>
-          <span class="text-xs text-violet-100">Latest · {{ latest_report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-        </div>
-        <p class="text-[15px] leading-relaxed text-white/90">{{ latest_report.nutrition_summary }}</p>
-      </div>
+      {% if coach_report %}
+      <p class="relative mt-4 text-[15px] leading-relaxed text-white/90 line-clamp-3">{{ coach_report.summary }}</p>
       {% endif %}
-      <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}" class="relative mt-5">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit"
-                class="press w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 sm:h-11 px-5 rounded-xl bg-white text-violet-700 text-[15px] sm:text-sm font-semibold shadow-sm hover:bg-violet-50">
-          {{ 'Run a new report' if latest_report else 'Run AI report' }}
-        </button>
-      </form>
-    </section>
+      <span class="relative mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+        {{ 'Open full analysis' if coach_report else 'Open coach' }}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      </span>
+    </a>
 
     {% if checkin %}
     <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="checkin-heading">
@@ -524,50 +520,73 @@
 
 {# ============================================================ COACH #}
 <div data-view="coach" data-view-title="Coach">
-  {% if recommendations %}
-  <p class="{{ ui.section_title }}">Awaiting approval · {{ recommendations|length }}</p>
-  <ul class="space-y-3">
-    {% for rec in recommendations %}
-    {% set is_ai = rec.content.startswith('[AI') %}
-    <li class="{{ ui.card }} p-4 sm:p-5">
-      <div class="flex items-start gap-3">
-        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full {{ 'bg-violet-500/15 text-violet-600 dark:text-violet-300' if is_ai else 'bg-primary/15 text-primary' }}">
-          {% if is_ai %}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
-          {% else %}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-          {% endif %}
+  <div class="space-y-4 lg:space-y-6">
+    <section class="relative overflow-hidden rounded-card bg-gradient-to-br from-violet-600 via-violet-700 to-fuchsia-700 text-white shadow-card p-5 sm:p-7" aria-labelledby="coach-heading">
+      <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
+      <div class="relative flex items-start gap-3">
+        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>
         </span>
-        <div class="min-w-0 flex-1">
-          <p class="text-[13px] font-semibold {{ 'text-violet-600 dark:text-violet-300' if is_ai else 'text-primary' }}">
-            {{ 'AI · pending trainer review' if is_ai else 'From your trainer' }}
-          </p>
-          <p class="mt-1 text-[15px] leading-relaxed">{{ rec.content }}</p>
+        <div>
+          <h2 id="coach-heading" class="text-[17px] font-semibold">AI coach</h2>
+          <p class="text-sm text-violet-100 mt-0.5">Looks at your food log, weight and water, then tells you what to change and what to eat.</p>
         </div>
       </div>
-      <div class="mt-3 flex justify-end">
-        <form method="post" action="/recommendation/delete/{{ rec.id }}"
-              data-confirm="Delete this recommendation?" data-confirm-action="Delete recommendation">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
-          <button type="submit" class="press inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ui.trash_path }}"/></svg>
-            Delete
-          </button>
-        </form>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <div class="{{ ui.card }} px-6 py-12 text-center">
-    <span class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
-    </span>
-    <p class="mt-4 text-[17px] font-semibold">No recommendations yet</p>
-    <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">Tips from your trainer and AI suggestions will appear here.</p>
+      <form method="post" action="{{ url_for('dashboard_ai_report', date=selected_date.isoformat()) }}" class="relative mt-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+                class="press w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 sm:h-11 px-5 rounded-xl bg-white text-violet-700 text-[15px] sm:text-sm font-semibold shadow-sm hover:bg-violet-50">
+          {{ 'Run a new analysis' if coach_report else 'Analyze my last 7 days' }}
+        </button>
+        <p class="mt-2 text-[13px] text-violet-100">
+          {% if coach_ai %}Takes up to a minute.{% else %}Basic mode — the AI coach is not connected yet.{% endif %}
+        </p>
+      </form>
+    </section>
+
+    {% if coach_report %}
+    {{ coach.report_body(coach_report, selected_date.isoformat()) }}
+    {% endif %}
+
+    {% if recommendations %}
+    <section>
+      <h2 class="{{ ui.section_title }}">From your trainer · {{ recommendations|length }}</h2>
+      <ul class="space-y-3">
+        {% for rec in recommendations %}
+        {% set is_ai = rec.content.startswith('[AI') %}
+        <li class="{{ ui.card }} p-4 sm:p-5">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full {{ 'bg-violet-500/15 text-violet-600 dark:text-violet-300' if is_ai else 'bg-primary/15 text-primary' }}">
+              {% if is_ai %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+              {% else %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+              {% endif %}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[13px] font-semibold {{ 'text-violet-600 dark:text-violet-300' if is_ai else 'text-primary' }}">
+                {{ 'AI · pending trainer review' if is_ai else 'From your trainer' }}
+              </p>
+              <p class="mt-1 text-[15px] leading-relaxed">{{ rec.content }}</p>
+            </div>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <form method="post" action="/recommendation/delete/{{ rec.id }}"
+                  data-confirm="Delete this recommendation?" data-confirm-action="Delete recommendation">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+              <button type="submit" class="press inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ui.trash_path }}"/></svg>
+                Delete
+              </button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {# ============================================================ Micronutrient sheet

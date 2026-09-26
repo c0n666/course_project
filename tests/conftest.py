@@ -8,7 +8,9 @@ from werkzeug.security import generate_password_hash
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
-os.environ.pop("GEMINI_API_KEY", None)
+# Tests never call a real AI provider: without keys the coach runs in basic mode.
+for _var in ("COACH_PROVIDER", "GEMINI_API_KEY", "GROQ_API_KEY"):
+    os.environ.pop(_var, None)
 
 from app import _seed_micronutrients, _seed_products_and_links, create_app  # noqa: E402
 from models import Goal, Profile, User, db  # noqa: E402

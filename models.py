@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime
 
 from flask_login import UserMixin
@@ -271,3 +272,25 @@ class WeightLog(db.Model):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     date: Mapped[date] = mapped_column(db.Date, nullable=False, default=date.today)
     weight_kg: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+
+
+class CoachReport(db.Model):
+    """One AI coach analysis; `payload` holds the structured JSON the coach returned."""
+
+    __tablename__ = "coach_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, index=True)
+    days: Mapped[int] = mapped_column(nullable=False, default=7)
+    engine: Mapped[str] = mapped_column(db.String(40), nullable=False)  # model id or "local"
+    grade: Mapped[str | None] = mapped_column(db.String(4))
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+    @property
+    def data(self) -> dict:
+        try:
+            return json.loads(self.payload or "{}")
+        except ValueError:
+            return {}

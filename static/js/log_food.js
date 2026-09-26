@@ -358,9 +358,14 @@
   });
 
   /* ---------------------------------------------------------------- boot */
+  const params = new URLSearchParams(location.search);
+  if (selected && selected.portion) portion.value = Math.round(selected.portion);
+  const meal = params.get('meal') && document.querySelector(
+    `#logFoodForm input[name="meal_type"][value="${CSS.escape(params.get('meal'))}"]`);
+  if (meal) meal.checked = true;
   refresh();
   if (selected) document.getElementById('portionBlock').scrollIntoView({ block: 'center' });
-  if (new URLSearchParams(location.search).get('scan') === '1') {  // opened from the + sheet
+  if (params.get('scan') === '1') {  // opened from the + sheet
     App.openSheet('scanSheet');
     startScanner();
   }
