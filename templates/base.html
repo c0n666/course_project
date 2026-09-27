@@ -212,10 +212,13 @@
       </nav>
 
       <div class="p-3 border-t border-white/5 space-y-1">
+        {# Athletes change theme & language in Me (profile); trainers have no profile page. #}
+        {% if is_trainer %}
         <div class="px-1 pb-2 space-y-2">
           {{ ui.theme_switch(on_chrome=true) }}
           {{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path, on_chrome=true) }}
         </div>
+        {% endif %}
         <button type="button" data-install data-install-action hidden
                 class="w-full flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
           {{ icon('download', 'w-5 h-5') }} {{ _('Install app') }}
@@ -320,17 +323,19 @@
         <div class="mt-2 rounded-2xl bg-surface-2 divide-y divide-line overflow-hidden">
           {% if not is_trainer %}
           <a href="{{ url_for('profile_page') }}" class="press flex items-center gap-3 px-4 min-h-[52px] text-[17px]">
-            {{ icon('user', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">{{ _('Profile & goals') }}</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
+            {{ icon('user', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">{{ _('Profile & settings') }}</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
           </a>
           {% endif %}
           <button type="button" data-install data-install-action hidden class="press w-full flex items-center gap-3 px-4 min-h-[52px] text-[17px] text-left">
             {{ icon('download', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">{{ _('Install app') }}</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
           </button>
         </div>
+        {% if is_trainer %}
         <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">{{ _('Appearance') }}</p>
         {{ ui.theme_switch() }}
         <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">{{ _('Language') }}</p>
         {{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path) }}
+        {% endif %}
         <a href="{{ url_for('logout') }}" class="press mt-5 flex items-center justify-center gap-2 min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-medium text-red-600 dark:text-red-400">
           {{ icon('logout', 'w-5 h-5') }} {{ _('Sign out') }}
         </a>
