@@ -30,13 +30,14 @@ import urllib.request
 from typing import Any
 
 from i18n import current_language
+from ml_inference import GRADE_SOURCE_OFF, normalize_grade
 from models import SOURCE_OFF, SOURCE_QUICK, Product, db
 
 logger = logging.getLogger(__name__)
 
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
-OFF_FIELDS = "code,lang,product_name,product_name_uk,product_name_en,brands,nutriments,countries_tags"
+OFF_FIELDS = "code,lang,product_name,product_name_uk,product_name_en,brands,nutriments,countries_tags,nutriscore_grade"
 # OFF asks every client to identify itself: AppName/Version (contact).
 USER_AGENT = os.environ.get("OFF_USER_AGENT", "").strip() or "Kolos/1.0 (course project)"
 TIMEOUT_SECONDS = 8
@@ -259,6 +260,7 @@ def parse_off_product(raw: dict[str, Any] | None) -> dict[str, Any] | None:
         "proteins": macro("proteins_100g"),
         "fats": macro("fat_100g"),
         "carbs": macro("carbohydrates_100g"),
+        "nutri_grade": normalize_grade(raw.get("nutriscore_grade")),  # "unknown"/"not-applicable" → None
         "countries": countries,
         "ukraine": ukraine,
     }
@@ -352,6 +354,8 @@ def upsert_off_product(data: dict[str, Any]) -> Product:
         return product  # never overwrite catalogue or user foods that share a barcode
     for field in ("name", "name_uk", "brand", "calories_per_100g", "proteins", "fats", "carbs"):
         setattr(product, field, data[field])
+    if data.get("nutri_grade"):
+        product.nutri_grade, product.nutri_source = data["nutri_grade"], GRADE_SOURCE_OFF
     product.refresh_search_terms()
     return product
 

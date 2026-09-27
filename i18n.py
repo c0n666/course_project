@@ -76,6 +76,14 @@ JS_STRINGS = [
     N_("Camera access was denied. Type the barcode number below instead."),
     N_("Camera is not available. Type the barcode number below instead."),
     N_("A barcode has 8 to 14 digits."),
+    N_("Nutri-Score {g}"),
+    N_("Nutri-Score {g} (predicted by Kolos)"),
+    N_("Not in the food list yet. Try search."),
+    N_("Confidence {n}%"),
+    N_("Selected: {name}"),
+    N_("Recognising…"),
+    N_("Could not recognise this photo."),
+    N_("No food found on this photo. Try another angle."),
 ]
 
 

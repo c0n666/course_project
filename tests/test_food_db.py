@@ -60,7 +60,7 @@ def test_parse_off_product_maps_fields_and_brand():
     parsed = food_db.parse_off_product(_off_product())
     assert parsed == {
         "barcode": "3017620422003", "name": "Nutella", "name_uk": None, "brand": "Nutella",
-        "calories_per_100g": 539.0, "proteins": 6.3, "fats": 30.9, "carbs": 57.5,
+        "calories_per_100g": 539.0, "proteins": 6.3, "fats": 30.9, "carbs": 57.5, "nutri_grade": None,
         "countries": [], "ukraine": False,
         "searchable": False,  # no market: found by barcode only
     }

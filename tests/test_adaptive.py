@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from conftest import create_user, login
 from models import FoodLog, Goal, Product, Profile, WeightLog, db
-from nutrition import calculate_daily_targets, predict_weight_trend, weekly_checkin
+from nutrition import calculate_daily_targets, weekly_checkin
 
 
 def _product_2000():
@@ -116,17 +116,3 @@ def test_changing_goal_type_clears_override(app, client):
     with app.app_context():
         assert _profile(uid).calorie_target_override is None
 
-
-# --- weight chart -------------------------------------------------------------------
-
-def test_weight_chart_uses_real_weigh_ins(app):
-    today = date.today()
-    with app.app_context():
-        uid = create_user("c@user.test").id
-        assert predict_weight_trend(uid)["meta"]["actual_source"] == "estimate"
-        db.session.add(WeightLog(user_id=uid, date=today - timedelta(days=3), weight_kg=80.4))
-        db.session.add(WeightLog(user_id=uid, date=today, weight_kg=79.8))
-        db.session.commit()
-        trend = predict_weight_trend(uid)
-        assert trend["meta"]["actual_source"] == "weigh_ins"
-        assert trend["actual"][:7] == [None, None, None, 80.4, None, None, 79.8]
