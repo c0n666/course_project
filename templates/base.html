@@ -6,13 +6,13 @@
       page_back_url  pushed screen: "‹ page_back_label" in the app bar
       page_bar_title compact title shown in the app bar (defaults to page_title)
 -#}
-<html lang="en" class="h-full{{ ' is-presented' if presented else '' }}">
+<html lang="{{ current_lang }}" class="h-full{{ ' is-presented' if presented else '' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#F5F5F7">
   <meta name="color-scheme" content="light dark">
-  <title>{% block title %}Kolos — nutrition & training{% endblock %}</title>
+  <title>{% block title %}{{ _('Kolos — nutrition & training') }}{% endblock %}</title>
 
   {# ---------- PWA ---------- #}
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
@@ -25,6 +25,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <script type="application/json" id="i18n">{{ js_i18n|tojson }}</script>
 
   {# Runs before first paint: JS flag, initial in-page view, theme (System / Light / Dark) #}
   <script>
@@ -129,14 +130,14 @@
 {% if authed %}
   {% if is_trainer %}
     {% set nav_items = [
-      {'key': 'clients', 'label': 'Clients', 'icon': 'users', 'href': url_for('trainer_dashboard'), 'active': endpoint in ['trainer_dashboard', 'trainer_client']},
+      {'key': 'clients', 'label': _('Clients'), 'icon': 'users', 'href': url_for('trainer_dashboard'), 'active': endpoint in ['trainer_dashboard', 'trainer_client']},
     ] %}
   {% else %}
     {% set nav_items = [
-      {'key': 'today', 'label': 'Today', 'icon': 'home', 'href': url_for('dashboard'), 'active': endpoint == 'dashboard'},
-      {'key': 'insights', 'label': 'Insights', 'icon': 'chart', 'href': url_for('dashboard') ~ '#insights', 'active': false},
-      {'key': 'coach', 'label': 'Coach', 'icon': 'chat', 'href': url_for('dashboard') ~ '#coach', 'active': false, 'badge': coach_count},
-      {'key': 'me', 'label': 'Me', 'icon': 'user', 'href': url_for('profile_page'), 'active': endpoint == 'profile_page'},
+      {'key': 'today', 'label': _('Today'), 'icon': 'home', 'href': url_for('dashboard'), 'active': endpoint == 'dashboard'},
+      {'key': 'insights', 'label': _('Insights'), 'icon': 'chart', 'href': url_for('dashboard') ~ '#insights', 'active': false},
+      {'key': 'coach', 'label': _('Coach'), 'icon': 'chat', 'href': url_for('dashboard') ~ '#coach', 'active': false, 'badge': coach_count},
+      {'key': 'me', 'label': _('Me'), 'icon': 'user', 'href': url_for('profile_page'), 'active': endpoint == 'profile_page'},
     ] %}
   {% endif %}
 {% endif %}
@@ -161,7 +162,7 @@
 {% import '_ui.html' as ui %}
 
 <body class="min-h-full bg-canvas text-fg antialiased">
-  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-surface focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-card text-sm font-medium">Skip to content</a>
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-surface focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-card text-sm font-medium">{{ _('Skip to content') }}</a>
 
   {# ---------- Toast notifications (flash messages) ---------- #}
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -172,7 +173,7 @@
     <div class="toast toast--{{ kind }}" data-kind="{{ kind }}" role="{{ 'alert' if kind == 'error' else 'status' }}">
       <span class="toast-icon">{{ icon('check' if kind == 'success' else ('alert' if kind == 'error' else 'info'), 'w-5 h-5') }}</span>
       <p class="flex-1 min-w-0 pt-1.5 text-[15px] sm:text-sm font-medium leading-snug">{{ message }}</p>
-      <button type="button" data-toast-close aria-label="Dismiss notification"
+      <button type="button" data-toast-close aria-label="{{ _('Dismiss notification') }}"
               class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2">
         {{ icon('close', 'w-4 h-4', '2') }}
       </button>
@@ -193,7 +194,7 @@
         <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="h-10 w-10 rounded-xl">
         <div class="leading-tight">
           <p class="text-white font-semibold text-[15px]">Kolos</p>
-          <p class="text-xs text-slate-400">Nutrition & training</p>
+          <p class="text-xs text-slate-400">{{ _('Nutrition & training') }}</p>
         </div>
       </div>
 
@@ -201,20 +202,23 @@
       <div class="px-3 pb-2">
         <button type="button" data-sheet-open="quickAddSheet"
                 class="press w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-500 text-emerald-950 text-sm font-semibold hover:bg-emerald-400">
-          {{ icon('plus', 'w-5 h-5', '2.2') }} New entry
+          {{ icon('plus', 'w-5 h-5', '2.2') }} {{ _('New entry') }}
         </button>
       </div>
       {% endif %}
 
-      <nav class="flex-1 px-3 py-4 space-y-1" aria-label="Main">
+      <nav class="flex-1 px-3 py-4 space-y-1" aria-label="{{ _('Main') }}">
         {% for item in nav_items %}{{ tab(item, mobile=false) }}{% endfor %}
       </nav>
 
       <div class="p-3 border-t border-white/5 space-y-1">
-        <div class="px-1 pb-2">{{ ui.theme_switch(on_chrome=true) }}</div>
+        <div class="px-1 pb-2 space-y-2">
+          {{ ui.theme_switch(on_chrome=true) }}
+          {{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path, on_chrome=true) }}
+        </div>
         <button type="button" data-install data-install-action hidden
                 class="w-full flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
-          {{ icon('download', 'w-5 h-5') }} Install app
+          {{ icon('download', 'w-5 h-5') }} {{ _('Install app') }}
         </button>
         <div class="flex items-center gap-3 rounded-xl px-3 py-3">
           <div class="h-9 w-9 shrink-0 rounded-full bg-slate-700 text-white flex items-center justify-center text-sm font-semibold uppercase">{{ current_user.email[:1] }}</div>
@@ -225,7 +229,7 @@
         </div>
         <a href="{{ url_for('logout') }}"
            class="flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-300">
-          {{ icon('logout', 'w-5 h-5') }} Sign out
+          {{ icon('logout', 'w-5 h-5') }} {{ _('Sign out') }}
         </a>
       </div>
     </aside>
@@ -235,10 +239,10 @@
     <header class="app-bar app-chrome lg:hidden sticky top-0 z-30 bg-canvas/80 backdrop-blur-xl backdrop-saturate-150 {{ 'is-collapsed' if not page_title else '' }}">
       <div class="relative flex h-12 items-center justify-between px-2">
         {% if presented %}
-        <a href="{{ page_back_url }}" class="press inline-flex h-11 items-center px-2 text-[17px] text-primary">Cancel</a>
+        <a href="{{ page_back_url }}" class="press inline-flex h-11 items-center px-2 text-[17px] text-primary">{{ _('Cancel') }}</a>
         {% elif page_back_url %}
         <a href="{{ page_back_url }}" class="press inline-flex h-11 items-center -ml-1 pr-2 text-[17px] text-primary">
-          {{ icon('chevron-left', 'w-6 h-6', '2.2') }}{{ page_back_label or 'Back' }}
+          {{ icon('chevron-left', 'w-6 h-6', '2.2') }}{{ page_back_label or _('Back') }}
         </a>
         {% else %}
         <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="ml-1 h-8 w-8 rounded-[9px]">
@@ -247,7 +251,7 @@
         {% if presented %}
         <span class="w-16" aria-hidden="true"></span>
         {% else %}
-        <button type="button" data-sheet-open="accountSheet" aria-label="Account"
+        <button type="button" data-sheet-open="accountSheet" aria-label="{{ _('Account') }}"
                 class="press inline-flex h-11 w-11 items-center justify-center rounded-full">
           <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold uppercase text-fg">{{ current_user.email[:1] }}</span>
         </button>
@@ -267,25 +271,25 @@
         {% block content %}{% endblock %}
       </div>
       <footer class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-4 text-xs text-fg-subtle hidden lg:block">
-        Kolos · personal nutrition & training
+        {{ _('Kolos · personal nutrition & training') }}
       </footer>
     </main>
 
     {# ---------- Mobile tab bar (hidden on presented screens) ---------- #}
     {% if not presented %}
-    <nav class="app-tabbar app-chrome lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/85 backdrop-blur-xl backdrop-saturate-150 border-t border-line" aria-label="Main">
+    <nav class="app-tabbar app-chrome lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/85 backdrop-blur-xl backdrop-saturate-150 border-t border-line" aria-label="{{ _('Main') }}">
       <div class="flex items-stretch h-16 max-w-lg mx-auto px-1">
         {% if is_trainer %}
           {% for item in nav_items %}{{ tab(item) }}{% endfor %}
           <button type="button" data-sheet-open="accountSheet"
                   class="tab-link press flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium">
-            {{ icon('user', 'w-[26px] h-[26px]') }} Account
+            {{ icon('user', 'w-[26px] h-[26px]') }} {{ _('Account') }}
           </button>
         {% else %}
           {{ tab(nav_items[0]) }}
           {{ tab(nav_items[1]) }}
           <div class="flex-1 flex items-center justify-center">
-            <button type="button" data-sheet-open="quickAddSheet" aria-label="New entry"
+            <button type="button" data-sheet-open="quickAddSheet" aria-label="{{ _('New entry') }}"
                     class="press -mt-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-float ring-4 ring-canvas">
               {{ icon('plus', 'w-7 h-7', '2.4') }}
             </button>
@@ -316,17 +320,19 @@
         <div class="mt-2 rounded-2xl bg-surface-2 divide-y divide-line overflow-hidden">
           {% if not is_trainer %}
           <a href="{{ url_for('profile_page') }}" class="press flex items-center gap-3 px-4 min-h-[52px] text-[17px]">
-            {{ icon('user', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">Profile & goals</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
+            {{ icon('user', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">{{ _('Profile & goals') }}</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
           </a>
           {% endif %}
           <button type="button" data-install data-install-action hidden class="press w-full flex items-center gap-3 px-4 min-h-[52px] text-[17px] text-left">
-            {{ icon('download', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">Install app</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
+            {{ icon('download', 'w-6 h-6 text-fg-muted') }}<span class="flex-1">{{ _('Install app') }}</span>{{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
           </button>
         </div>
-        <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">Appearance</p>
+        <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">{{ _('Appearance') }}</p>
         {{ ui.theme_switch() }}
+        <p class="mt-5 mb-2 px-2 text-[13px] font-semibold uppercase tracking-wide text-fg-muted">{{ _('Language') }}</p>
+        {{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path) }}
         <a href="{{ url_for('logout') }}" class="press mt-5 flex items-center justify-center gap-2 min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-medium text-red-600 dark:text-red-400">
-          {{ icon('logout', 'w-5 h-5') }} Sign out
+          {{ icon('logout', 'w-5 h-5') }} {{ _('Sign out') }}
         </a>
       </div>
     </div>
@@ -339,17 +345,17 @@
     <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle">
       <div data-sheet-drag class="pb-1"><div class="sheet-handle"></div></div>
       <div class="sheet-body px-4 pb-5 pt-2">
-        <h2 id="quickAddTitle" class="px-1 pb-4 text-xl font-bold tracking-tight">New entry</h2>
+        <h2 id="quickAddTitle" class="px-1 pb-4 text-xl font-bold tracking-tight">{{ _('New entry') }}</h2>
         <div class="grid grid-cols-2 gap-3">
           <a href="{{ url_for('log_food', date=day_param) if day_param else url_for('log_food') }}"
              class="press flex flex-col items-start gap-3 rounded-2xl bg-orange-500/10 p-4 min-h-[120px]">
             <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-kcal text-white">{{ icon('food', 'w-6 h-6') }}</span>
-            <span><span class="block text-[17px] font-semibold">Log food</span><span class="block text-sm text-fg-muted">Meal or snack</span></span>
+            <span><span class="block text-[17px] font-semibold">{{ _('Log food') }}</span><span class="block text-sm text-fg-muted">{{ _('Meal or snack') }}</span></span>
           </a>
           <button type="button" data-sheet-open="workoutSheet"
                   class="press flex flex-col items-start gap-3 rounded-2xl bg-emerald-500/10 p-4 min-h-[120px] text-left">
             <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white">{{ icon('bolt', 'w-6 h-6') }}</span>
-            <span><span class="block text-[17px] font-semibold">Log workout</span><span class="block text-sm text-fg-muted">Training session</span></span>
+            <span><span class="block text-[17px] font-semibold">{{ _('Log workout') }}</span><span class="block text-sm text-fg-muted">{{ _('Training session') }}</span></span>
           </button>
         </div>
         <a href="{{ url_for('log_food', date=day_param, scan=1) if day_param else url_for('log_food', scan=1) }}"
@@ -357,10 +363,10 @@
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"/></svg>
           </span>
-          <span class="flex-1 text-[17px] font-semibold">Scan barcode</span>
+          <span class="flex-1 text-[17px] font-semibold">{{ _('Scan barcode') }}</span>
           {{ icon('chevron-right', 'w-4 h-4 text-fg-subtle', '2') }}
         </a>
-        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-semibold">Cancel</button>
+        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-surface-2 text-[17px] font-semibold">{{ _('Cancel') }}</button>
       </div>
     </div>
   </div>
@@ -370,8 +376,8 @@
     <div class="sheet-backdrop" data-sheet-close></div>
     <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="workoutSheetTitle">
       <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
-        <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
-        <h2 id="workoutSheetTitle" class="text-[17px] font-semibold">Log workout</h2>
+        <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">{{ _('Cancel') }}</button>
+        <h2 id="workoutSheetTitle" class="text-[17px] font-semibold">{{ _('Log workout') }}</h2>
         <span class="w-16" aria-hidden="true"></span>
       </div>
       <div class="sheet-body px-4 pb-5">
@@ -379,25 +385,25 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           {% if day_param %}<input type="hidden" name="date" value="{{ day_param }}">{% endif %}
           <div>
-            <label for="w-type" class="{{ ui.label }}">Type</label>
-            <input type="text" id="w-type" name="type" required placeholder="e.g. Running, Strength" autocomplete="off" class="{{ ui.input }}">
-            <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="Suggestions">
-              {% for t in ['Running', 'Strength', 'Cycling', 'Swimming', 'Yoga'] %}
+            <label for="w-type" class="{{ ui.label }}">{{ _('Type') }}</label>
+            <input type="text" id="w-type" name="type" required placeholder="{{ _('e.g. Running, Strength') }}" autocomplete="off" class="{{ ui.input }}">
+            <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="{{ _('Suggestions') }}">
+              {% for t in [_('Running'), _('Strength'), _('Cycling'), _('Swimming'), _('Yoga')] %}
               <button type="button" class="press h-9 px-3.5 rounded-full bg-surface-2 text-sm font-medium" onclick="document.getElementById('w-type').value='{{ t }}'">{{ t }}</button>
               {% endfor %}
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="w-duration" class="{{ ui.label }}">Duration (min)</label>
+              <label for="w-duration" class="{{ ui.label }}">{{ _('Duration (min)') }}</label>
               <input type="number" id="w-duration" name="duration_minutes" required min="1" inputmode="numeric" class="{{ ui.input }}">
             </div>
             <div>
-              <label for="w-kcal" class="{{ ui.label }}">Calories burned</label>
+              <label for="w-kcal" class="{{ ui.label }}">{{ _('Calories burned') }}</label>
               <input type="number" id="w-kcal" name="calories_burned" step="0.1" min="0" value="0" inputmode="decimal" class="{{ ui.input }}">
             </div>
           </div>
-          <button type="submit" class="{{ ui.btn_primary }} w-full">Save workout</button>
+          <button type="submit" class="{{ ui.btn_primary }} w-full">{{ _('Save workout') }}</button>
         </form>
       </div>
     </div>
@@ -412,7 +418,10 @@
         {{ self.content() }}
       </div>
     </main>
-    <footer class="py-6 text-center text-xs text-fg-subtle">Kolos · personal nutrition & training</footer>
+    <footer class="py-6 flex flex-col items-center gap-3 text-xs text-fg-subtle">
+      <div class="w-56">{{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path) }}</div>
+      <p>{{ _('Kolos · personal nutrition & training') }}</p>
+    </footer>
   </div>
   {% endif %}
 
@@ -422,10 +431,10 @@
     <div class="sheet-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmSheetMsg">
       <div class="action-group">
         <p id="confirmSheetMsg" data-confirm-message class="px-4 py-3.5 text-center text-[13px] text-fg-muted border-b border-line"></p>
-        <button type="button" data-confirm-ok class="action-btn font-medium text-red-600 dark:text-red-400">Delete</button>
+        <button type="button" data-confirm-ok class="action-btn font-medium text-red-600 dark:text-red-400">{{ _('Delete') }}</button>
       </div>
       <div class="action-group mt-2">
-        <button type="button" data-sheet-close class="action-btn font-semibold text-primary">Cancel</button>
+        <button type="button" data-sheet-close class="action-btn font-semibold text-primary">{{ _('Cancel') }}</button>
       </div>
     </div>
   </div>
@@ -439,16 +448,16 @@
         <div class="flex items-center gap-4">
           <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="h-14 w-14 rounded-2xl shadow-card">
           <div>
-            <h2 id="installSheetTitle" class="text-xl font-bold tracking-tight">Install the app</h2>
-            <p class="text-sm text-fg-muted">Full screen, one tap from your Home Screen.</p>
+            <h2 id="installSheetTitle" class="text-xl font-bold tracking-tight">{{ _('Install the app') }}</h2>
+            <p class="text-sm text-fg-muted">{{ _('Full screen, one tap from your Home Screen.') }}</p>
           </div>
         </div>
         <ol class="mt-5 rounded-2xl bg-surface-2 divide-y divide-line text-[15px]">
-          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">1</span>Tap <span class="inline-flex items-center gap-1 font-semibold">{{ icon('share', 'w-5 h-5 text-blue-500') }} Share</span> in the browser bar</li>
-          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">2</span>Choose <span class="inline-flex items-center gap-1 font-semibold">{{ icon('add-square', 'w-5 h-5') }} Add to Home Screen</span></li>
-          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">3</span>Tap <span class="font-semibold">Add</span></li>
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">1</span>{{ _('Tap') }} <span class="inline-flex items-center gap-1 font-semibold">{{ icon('share', 'w-5 h-5 text-blue-500') }} {{ _('Share') }}</span> {{ _('in the browser bar') }}</li>
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">2</span>{{ _('Choose') }} <span class="inline-flex items-center gap-1 font-semibold">{{ icon('add-square', 'w-5 h-5') }} {{ _('Add to Home Screen') }}</span></li>
+          <li class="flex items-center gap-3 px-4 min-h-[56px]"><span class="font-semibold text-fg-muted w-4">3</span>{{ _('Tap') }} <span class="font-semibold">{{ _('Add') }}</span></li>
         </ol>
-        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-primary text-on-primary text-[17px] font-semibold">Got it</button>
+        <button type="button" data-sheet-close class="press mt-4 w-full min-h-[52px] rounded-2xl bg-primary text-on-primary text-[17px] font-semibold">{{ _('Got it') }}</button>
       </div>
     </div>
   </div>

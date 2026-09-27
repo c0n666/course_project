@@ -1,0 +1,1747 @@
+# Ukrainian translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-09-27 15:50+0300\n"
+"PO-Revision-Date: 2026-09-27 12:03+0300\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: uk\n"
+"Language-Team: uk <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || "
+"n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+msgid "Log every meal at least 5 days a week so the analysis is accurate."
+msgstr "Записуйте кожен прийом їжі щонайменше 5 днів на тиждень, щоб аналіз був точним."
+
+msgid "Add a breakfast and a snack with protein (yogurt, eggs, chicken) to balance your macros."
+msgstr "Додайте сніданок і перекус із білком (йогурт, яйця, курка) для збалансованого БЖВ."
+
+msgid "Run the analysis again after a week of logging."
+msgstr "Повторіть аналіз після тижня записів."
+
+msgid ""
+"Lower the energy density of your meals: more vegetables and lean protein, fewer sauces, pastries "
+"and sweet drinks — calories are above the weight-loss range."
+msgstr ""
+"Зменште енергетичну щільність раціону: більше овочів і нежирного білка, менше соусів, випічки та "
+"солодких напоїв — калорійність вища за коридор для схуднення."
+
+msgid ""
+"Make your main meals bigger or add a healthy snack (nuts, rice, yogurt) to get closer to your "
+"daily target."
+msgstr ""
+"Збільште основні прийоми їжі або додайте корисний перекус (горіхи, рис, йогурт), щоб наблизитися "
+"до добової цілі."
+
+msgid "Cut back on caloric drinks, sauces and late-evening snacks — intake is above your target."
+msgstr "Скоротіть калорійні напої, соуси й пізні вечірні перекуси — споживання вище за ціль."
+
+#, python-format
+msgid ""
+"Add 25–35 g of protein per meal (chicken, fish, eggs, cottage cheese, yogurt) — protein is below "
+"%(pct)d%% of your target."
+msgstr ""
+"Додавайте 25–35 г білка на прийом (курка, риба, яйця, сир, йогурт) — білок нижче %(pct)d%% від "
+"цілі."
+
+msgid "Include healthy fats: avocado, olive oil, nuts — they support hormonal balance."
+msgstr "Додайте корисні жири: авокадо, оливкову олію, горіхи — вони підтримують гормональний баланс."
+
+msgid "Add complex carbs (oats, rice, buckwheat, banana) around workouts for energy."
+msgstr "Додайте складні вуглеводи (вівсянка, рис, гречка, банан) навколо тренувань для енергії."
+
+#, python-format
+msgid "Eat more foods rich in %(name)s (now %(avg).1f %(unit)s a day, target %(target).0f %(unit)s)."
+msgstr ""
+"Їжте більше продуктів, багатих на %(name)s (зараз %(avg).1f %(unit)s на день, ціль %(target).0f "
+"%(unit)s)."
+
+msgid "Keep to 3 main meals plus a protein snack every 3–4 hours for a steady metabolism."
+msgstr ""
+"Тримайтеся 3 основних прийомів їжі та білкового перекусу кожні 3–4 години для стабільного "
+"метаболізму."
+
+msgid "Drink 30–35 ml of water per kg of body weight and log your workouts for a more accurate TDEE."
+msgstr "Пийте 30–35 мл води на кг ваги та записуйте тренування для точнішого TDEE."
+
+msgid "Review your goal in the profile once a week together with your trainer."
+msgstr "Раз на тиждень переглядайте ціль у профілі разом із тренером."
+
+msgid ""
+"There are no food diary entries for the last 7 days, so your diet can't be assessed yet — log "
+"your meals to get an analysis."
+msgstr ""
+"За останні 7 днів немає записів у щоденнику харчування, тож оцінити раціон поки неможливо — "
+"записуйте прийоми їжі, щоб отримати аналіз."
+
+msgid "weight loss"
+msgstr "схуднення"
+
+msgid "maintenance"
+msgstr "підтримка форми"
+
+msgid "muscle gain"
+msgstr "набір маси"
+
+msgid "calories within the target range"
+msgstr "калорійність у цільовому коридорі"
+
+msgid "a steady calorie deficit"
+msgstr "стійкий дефіцит калорій"
+
+msgid "calories above the weight-loss target"
+msgstr "калорійність вища за ціль для схуднення"
+
+msgid "protein on target"
+msgstr "білок у нормі"
+
+msgid "not enough protein"
+msgstr "недостатньо білка"
+
+msgid "more protein than needed"
+msgstr "білка більше, ніж потрібно"
+
+#, python-format
+msgid "fat %(fat).0f%%, carbs %(carbs).0f%% of target"
+msgstr "жири %(fat).0f%%, вуглеводи %(carbs).0f%% від цілі"
+
+#, python-format
+msgid "low %(name)s (%(percent).0f%% of the norm)"
+msgstr "дефіцит %(name)s (%(percent).0f%% від норми)"
+
+msgid "no critical micronutrient gaps"
+msgstr "без критичних дефіцитів мікронутрієнтів"
+
+#, python-format
+msgid ""
+"Over %(days)s logged days (goal: %(goal)s): %(calories)s, %(protein)s, %(macros)s. "
+"Micronutrients: %(micros)s. Daily average %(kcal).0f kcal / %(prot).0f g protein against a target"
+" of %(target_kcal)s kcal / %(target_prot)s g protein. Score: %(grade)s (%(score).0f/100)."
+msgstr ""
+"За %(days)s дн. із записами (ціль: %(goal)s): %(calories)s, %(protein)s, %(macros)s. "
+"Мікронутрієнти: %(micros)s. У середньому %(kcal).0f ккал / %(prot).0f г білка на день при цілі "
+"%(target_kcal)s ккал / %(target_prot)s г білка. Оцінка: %(grade)s (%(score).0f/100)."
+
+msgid "Your session expired or the request was invalid. Refresh the page and try again."
+msgstr "Сесія завершилася або запит недійсний. Оновіть сторінку й спробуйте ще раз."
+
+msgid "Please sign in to continue."
+msgstr "Увійдіть, щоб продовжити."
+
+msgid "You do not have permission to access this page."
+msgstr "У вас немає доступу до цієї сторінки."
+
+msgid "Welcome back!"
+msgstr "З поверненням!"
+
+msgid "Invalid email or password."
+msgstr "Неправильна пошта або пароль."
+
+msgid "Email and password are required."
+msgstr "Потрібні пошта й пароль."
+
+msgid "Enter a valid email address."
+msgstr "Введіть правильну адресу пошти."
+
+msgid "Password must be at least 6 characters."
+msgstr "Пароль має містити щонайменше 6 символів."
+
+msgid "Passwords do not match."
+msgstr "Паролі не збігаються."
+
+msgid "An account with this email already exists."
+msgstr "Акаунт із такою поштою вже існує."
+
+msgid "Invalid role selected."
+msgstr "Вибрано недійсну роль."
+
+msgid "Enter valid height, weight, and target weight."
+msgstr "Введіть правильні зріст, вагу й цільову вагу."
+
+msgid "Select a valid gender."
+msgstr "Виберіть стать."
+
+msgid "Select a valid activity level."
+msgstr "Виберіть рівень активності."
+
+msgid "Select a valid goal type."
+msgstr "Виберіть тип цілі."
+
+msgid "Enter a valid birth date."
+msgstr "Введіть правильну дату народження."
+
+msgid "The selected trainer was not found."
+msgstr "Вибраного тренера не знайдено."
+
+msgid "Account created. Please sign in."
+msgstr "Акаунт створено. Увійдіть."
+
+msgid "Registration failed. Please try again."
+msgstr "Не вдалося зареєструватися. Спробуйте ще раз."
+
+msgid "You have been signed out."
+msgstr "Ви вийшли з акаунта."
+
+msgid "Protein"
+msgstr "Білки"
+
+msgid "Fat"
+msgstr "Жири"
+
+msgid "Carbs"
+msgstr "Вуглеводи"
+
+#, python-format
+msgid "Write a message of up to %(n)d characters."
+msgstr "Напишіть повідомлення довжиною до %(n)d символів."
+
+#, python-format
+msgid "%(coach)s is not connected yet."
+msgstr "%(coach)s ще не підключене."
+
+#, python-format
+msgid "%(coach)s couldn't answer right now. Please try again in a minute."
+msgstr "%(coach)s не змогло відповісти. Спробуйте ще раз за хвилину."
+
+msgid "Chat cleared."
+msgstr "Чат очищено."
+
+msgid "Back to the calculated calorie target."
+msgstr "Повернено розраховану ціль калорій."
+
+msgid "Complete your profile first."
+msgstr "Спершу заповніть профіль."
+
+msgid "Not enough data yet for a check-in."
+msgstr "Поки замало даних для чекіну."
+
+#, python-format
+msgid "New daily target: %(kcal)s kcal."
+msgstr "Нова добова ціль: %(kcal)s ккал."
+
+msgid "Could not save the target. Please try again."
+msgstr "Не вдалося зберегти ціль. Спробуйте ще раз."
+
+msgid "Complete your profile (weight, height, activity) to run the AI analysis."
+msgstr "Заповніть профіль (вага, зріст, активність), щоб запустити AI-аналіз."
+
+#, python-format
+msgid "Basic analysis ready (%(coach)s is not connected)."
+msgstr "Базовий аналіз готовий (%(coach)s не підключене)."
+
+#, python-format
+msgid "%(coach)s has finished your analysis."
+msgstr "%(coach)s завершило аналіз."
+
+msgid "Could not save the analysis. Please try again."
+msgstr "Не вдалося зберегти аналіз. Спробуйте ще раз."
+
+msgid "Recommendation not found or it cannot be deleted."
+msgstr "Рекомендацію не знайдено або її не можна видалити."
+
+msgid "Recommendation deleted."
+msgstr "Рекомендацію видалено."
+
+msgid "Could not delete. Please try again."
+msgstr "Не вдалося видалити. Спробуйте ще раз."
+
+msgid "Trainers use a simplified profile. Contact admin to update."
+msgstr "Тренери мають спрощений профіль. Щоб змінити дані, зверніться до адміністратора."
+
+msgid "Enter a valid current weight."
+msgstr "Введіть правильну поточну вагу."
+
+msgid "Water goal must be a whole number between 500 and 6000 ml."
+msgstr "Ціль води — ціле число від 500 до 6000 мл."
+
+msgid "Enter a valid target weight when changing goal."
+msgstr "Під час зміни цілі введіть правильну цільову вагу."
+
+msgid "Profile updated. Daily targets recalculated."
+msgstr "Профіль оновлено. Добові цілі перераховано."
+
+msgid "Could not save your profile. Please try again."
+msgstr "Не вдалося зберегти профіль. Спробуйте ще раз."
+
+msgid "Invalid date."
+msgstr "Неправильна дата."
+
+msgid "Enter a valid portion in grams."
+msgstr "Введіть правильну порцію в грамах."
+
+msgid "Choose a valid meal type."
+msgstr "Виберіть прийом їжі."
+
+msgid "Please select a product."
+msgstr "Виберіть продукт."
+
+#, python-format
+msgid "Logged %(name)s (%(grams)s g)."
+msgstr "Записано %(name)s (%(grams)s г)."
+
+msgid "Could not save the entry. Please try again."
+msgstr "Не вдалося зберегти запис. Спробуйте ще раз."
+
+msgid "That doesn't look like a barcode."
+msgstr "Це не схоже на штрихкод."
+
+msgid "Products from Russia and Belarus are not supported."
+msgstr "Продукти з росії та білорусі не підтримуються."
+
+msgid "Product not found."
+msgstr "Продукт не знайдено."
+
+msgid "Give the food a name."
+msgstr "Дайте продукту назву."
+
+msgid "Enter calories per 100 g (0–950)."
+msgstr "Введіть калорійність на 100 г (0–950)."
+
+msgid "Protein, fat and carbs must be between 0 and 100 g."
+msgstr "Білки, жири й вуглеводи мають бути від 0 до 100 г."
+
+msgid "A product with this barcode already exists."
+msgstr "Продукт із таким штрихкодом уже існує."
+
+#, python-format
+msgid "Saved “%(name)s” to My foods."
+msgstr "«%(name)s» збережено в «Мої продукти»."
+
+msgid "Enter calories between 1 and 5000."
+msgstr "Введіть калорії від 1 до 5000."
+
+msgid "Macros must be between 0 and 500 g."
+msgstr "БЖВ мають бути від 0 до 500 г."
+
+#, python-format
+msgid "Added %(kcal).0f kcal to %(meal)s."
+msgstr "Додано %(kcal).0f ккал до прийому «%(meal)s»."
+
+msgid "Pick a different day to copy from."
+msgstr "Виберіть інший день для копіювання."
+
+msgid "Nothing to copy from that day."
+msgstr "За той день нема чого копіювати."
+
+msgid "meals"
+msgstr "прийоми їжі"
+
+#, python-format
+msgid "Copied %(num)d item (%(what)s) from %(day)s."
+msgid_plural "Copied %(num)d items (%(what)s) from %(day)s."
+msgstr[0] "Скопійовано %(num)d запис (%(what)s) за %(day)s."
+msgstr[1] "Скопійовано %(num)d записи (%(what)s) за %(day)s."
+msgstr[2] "Скопійовано %(num)d записів (%(what)s) за %(day)s."
+
+msgid "Could not copy. Please try again."
+msgstr "Не вдалося скопіювати. Спробуйте ще раз."
+
+msgid "Enter between 50 and 2000 ml."
+msgstr "Введіть від 50 до 2000 мл."
+
+msgid "Could not save. Please try again."
+msgstr "Не вдалося зберегти. Спробуйте ще раз."
+
+#, python-format
+msgid "Added %(ml)d ml of water."
+msgstr "Додано %(ml)d мл води."
+
+msgid "Nothing to undo for this day."
+msgstr "За цей день нема чого скасовувати."
+
+msgid "Could not undo. Please try again."
+msgstr "Не вдалося скасувати. Спробуйте ще раз."
+
+#, python-format
+msgid "Removed %(ml)d ml."
+msgstr "Прибрано %(ml)d мл."
+
+msgid "Enter a weight between 30 and 300 kg."
+msgstr "Введіть вагу від 30 до 300 кг."
+
+msgid "You can't log weight for a future day."
+msgstr "Не можна записати вагу на майбутній день."
+
+#, python-format
+msgid "Logged %(kg).1f kg for %(day)s."
+msgstr "Записано %(kg).1f кг за %(day)s."
+
+msgid "Could not save your weight. Please try again."
+msgstr "Не вдалося зберегти вагу. Спробуйте ще раз."
+
+msgid "Entry not found or access denied."
+msgstr "Запис не знайдено або доступ заборонено."
+
+msgid "Entry deleted."
+msgstr "Запис видалено."
+
+msgid ""
+"The database is temporarily busy. Close DB Browser/SQLite Studio, restart the server and try "
+"again."
+msgstr ""
+"База даних тимчасово зайнята. Закрийте DB Browser/SQLite Studio, перезапустіть сервер і спробуйте"
+" ще раз."
+
+msgid "Enter valid workout duration."
+msgstr "Введіть правильну тривалість тренування."
+
+msgid "Workout type is required."
+msgstr "Вкажіть тип тренування."
+
+msgid "Workout logged."
+msgstr "Тренування записано."
+
+msgid "Could not save the workout. Please try again."
+msgstr "Не вдалося зберегти тренування. Спробуйте ще раз."
+
+msgid "Client not found or not assigned to you."
+msgstr "Клієнта не знайдено або він не закріплений за вами."
+
+msgid "Recommendation message cannot be empty."
+msgstr "Рекомендація не може бути порожньою."
+
+#, python-format
+msgid "Recommendation sent to %(email)s."
+msgstr "Рекомендацію надіслано %(email)s."
+
+msgid "Recommendation not found or already processed."
+msgstr "Рекомендацію не знайдено або її вже оброблено."
+
+msgid "Recommendation text cannot be empty."
+msgstr "Текст рекомендації не може бути порожнім."
+
+msgid "Recommendation approved and sent to the athlete."
+msgstr "Рекомендацію схвалено й надіслано атлету."
+
+#, python-format
+msgid "%(coach)s is unavailable right now, so this is a basic automatic analysis."
+msgstr "%(coach)s зараз недоступне, тому це базовий автоматичний аналіз."
+
+msgid "Zernia"
+msgstr "Зернятко"
+
+#, python-format
+msgid "You've reached today's limit of %(n)d messages. Try again tomorrow."
+msgstr "Ви досягли денного ліміту в %(n)d повідомлень. Спробуйте завтра."
+
+msgid "Breakfast"
+msgstr "Сніданок"
+
+msgid "Lunch"
+msgstr "Обід"
+
+msgid "Dinner"
+msgstr "Вечеря"
+
+msgid "Snack"
+msgstr "Перекус"
+
+msgid "Other"
+msgstr "Інше"
+
+msgid "Weight loss"
+msgstr "Схуднення"
+
+msgid "Maintenance"
+msgstr "Підтримка форми"
+
+msgid "Muscle gain"
+msgstr "Набір маси"
+
+msgid "Sedentary"
+msgstr "Сидячий"
+
+msgid "Moderate"
+msgstr "Помірний"
+
+msgid "Active"
+msgstr "Активний"
+
+msgid "Male"
+msgstr "Чоловік"
+
+msgid "Female"
+msgstr "Жінка"
+
+msgid "You're offline. Reconnect to save your changes."
+msgstr "Ви офлайн. Підключіться до мережі, щоб зберегти зміни."
+
+msgid "You're offline. Reconnect to talk to the coach."
+msgstr "Ви офлайн. Підключіться до мережі, щоб поговорити з коучем."
+
+msgid "Offline — showing saved data"
+msgstr "Офлайн — показано збережені дані"
+
+msgid "The coach could not answer. Please try again."
+msgstr "Коуч не зміг відповісти. Спробуйте ще раз."
+
+msgid "Dismiss notification"
+msgstr "Закрити сповіщення"
+
+msgid "Delete"
+msgstr "Видалити"
+
+#, python-brace-format
+msgid "{kcal} kcal · P {p} · F {f} · C {c}"
+msgstr "{kcal} ккал · Б {p} · Ж {f} · В {c}"
+
+#, python-brace-format
+msgid "last {g} g"
+msgstr "востаннє {g} г"
+
+msgid "per 100 g"
+msgstr "на 100 г"
+
+#, python-brace-format
+msgid "Add {name} to favorites"
+msgstr "Додати {name} в улюблені"
+
+#, python-brace-format
+msgid "Remove {name} from favorites"
+msgstr "Прибрати {name} з улюблених"
+
+msgid "Foods you log will show up here with your usual portion. Search or scan to get started."
+msgstr ""
+"Тут з'являтимуться продукти, які ви записуєте, разом зі звичною порцією. Почніть із пошуку чи "
+"сканування."
+
+msgid "Tap the star next to a food to keep it here."
+msgstr "Натисніть зірочку біля продукту, щоб зберегти його тут."
+
+msgid "Foods you create appear here. Use “Create food” for home recipes."
+msgstr "Тут з'являються створені вами продукти. Для домашніх страв скористайтеся «Створити продукт»."
+
+msgid "Could not update favorites."
+msgstr "Не вдалося оновити улюблені."
+
+msgid "No matches in your foods yet…"
+msgstr "Серед ваших продуктів поки нічого…"
+
+msgid "No matches. You are offline, so online search is unavailable."
+msgstr "Нічого не знайдено. Ви офлайн, тож онлайн-пошук недоступний."
+
+msgid "Searching Open Food Facts…"
+msgstr "Шукаємо в Open Food Facts…"
+
+msgid "Nothing found. Try another name, scan the barcode, or create the food."
+msgstr "Нічого не знайдено. Спробуйте іншу назву, відскануйте штрихкод або створіть продукт."
+
+msgid "Online search is unavailable right now."
+msgstr "Онлайн-пошук зараз недоступний."
+
+msgid "Choose a food first."
+msgstr "Спершу виберіть продукт."
+
+#, python-brace-format
+msgid "Looking up {code}…"
+msgstr "Шукаємо {code}…"
+
+#, python-brace-format
+msgid "Found: {name}"
+msgstr "Знайдено: {name}"
+
+#, python-brace-format
+msgid "Barcode {code}"
+msgstr "Штрихкод {code}"
+
+msgid "Could not look up this barcode."
+msgstr "Не вдалося знайти цей штрихкод."
+
+msgid "Could not reach the food database."
+msgstr "Не вдалося зв'язатися з базою продуктів."
+
+msgid "You are offline — try again when connected."
+msgstr "Ви офлайн — спробуйте, коли з'явиться зв'язок."
+
+msgid "Camera needs a secure (HTTPS) connection. Type the number below instead."
+msgstr "Камера працює лише через захищене (HTTPS) з'єднання. Введіть номер нижче."
+
+msgid "Starting camera…"
+msgstr "Вмикаємо камеру…"
+
+msgid "Point the camera at a barcode."
+msgstr "Наведіть камеру на штрихкод."
+
+msgid "Camera access was denied. Type the barcode number below instead."
+msgstr "Доступ до камери заборонено. Введіть номер штрихкоду нижче."
+
+msgid "Camera is not available. Type the barcode number below instead."
+msgstr "Камера недоступна. Введіть номер штрихкоду нижче."
+
+msgid "A barcode has 8 to 14 digits."
+msgstr "Штрихкод має від 8 до 14 цифр."
+
+#, python-format
+msgid "Grade %(grade)s"
+msgstr "Оцінка %(grade)s"
+
+msgid "Summary"
+msgstr "Підсумок"
+
+#, python-format
+msgid "Last %(n)s days"
+msgstr "Останні %(n)s дн."
+
+msgid "· basic analysis"
+msgstr "· базовий аналіз"
+
+msgid "Going well"
+msgstr "Що вдається"
+
+msgid "Needs attention"
+msgstr "Потребує уваги"
+
+msgid "What to change"
+msgstr "Що змінити"
+
+msgid "Foods to add"
+msgstr "Що додати в раціон"
+
+#, python-format
+msgid "%(n)s g"
+msgstr "%(n)s г"
+
+#, python-format
+msgid "%(n)s kcal"
+msgstr "%(n)s ккал"
+
+#, python-format
+msgid "Protein %(n)s g"
+msgstr "Білки %(n)s г"
+
+#, python-format
+msgid "Log %(name)s, %(grams)s g"
+msgstr "Записати %(name)s, %(grams)s г"
+
+msgid "Log"
+msgstr "Записати"
+
+msgid "Dish ideas"
+msgstr "Ідеї страв"
+
+#, python-format
+msgid "P %(p)s · F %(f)s · C %(c)s g"
+msgstr "Б %(p)s · Ж %(f)s · В %(c)s г"
+
+#, python-format
+msgid "Delete “%(name)s” from %(meal)s?"
+msgstr "Видалити «%(name)s» з прийому «%(meal)s»?"
+
+msgid "Delete entry"
+msgstr "Видалити запис"
+
+msgid "kcal"
+msgstr "ккал"
+
+#, python-format
+msgid "Delete %(name)s"
+msgstr "Видалити «%(name)s»"
+
+msgid "Appearance"
+msgstr "Вигляд"
+
+msgid "Auto"
+msgstr "Авто"
+
+msgid "Light"
+msgstr "Світла"
+
+msgid "Dark"
+msgstr "Темна"
+
+msgid "Language"
+msgstr "Мова"
+
+msgid "Kolos — nutrition & training"
+msgstr "Kolos — харчування й тренування"
+
+msgid "Clients"
+msgstr "Клієнти"
+
+msgid "Today"
+msgstr "Сьогодні"
+
+msgid "Insights"
+msgstr "Аналітика"
+
+msgid "Coach"
+msgstr "Коуч"
+
+msgid "Me"
+msgstr "Я"
+
+msgid "Skip to content"
+msgstr "Перейти до вмісту"
+
+msgid "Nutrition & training"
+msgstr "Харчування й тренування"
+
+msgid "New entry"
+msgstr "Новий запис"
+
+msgid "Main"
+msgstr "Головне меню"
+
+msgid "Install app"
+msgstr "Встановити застосунок"
+
+msgid "Sign out"
+msgstr "Вийти"
+
+msgid "Cancel"
+msgstr "Скасувати"
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Account"
+msgstr "Акаунт"
+
+msgid "Kolos · personal nutrition & training"
+msgstr "Kolos · персональне харчування й тренування"
+
+msgid "Profile & goals"
+msgstr "Профіль і цілі"
+
+msgid "Log food"
+msgstr "Записати їжу"
+
+msgid "Meal or snack"
+msgstr "Прийом їжі чи перекус"
+
+msgid "Log workout"
+msgstr "Записати тренування"
+
+msgid "Training session"
+msgstr "Тренування"
+
+msgid "Scan barcode"
+msgstr "Сканувати штрихкод"
+
+msgid "Type"
+msgstr "Тип"
+
+msgid "e.g. Running, Strength"
+msgstr "напр. Біг, Силове"
+
+msgid "Suggestions"
+msgstr "Підказки"
+
+msgid "Running"
+msgstr "Біг"
+
+msgid "Strength"
+msgstr "Силове"
+
+msgid "Cycling"
+msgstr "Велосипед"
+
+msgid "Swimming"
+msgstr "Плавання"
+
+msgid "Yoga"
+msgstr "Йога"
+
+msgid "Duration (min)"
+msgstr "Тривалість (хв)"
+
+msgid "Calories burned"
+msgstr "Спалено калорій"
+
+msgid "Save workout"
+msgstr "Зберегти тренування"
+
+msgid "Install the app"
+msgstr "Встановіть застосунок"
+
+msgid "Full screen, one tap from your Home Screen."
+msgstr "На весь екран, в один дотик із головного екрана."
+
+msgid "Tap"
+msgstr "Натисніть"
+
+msgid "Share"
+msgstr "Поділитися"
+
+msgid "in the browser bar"
+msgstr "на панелі браузера"
+
+msgid "Choose"
+msgstr "Виберіть"
+
+msgid "Add to Home Screen"
+msgstr "На початковий екран"
+
+msgid "Add"
+msgstr "Додати"
+
+msgid "Got it"
+msgstr "Зрозуміло"
+
+msgid "What should I eat for dinner to get more protein?"
+msgstr "Що мені з'їсти на вечерю, щоб добрати білок?"
+
+msgid "How many calories do I have left today?"
+msgstr "Скільки калорій у мене лишилось на сьогодні?"
+
+msgid "Why isn't my weight changing?"
+msgstr "Чому моя вага не змінюється?"
+
+msgid "Suggest a snack under 200 kcal"
+msgstr "Запропонуй перекус до 200 ккал"
+
+msgid "Your AI nutrition coach · sees your log, targets and weight"
+msgstr "Твій AI-нутриціолог · бачить журнал, цілі й вагу"
+
+msgid "Not connected yet"
+msgstr "Ще не підключено"
+
+msgid "Clear the whole conversation?"
+msgstr "Очистити всю розмову?"
+
+msgid "Clear chat"
+msgstr "Очистити чат"
+
+msgid "Clear"
+msgstr "Очистити"
+
+msgid "Conversation"
+msgstr "Розмова"
+
+msgid ""
+"Hi! I'm <strong>Zernia</strong>, your AI coach in Kolos. I can see your food log, targets and "
+"weight. Ask me what to eat, how to get more protein or why your weight is stuck. Small steps!"
+msgstr ""
+"Привіт! Я <strong>Зернятко</strong> — твій AI-коуч у Kolos. Бачу твій журнал їжі, цілі та вагу. "
+"Питай, що з'їсти, як добрати білок чи чому стоїть вага. Рухаємось маленькими кроками!"
+
+#, python-format
+msgid ""
+"%(coach)s is not connected yet. Add a free <strong>GEMINI_API_KEY</strong> or "
+"<strong>GROQ_API_KEY</strong> on the server to start chatting."
+msgstr ""
+"%(coach)s ще не підключене. Додайте безкоштовний <strong>GEMINI_API_KEY</strong> або "
+"<strong>GROQ_API_KEY</strong> на сервері, щоб почати розмову."
+
+#, python-format
+msgid "Message to %(coach)s"
+msgstr "Повідомлення для %(coach)s"
+
+msgid "Send"
+msgstr "Надіслати"
+
+#, python-format
+msgid "%(coach)s is typing"
+msgstr "%(coach)s друкує"
+
+msgid "Dashboard — Kolos"
+msgstr "Головна — Kolos"
+
+msgid "Full screen, right from your Home Screen"
+msgstr "На весь екран, прямо з головного екрана"
+
+msgid "Install"
+msgstr "Встановити"
+
+msgid "Dismiss"
+msgstr "Закрити"
+
+msgid "New recommendation from your coach"
+msgid_plural "New recommendations from your coach"
+msgstr[0] "Нова рекомендація від тренера"
+msgstr[1] "Нові рекомендації від тренера"
+msgstr[2] "Нові рекомендації від тренера"
+
+msgid "Nutrition"
+msgstr "Харчування"
+
+#, python-format
+msgid "Best streak: %(num)d day"
+msgid_plural "Best streak: %(num)d days"
+msgstr[0] "Найкраща серія: %(num)d день"
+msgstr[1] "Найкраща серія: %(num)d дні"
+msgstr[2] "Найкраща серія: %(num)d днів"
+
+#, python-format
+msgid "%(num)d-day streak"
+msgid_plural "%(num)d-day streak"
+msgstr[0] "%(num)d день поспіль"
+msgstr[1] "%(num)d дні поспіль"
+msgstr[2] "%(num)d днів поспіль"
+
+msgid "Adaptive target from check-in"
+msgstr "Адаптивна ціль із чекіну"
+
+#, python-format
+msgid "BMR %(bmr)s · TDEE %(tdee)s"
+msgstr "BMR %(bmr)s · TDEE %(tdee)s"
+
+msgid "Complete your profile to unlock targets"
+msgstr "Заповніть профіль, щоб отримати цілі"
+
+msgid "Targets"
+msgstr "Цілі"
+
+msgid "Set up"
+msgstr "Налаштувати"
+
+#, python-format
+msgid "%(eaten).0f kcal eaten of %(target)s kcal target"
+msgstr "З'їдено %(eaten).0f ккал із цілі %(target)s ккал"
+
+#, python-format
+msgid "%(eaten).0f kcal eaten"
+msgstr "З'їдено %(eaten).0f ккал"
+
+#, python-format
+msgid "of %(n)s kcal"
+msgstr "з %(n)s ккал"
+
+msgid "kcal eaten"
+msgstr "ккал з'їдено"
+
+#, python-format
+msgid "%(n).0f over"
+msgstr "+%(n).0f понад ціль"
+
+#, python-format
+msgid "%(n).0f left"
+msgstr "лишилось %(n).0f"
+
+msgid "g"
+msgstr "г"
+
+msgid "Food"
+msgstr "Їжа"
+
+msgid "Workout"
+msgstr "Тренування"
+
+msgid "Micros"
+msgstr "Мікро"
+
+msgid "Burned"
+msgstr "Спалено"
+
+msgid "kcal from workouts"
+msgstr "ккал на тренуваннях"
+
+msgid "Net"
+msgstr "Баланс"
+
+msgid "kcal eaten − burned"
+msgstr "ккал з'їдено − спалено"
+
+msgid "Water"
+msgstr "Вода"
+
+msgid "ml"
+msgstr "мл"
+
+msgid "Undo last water entry"
+msgstr "Скасувати останній запис води"
+
+msgid "Undo"
+msgstr "Скасувати"
+
+msgid "You can log water once this day comes."
+msgstr "Воду можна буде записати, коли настане цей день."
+
+msgid "Weight"
+msgstr "Вага"
+
+msgid "kg"
+msgstr "кг"
+
+msgid "No weigh-ins yet"
+msgstr "Ще немає зважувань"
+
+#, python-format
+msgid "%(n)s kg"
+msgstr "%(n)s кг"
+
+msgid "vs a week earlier"
+msgstr "порівняно з тижнем раніше"
+
+msgid "Last weigh-in today"
+msgstr "Останнє зважування сьогодні"
+
+#, python-format
+msgid "Last weigh-in %(day)s"
+msgstr "Останнє зважування %(day)s"
+
+msgid "From your profile · log weigh-ins to track the trend"
+msgstr "З профілю · записуйте зважування, щоб бачити динаміку"
+
+msgid "Log your first weigh-in to track the trend"
+msgstr "Запишіть перше зважування, щоб бачити динаміку"
+
+msgid "Meals"
+msgstr "Прийоми їжі"
+
+#, python-format
+msgid "%(n).0f kcal"
+msgstr "%(n).0f ккал"
+
+msgid "No meals logged for this day"
+msgstr "За цей день немає записів їжі"
+
+msgid "Add a meal to fill your rings."
+msgstr "Додайте прийом їжі, щоб заповнити кільця."
+
+#, python-format
+msgid "Copy yesterday · %(num)d item"
+msgid_plural "Copy yesterday · %(num)d items"
+msgstr[0] "Скопіювати вчорашнє · %(num)d запис"
+msgstr[1] "Скопіювати вчорашнє · %(num)d записи"
+msgstr[2] "Скопіювати вчорашнє · %(num)d записів"
+
+msgid "Workouts"
+msgstr "Тренування"
+
+#, python-format
+msgid "%(n)s min"
+msgstr "%(n)s хв"
+
+msgid "No workouts logged for this day."
+msgstr "За цей день немає тренувань."
+
+#, python-format
+msgid "%(coach)s · AI coach"
+msgstr "%(coach)s · AI-коуч"
+
+#, python-format
+msgid "Latest analysis · %(day)s"
+msgstr "Останній аналіз · %(day)s"
+
+msgid "What to change in your diet, foods and dishes to add"
+msgstr "Що змінити в раціоні, які продукти й страви додати"
+
+msgid "Open full analysis"
+msgstr "Відкрити повний аналіз"
+
+msgid "Open coach"
+msgstr "Відкрити коуча"
+
+msgid "Weekly check-in"
+msgstr "Щотижневий чекін"
+
+#, python-format
+msgid "Your real energy needs from intake and weigh-ins · last %(n)s days"
+msgstr "Ваші реальні енерговитрати за споживанням і зважуваннями · останні %(n)s дн."
+
+msgid "Adaptive target on"
+msgstr "Адаптивна ціль увімкнена"
+
+msgid "Real TDEE"
+msgstr "Реальний TDEE"
+
+msgid "Avg intake"
+msgstr "Сер. споживання"
+
+#, python-format
+msgid "The formula estimate is %(n)s kcal."
+msgstr "Оцінка за формулою — %(n)s ккал."
+
+#, python-format
+msgid "For %(goal)s we suggest <strong>%(n)s kcal</strong> a day"
+msgstr "Для мети «%(goal)s» пропонуємо <strong>%(n)s ккал</strong> на день"
+
+msgid "— that's your current target"
+msgstr "— це ваша поточна ціль"
+
+#, python-format
+msgid "(now %(n)s)"
+msgstr "(зараз %(n)s)"
+
+#, python-format
+msgid "Apply %(n)s kcal"
+msgstr "Застосувати %(n)s ккал"
+
+#, python-format
+msgid "Use calculated (%(n)s)"
+msgstr "Повернути розраховану (%(n)s)"
+
+msgid "Keep logging — the check-in unlocks when you have:"
+msgstr "Продовжуйте записувати — чекін відкриється, коли буде:"
+
+msgid "Days with food logged"
+msgstr "Днів із записами їжі"
+
+msgid "Days between first and last weigh-in"
+msgstr "Днів між першим і останнім зважуванням"
+
+#, python-format
+msgid "Use calculated target (%(n)s)"
+msgstr "Повернути розраховану ціль (%(n)s)"
+
+msgid "Goal progress"
+msgstr "Прогрес до мети"
+
+msgid "Start"
+msgstr "Старт"
+
+msgid "Current"
+msgstr "Зараз"
+
+msgid "Target"
+msgstr "Ціль"
+
+#, python-format
+msgid "%(n)s%% toward goal"
+msgstr "%(n)s%% до мети"
+
+msgid "Macro distribution"
+msgstr "Розподіл БЖВ"
+
+msgid "Protein, fat & carbs · grams"
+msgstr "Білки, жири й вуглеводи · грами"
+
+msgid "Macro distribution chart"
+msgstr "Діаграма розподілу БЖВ"
+
+msgid "Calorie trend"
+msgstr "Динаміка калорій"
+
+msgid "Daily intake · last 7 days"
+msgstr "Споживання за день · останні 7 днів"
+
+msgid "Calorie trend chart"
+msgstr "Графік динаміки калорій"
+
+msgid "Weight forecast"
+msgstr "Прогноз ваги"
+
+msgid "Non-linear model (TDEE adaptation −24 kcal/kg) · 7700 kcal ≈ 1 kg"
+msgstr "Нелінійна модель (адаптація TDEE −24 ккал/кг) · 7700 ккал ≈ 1 кг"
+
+#, python-format
+msgid ""
+"balance <strong class=\"text-fg\">%(balance)s</strong> kcal/day (intake %(intake)s, expenditure "
+"%(spent)s)"
+msgstr ""
+"баланс <strong class=\"text-fg\">%(balance)s</strong> ккал/день (споживання %(intake)s, витрати "
+"%(spent)s)"
+
+#, python-format
+msgid "Target: %(n)s kg"
+msgstr "Ціль: %(n)s кг"
+
+msgid "Weight forecast chart"
+msgstr "Графік прогнозу ваги"
+
+msgid "Your weigh-ins"
+msgstr "Ваші зважування"
+
+msgid "Estimated actual weight (from logs)"
+msgstr "Оцінка фактичної ваги (за записами)"
+
+msgid "System forecast (30 days)"
+msgstr "Прогноз системи (30 днів)"
+
+msgid "Body"
+msgstr "Тіло"
+
+msgid "Gender"
+msgstr "Стать"
+
+msgid "Height"
+msgstr "Зріст"
+
+#, python-format
+msgid "%(n)s cm"
+msgstr "%(n)s см"
+
+msgid "Birth date"
+msgstr "Дата народження"
+
+#, python-format
+msgid "%(coach)s · your AI coach"
+msgstr "%(coach)s · твій AI-коуч"
+
+msgid "Looks at your food log, weight and water, then tells you what to change and what to eat."
+msgstr "Дивиться на журнал їжі, вагу й воду та підказує, що змінити і що їсти."
+
+msgid "Run a new analysis"
+msgstr "Запустити новий аналіз"
+
+msgid "Analyze my last 7 days"
+msgstr "Проаналізувати останні 7 днів"
+
+msgid "Takes up to a minute."
+msgstr "Займає до хвилини."
+
+#, python-format
+msgid "Basic mode — %(coach)s is not connected yet."
+msgstr "Базовий режим — %(coach)s ще не підключене."
+
+#, python-format
+msgid "Ask %(coach)s"
+msgstr "Запитати %(coach)s"
+
+msgid "Questions about your meals, calories left today or your weight"
+msgstr "Питання про їжу, залишок калорій на сьогодні чи вагу"
+
+msgid "Open chat"
+msgstr "Відкрити чат"
+
+msgid "What should I eat for dinner?"
+msgstr "Що з'їсти на вечерю?"
+
+msgid "How many calories are left?"
+msgstr "Скільки калорій лишилось?"
+
+msgid "Snack idea"
+msgstr "Ідея перекусу"
+
+msgid "From your trainer"
+msgstr "Від тренера"
+
+msgid "AI · pending trainer review"
+msgstr "AI · чекає перевірки тренера"
+
+msgid "Delete this recommendation?"
+msgstr "Видалити цю рекомендацію?"
+
+msgid "Delete recommendation"
+msgstr "Видалити рекомендацію"
+
+msgid "Micronutrients"
+msgstr "Мікронутрієнти"
+
+msgid "consumed this day"
+msgstr "спожито за день"
+
+msgid "Close"
+msgstr "Закрити"
+
+msgid "Micronutrient"
+msgstr "Мікронутрієнт"
+
+msgid "Consumed"
+msgstr "Спожито"
+
+msgid "Unit"
+msgstr "Одиниця"
+
+msgid "Done"
+msgstr "Готово"
+
+msgid "Log weight"
+msgstr "Записати вагу"
+
+msgid "Weight (kg)"
+msgstr "Вага (кг)"
+
+msgid "Date"
+msgstr "Дата"
+
+msgid "One weigh-in per day — logging again replaces it. The latest weigh-in updates your targets."
+msgstr "Одне зважування на день — повторний запис замінює його. Останнє зважування оновлює ваші цілі."
+
+msgid "Save weight"
+msgstr "Зберегти вагу"
+
+msgid "Log food to see macros"
+msgstr "Запишіть їжу, щоб побачити БЖВ"
+
+msgid "Calories (kcal)"
+msgstr "Калорії (ккал)"
+
+msgid "Weigh-in"
+msgstr "Зважування"
+
+msgid "Estimated actual weight"
+msgstr "Оцінка фактичної ваги"
+
+msgid "System forecast"
+msgstr "Прогноз системи"
+
+msgid "Target weight"
+msgstr "Цільова вага"
+
+msgid "Choose day"
+msgstr "Вибір дня"
+
+msgid "Pick a date"
+msgstr "Виберіть дату"
+
+msgid "Previous week"
+msgstr "Попередній тиждень"
+
+msgid "(today)"
+msgstr "(сьогодні)"
+
+msgid "Next week"
+msgstr "Наступний тиждень"
+
+msgid "Log Food — Kolos"
+msgstr "Запис їжі — Kolos"
+
+msgid "Quick add"
+msgstr "Швидке додавання"
+
+msgid "Create food"
+msgstr "Створити продукт"
+
+msgid "Meal"
+msgstr "Прийом їжі"
+
+msgid "Change"
+msgstr "Змінити"
+
+msgid "Search foods"
+msgstr "Пошук продуктів"
+
+msgid "Search foods or brands"
+msgstr "Пошук продуктів або брендів"
+
+msgid "Food lists"
+msgstr "Списки продуктів"
+
+msgid "Recent"
+msgstr "Недавні"
+
+msgid "Favorites"
+msgstr "Улюблені"
+
+msgid "My foods"
+msgstr "Мої продукти"
+
+msgid "Portion"
+msgstr "Порція"
+
+msgid "Decrease by 10 grams"
+msgstr "Зменшити на 10 грамів"
+
+msgid "Increase by 10 grams"
+msgstr "Збільшити на 10 грамів"
+
+msgid "Quick portion"
+msgstr "Швидка порція"
+
+msgid "This portion"
+msgstr "Ця порція"
+
+msgid "Protein, g"
+msgstr "Білки, г"
+
+msgid "Fat, g"
+msgstr "Жири, г"
+
+msgid "Carbs, g"
+msgstr "Вуглеводи, г"
+
+msgid "Save meal"
+msgstr "Зберегти"
+
+msgid "Logged today"
+msgstr "Записано сьогодні"
+
+#, python-format
+msgid "Logged %(day)s"
+msgstr "Записано %(day)s"
+
+msgid "Swipe an entry left to delete it."
+msgstr "Проведіть запис уліво, щоб видалити його."
+
+msgid "Nothing logged for this day yet."
+msgstr "За цей день ще нічого не записано."
+
+#, python-format
+msgid "Copy from %(day)s"
+msgstr "Скопіювати з дня: %(day)s"
+
+#, python-format
+msgid "%(num)d item"
+msgid_plural "%(num)d items"
+msgstr[0] "%(num)d запис"
+msgstr[1] "%(num)d записи"
+msgstr[2] "%(num)d записів"
+
+msgid "Copy"
+msgstr "Скопіювати"
+
+msgid "Not in the database yet"
+msgstr "Цього продукту ще немає в базі"
+
+msgid "Add it once and it will be ready next time."
+msgstr "Додайте його один раз — наступного разу він уже буде тут."
+
+msgid "Create this food"
+msgstr "Створити цей продукт"
+
+msgid "Barcode number"
+msgstr "Номер штрихкоду"
+
+msgid "Or type the barcode number"
+msgstr "Або введіть номер штрихкоду"
+
+msgid "Find"
+msgstr "Знайти"
+
+msgid "Calories"
+msgstr "Калорії"
+
+msgid "Label"
+msgstr "Назва"
+
+msgid "(optional)"
+msgstr "(необов'язково)"
+
+msgid "e.g. Restaurant lunch"
+msgstr "напр. Обід у ресторані"
+
+msgid "+ Add macros"
+msgstr "+ Додати БЖВ"
+
+msgid "Name"
+msgstr "Назва"
+
+msgid "e.g. Homemade granola"
+msgstr "напр. Домашня гранола"
+
+msgid "Brand"
+msgstr "Бренд"
+
+msgid "Per 100 g"
+msgstr "На 100 г"
+
+msgid "Barcode"
+msgstr "Штрихкод"
+
+msgid "Save to My foods"
+msgstr "Зберегти в «Мої продукти»"
+
+msgid "Sign In — Kolos"
+msgstr "Вхід — Kolos"
+
+msgid "630 left"
+msgstr "лишилось 630"
+
+msgid "Eat smarter."
+msgstr "Їж розумніше."
+
+msgid "Train better."
+msgstr "Тренуйся краще."
+
+msgid "Personal health monitoring for athletes and the trainers who guide them."
+msgstr "Персональний моніторинг здоров'я для атлетів і тренерів, які їх ведуть."
+
+msgid "Welcome back"
+msgstr "З поверненням"
+
+msgid "Sign in to continue."
+msgstr "Увійдіть, щоб продовжити."
+
+msgid "Email"
+msgstr "Пошта"
+
+msgid "you@university.edu"
+msgstr "you@university.edu"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Show password"
+msgstr "Показати пароль"
+
+msgid "Sign in"
+msgstr "Увійти"
+
+msgid "No account?"
+msgstr "Немає акаунта?"
+
+msgid "Create one"
+msgstr "Створіть його"
+
+msgid "Hide password"
+msgstr "Сховати пароль"
+
+msgid "Profile — Kolos"
+msgstr "Профіль — Kolos"
+
+msgid "Daily targets"
+msgstr "Добові цілі"
+
+#, python-format
+msgid "Adaptive target from your weekly check-in (calculated: %(n)s kcal)."
+msgstr "Адаптивна ціль із щотижневого чекіну (розрахована: %(n)s ккал)."
+
+msgid "Review"
+msgstr "Переглянути"
+
+#, python-format
+msgid "BMR %(bmr)s · TDEE %(tdee)s kcal · recalculated when you save."
+msgstr "BMR %(bmr)s · TDEE %(tdee)s ккал · перераховується під час збереження."
+
+msgid "Details"
+msgstr "Дані"
+
+msgid "Body & activity"
+msgstr "Тіло й активність"
+
+msgid "Current weight"
+msgstr "Поточна вага"
+
+msgid "Activity"
+msgstr "Активність"
+
+msgctxt "activity level"
+msgid "Light"
+msgstr "Легкий"
+
+msgid "Water goal"
+msgstr "Ціль води"
+
+#, python-format
+msgid "Leave water goal empty to use %(n)s ml (33 ml per kg)."
+msgstr "Залиште ціль води порожньою, щоб використовувати %(n)s мл (33 мл на кг)."
+
+msgid "Goal"
+msgstr "Мета"
+
+msgid "Lose"
+msgstr "Схуднути"
+
+msgid "Maintain"
+msgstr "Підтримати"
+
+msgid "Gain"
+msgstr "Набрати"
+
+msgid "Calorie and macro targets adapt to this goal."
+msgstr "Цілі калорій і БЖВ підлаштовуються під цю мету."
+
+msgid "Save changes"
+msgstr "Зберегти зміни"
+
+#, python-format
+msgid "%(coach)s answers in this language too."
+msgstr "%(coach)s теж відповідатиме цією мовою."
+
+msgid "Register — Kolos"
+msgstr "Реєстрація — Kolos"
+
+#, python-format
+msgid "Step %(n)s of %(total)s"
+msgstr "Крок %(n)s з %(total)s"
+
+msgid "Create your account"
+msgstr "Створіть акаунт"
+
+msgid "At least 6 characters"
+msgstr "Щонайменше 6 символів"
+
+msgid "Confirm password"
+msgstr "Підтвердіть пароль"
+
+msgid "Passwords do not match"
+msgstr "Паролі не збігаються"
+
+msgid "I am"
+msgstr "Я"
+
+msgid "Athlete"
+msgstr "Атлет"
+
+msgid "Track meals & workouts"
+msgstr "Записую їжу й тренування"
+
+msgid "Trainer"
+msgstr "Тренер"
+
+msgid "Guide your athletes"
+msgstr "Веду атлетів"
+
+msgid "Your trainer"
+msgstr "Ваш тренер"
+
+msgid "— None —"
+msgstr "— Немає —"
+
+msgid "About your body"
+msgstr "Про ваше тіло"
+
+msgid "Height, cm"
+msgstr "Зріст, см"
+
+msgid "Weight, kg"
+msgstr "Вага, кг"
+
+msgid "Activity level"
+msgstr "Рівень активності"
+
+msgid "Little or no exercise"
+msgstr "Мало або зовсім немає тренувань"
+
+msgid "1–3 days a week"
+msgstr "1–3 дні на тиждень"
+
+msgid "3–5 days a week"
+msgstr "3–5 днів на тиждень"
+
+msgid "6–7 days a week"
+msgstr "6–7 днів на тиждень"
+
+msgid "Your goal"
+msgstr "Ваша мета"
+
+msgid "Goal type"
+msgstr "Тип мети"
+
+msgid "Calorie deficit, high protein"
+msgstr "Дефіцит калорій, багато білка"
+
+msgid "Keep your current shape"
+msgstr "Зберегти поточну форму"
+
+msgid "Calorie surplus for growth"
+msgstr "Профіцит калорій для росту"
+
+msgid "Target weight, kg"
+msgstr "Цільова вага, кг"
+
+msgid "Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data."
+msgstr "Добові цілі калорій і БЖВ розраховуються з цих даних за формулою Міффліна–Сан Жеора."
+
+msgid "Continue"
+msgstr "Далі"
+
+msgid "Create account"
+msgstr "Створити акаунт"
+
+msgid "Already have an account?"
+msgstr "Уже маєте акаунт?"
+
+msgid "Trainer Dashboard — Kolos"
+msgstr "Кабінет тренера — Kolos"
+
+msgid "Athletes"
+msgstr "Атлети"
+
+msgid "Search athletes"
+msgstr "Пошук атлетів"
+
+msgid "No profile"
+msgstr "Немає профілю"
+
+#, python-format
+msgid "%(num)d workout"
+msgid_plural "%(num)d workouts"
+msgstr[0] "%(num)d тренування"
+msgstr[1] "%(num)d тренування"
+msgstr[2] "%(num)d тренувань"
+
+msgid "No athletes match your search."
+msgstr "За вашим запитом атлетів не знайдено."
+
+msgid "No athletes yet"
+msgstr "Поки немає атлетів"
+
+msgid "Athletes can select you as their trainer during registration."
+msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
+
+msgid "Client View"
+msgstr "Картка клієнта"
+
+msgid "Logging streak"
+msgstr "Серія записів"
+
+msgid "Water today"
+msgstr "Вода сьогодні"
+
+#, python-format
+msgid "%(n)s ml"
+msgstr "%(n)s мл"
+
+msgid "Last weigh-in"
+msgstr "Останнє зважування"
+
+#, python-format
+msgid "%(n)s vs wk ago"
+msgstr "%(n)s до мин. тижня"
+
+msgid "Client sections"
+msgstr "Розділи клієнта"
+
+msgid "Food log"
+msgstr "Журнал їжі"
+
+msgid "Coaching"
+msgstr "Коучинг"
+
+msgid "Today's food log"
+msgstr "Журнал їжі за сьогодні"
+
+msgid "No meals logged today."
+msgstr "Сьогодні ще немає записів їжі."
+
+msgid "Key micronutrients"
+msgstr "Ключові мікронутрієнти"
+
+msgid "No data yet."
+msgstr "Поки немає даних."
+
+#, python-format
+msgid "Latest analysis by %(coach)s · seen by the athlete"
+msgstr "Останній аналіз від %(coach)s · атлет його бачить"
+
+msgid "Awaiting approval"
+msgstr "Чекають на схвалення"
+
+msgid "AI suggestion · edit before approving"
+msgstr "Пропозиція AI · відредагуйте перед схваленням"
+
+msgid "Athlete / system"
+msgstr "Атлет / система"
+
+msgid "Approve"
+msgstr "Схвалити"
+
+msgid "New recommendation"
+msgstr "Нова рекомендація"
+
+msgid "Recommendation"
+msgstr "Рекомендація"
+
+msgid "e.g. Increase protein at breakfast and add more leafy greens for iron."
+msgstr "напр. Додайте більше білка на сніданок і більше зелені для заліза."
+
+msgid "Appears on the athlete's Coach tab."
+msgstr "З'явиться на вкладці «Коуч» у атлета."
+
+msgid "Approved"
+msgstr "Схвалені"
+
+#~ msgid ""
+#~ "class=\"tab-link press relative flex-1 flex flex-col"
+#~ " items-center justify-center gap-0.5 h-full text-[10px]"
+#~ " font-medium\""
+#~ msgstr ""
+
+#~ msgid ""
+#~ "class=\"group flex items-center gap-3 rounded-xl "
+#~ "px-3 min-h-[44px] text-sm font-medium text-slate-400"
+#~ " hover:bg-white/5 hover:text-white aria-[current=page]:bg-"
+#~ "white/10 aria-[current=page]:text-white\""
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Add 25–35 g of protein per meal (chicken, "
+#~ "fish, eggs, cottage cheese, yogurt) — protein is "
+#~ "below 85% of your target."
+#~ msgstr "Додавайте 25–35 г білка на прийом (курка, риба, яйця, сир, йогурт) — білок нижче 85% від цілі."
+
+#~ msgid "Step 1 of 3"
+#~ msgstr "Крок 1 з 3"
+

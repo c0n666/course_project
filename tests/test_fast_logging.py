@@ -58,7 +58,7 @@ def test_search_api_requires_login_and_returns_local_results(app, client, monkey
 
 def test_barcode_api_found_not_found_and_invalid(app, client, monkeypatch):
     monkeypatch.setattr(food_db, "fetch_barcode", lambda code: {
-        "barcode": code, "name": "Skyr", "brand": "Icelandic", "calories_per_100g": 63,
+        "barcode": code, "name": "Skyr", "name_uk": None, "brand": "Icelandic", "calories_per_100g": 63,
         "proteins": 11, "fats": 0.2, "carbs": 4,
     } if code == "5690527000017" else None)
     with app.app_context():

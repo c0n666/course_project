@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
-{% set page_title = 'Me' %}
-{% block title %}Profile — Kolos{% endblock %}
+{% set page_title = _('Me') %}
+{% block title %}{{ _('Profile — Kolos') }}{% endblock %}
 
 {% block content %}
 {% set row = 'flex items-center gap-3 px-4 min-h-[52px]' %}
@@ -26,34 +26,34 @@
       {# ---------- Targets ---------- #}
       {% if targets %}
       <section aria-labelledby="targets-heading">
-        <h2 id="targets-heading" class="{{ ui.section_title }}">Daily targets</h2>
+        <h2 id="targets-heading" class="{{ ui.section_title }}">{{ _('Daily targets') }}</h2>
         <div class="{{ ui.list }}">
           <div class="{{ row }}">
             <span class="h-2.5 w-2.5 rounded-full bg-kcal" aria-hidden="true"></span>
-            <span class="{{ row_label }}">Calories</span>
-            <strong class="text-[17px] sm:text-[15px] font-semibold tabular-nums">{{ targets.calories }} <span class="font-normal text-fg-muted">kcal</span></strong>
+            <span class="{{ row_label }}">{{ _('Calories') }}</span>
+            <strong class="text-[17px] sm:text-[15px] font-semibold tabular-nums">{{ targets.calories }} <span class="font-normal text-fg-muted">{{ _('kcal') }}</span></strong>
           </div>
-          {% for name, value, dot in [('Protein', targets.proteins, 'bg-protein'), ('Fat', targets.fats, 'bg-fat'), ('Carbs', targets.carbs, 'bg-carbs')] %}
+          {% for name, value, dot in [(_('Protein'), targets.proteins, 'bg-protein'), (_('Fat'), targets.fats, 'bg-fat'), (_('Carbs'), targets.carbs, 'bg-carbs')] %}
           <div class="{{ row }}">
             <span class="h-2.5 w-2.5 rounded-full {{ dot }}" aria-hidden="true"></span>
             <span class="{{ row_label }}">{{ name }}</span>
-            <span class="text-[17px] sm:text-[15px] tabular-nums text-fg-muted">{{ value }} g</span>
+            <span class="text-[17px] sm:text-[15px] tabular-nums text-fg-muted">{{ _('%(n)s g', n=value) }}</span>
           </div>
           {% endfor %}
         </div>
         {% if targets.is_adaptive %}
-        <p class="mt-2 px-4 text-[13px] text-fg-muted">Adaptive target from your weekly check-in (calculated: {{ targets.calculated_calories }} kcal). <a href="{{ url_for('dashboard') }}#insights" class="font-semibold text-primary">Review</a></p>
+        <p class="mt-2 px-4 text-[13px] text-fg-muted">{{ _('Adaptive target from your weekly check-in (calculated: %(n)s kcal).', n=targets.calculated_calories) }} <a href="{{ url_for('dashboard') }}#insights" class="font-semibold text-primary">{{ _('Review') }}</a></p>
         {% else %}
-        <p class="mt-2 px-4 text-[13px] text-fg-muted">BMR {{ targets.bmr }} · TDEE {{ targets.tdee }} kcal · recalculated when you save.</p>
+        <p class="mt-2 px-4 text-[13px] text-fg-muted">{{ _('BMR %(bmr)s · TDEE %(tdee)s kcal · recalculated when you save.', bmr=targets.bmr, tdee=targets.tdee) }}</p>
         {% endif %}
       </section>
       {% endif %}
 
       {# ---------- Details (read-only) ---------- #}
       <section aria-labelledby="details-heading">
-        <h2 id="details-heading" class="{{ ui.section_title }}">Details</h2>
+        <h2 id="details-heading" class="{{ ui.section_title }}">{{ _('Details') }}</h2>
         <dl class="{{ ui.list }}">
-          {% for label, value in [('Gender', profile.gender or '—'), ('Birth date', profile.birth_date or '—'), ('Height', (profile.height|string ~ ' cm') if profile.height else '—')] %}
+          {% for label, value in [(_('Gender'), _(profile.gender|capitalize) if profile.gender else '—'), (_('Birth date'), profile.birth_date|ldate('long') if profile.birth_date else '—'), (_('Height'), _('%(n)s cm', n=profile.height) if profile.height else '—')] %}
           <div class="{{ row }}">
             <dt class="{{ row_label }}">{{ label }}</dt>
             <dd class="text-[17px] sm:text-[15px] tabular-nums text-fg-muted {{ 'capitalize' if label == 'Gender' else '' }}">{{ value }}</dd>
@@ -69,41 +69,41 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <section aria-labelledby="body-heading">
-          <h2 id="body-heading" class="{{ ui.section_title }}">Body & activity</h2>
+          <h2 id="body-heading" class="{{ ui.section_title }}">{{ _('Body & activity') }}</h2>
           <div class="{{ ui.list }}">
             <label for="p-weight" class="{{ row }} cursor-text focus-within:bg-surface-2/60">
-              <span class="{{ row_label }}">Current weight</span>
+              <span class="{{ row_label }}">{{ _('Current weight') }}</span>
               <input type="number" id="p-weight" name="weight" step="0.1" min="30" max="300" required inputmode="decimal"
                      value="{{ profile.weight or '' }}" placeholder="0" class="{{ row_input }}">
-              <span class="text-fg-muted">kg</span>
+              <span class="text-fg-muted">{{ _('kg') }}</span>
             </label>
             <label for="p-activity" class="{{ row }} relative focus-within:bg-surface-2/60">
-              <span class="{{ row_label }}">Activity</span>
+              <span class="{{ row_label }}">{{ _('Activity') }}</span>
               <select id="p-activity" name="activity_level"
                       class="appearance-none bg-transparent pr-6 text-right text-[17px] sm:text-[15px] text-fg-muted outline-none cursor-pointer">
-                <option value="sedentary" {% if profile.activity_level == 'sedentary' %}selected{% endif %}>Sedentary</option>
-                <option value="light" {% if profile.activity_level == 'light' %}selected{% endif %}>Light</option>
-                <option value="moderate" {% if profile.activity_level == 'moderate' %}selected{% endif %}>Moderate</option>
-                <option value="active" {% if profile.activity_level == 'active' %}selected{% endif %}>Active</option>
+                <option value="sedentary" {% if profile.activity_level == 'sedentary' %}selected{% endif %}>{{ _('Sedentary') }}</option>
+                <option value="light" {% if profile.activity_level == 'light' %}selected{% endif %}>{{ pgettext('activity level', 'Light') }}</option>
+                <option value="moderate" {% if profile.activity_level == 'moderate' %}selected{% endif %}>{{ _('Moderate') }}</option>
+                <option value="active" {% if profile.activity_level == 'active' %}selected{% endif %}>{{ _('Active') }}</option>
               </select>
               <svg class="pointer-events-none absolute right-4 w-4 h-4 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"/></svg>
             </label>
             <label for="p-water" class="{{ row }} cursor-text focus-within:bg-surface-2/60">
-              <span class="{{ row_label }}">Water goal</span>
+              <span class="{{ row_label }}">{{ _('Water goal') }}</span>
               <input type="number" id="p-water" name="water_goal_ml" step="50" min="500" max="6000" inputmode="numeric"
                      value="{{ profile.water_goal_ml or '' }}" placeholder="{{ auto_water_goal }}"
                      aria-describedby="p-water-hint" class="{{ row_input }}">
-              <span class="text-fg-muted">ml</span>
+              <span class="text-fg-muted">{{ _('ml') }}</span>
             </label>
           </div>
-          <p id="p-water-hint" class="mt-2 px-4 text-[13px] text-fg-muted">Leave water goal empty to use {{ auto_water_goal }} ml (33 ml per kg).</p>
+          <p id="p-water-hint" class="mt-2 px-4 text-[13px] text-fg-muted">{{ _('Leave water goal empty to use %(n)s ml (33 ml per kg).', n=auto_water_goal) }}</p>
         </section>
 
         <section aria-labelledby="goal-heading">
-          <h2 id="goal-heading" class="{{ ui.section_title }}">Goal</h2>
+          <h2 id="goal-heading" class="{{ ui.section_title }}">{{ _('Goal') }}</h2>
           <div class="{{ ui.card }} p-3 space-y-3">
             <div class="grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1" role="radiogroup" aria-labelledby="goal-heading">
-              {% for value, text in [('weight_loss', 'Lose'), ('maintenance', 'Maintain'), ('muscle_gain', 'Gain')] %}
+              {% for value, text in [('weight_loss', _('Lose')), ('maintenance', _('Maintain')), ('muscle_gain', _('Gain'))] %}
               {% set is_checked = (active_goal and active_goal.goal_type == value) or (not active_goal and loop.first) %}
               <label class="relative">
                 <input type="radio" name="goal_type" value="{{ value }}" class="peer sr-only" {% if is_checked %}checked{% endif %}>
@@ -113,31 +113,37 @@
               {% endfor %}
             </div>
             <label for="p-target" class="flex items-center gap-3 px-1 min-h-[44px] cursor-text">
-              <span class="{{ row_label }}">Target weight</span>
+              <span class="{{ row_label }}">{{ _('Target weight') }}</span>
               <input type="number" id="p-target" name="target_weight" step="0.1" min="30" max="300" required inputmode="decimal"
                      value="{{ active_goal.target_weight if active_goal else profile.weight }}" class="{{ row_input }}">
-              <span class="text-fg-muted">kg</span>
+              <span class="text-fg-muted">{{ _('kg') }}</span>
             </label>
           </div>
-          <p class="mt-2 px-4 text-[13px] text-fg-muted">Calorie and macro targets adapt to this goal.</p>
+          <p class="mt-2 px-4 text-[13px] text-fg-muted">{{ _('Calorie and macro targets adapt to this goal.') }}</p>
         </section>
 
         <div class="action-bar">
-          <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">Save changes</button>
+          <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">{{ _('Save changes') }}</button>
         </div>
       </form>
 
       {# ---------- App ---------- #}
       <section aria-labelledby="app-heading">
-        <h2 id="app-heading" class="{{ ui.section_title }}">Appearance</h2>
+        <h2 id="app-heading" class="{{ ui.section_title }}">{{ _('Appearance') }}</h2>
         <div class="{{ ui.card }} p-3">{{ ui.theme_switch() }}</div>
+      </section>
+
+      <section aria-labelledby="lang-heading">
+        <h2 id="lang-heading" class="{{ ui.section_title }}">{{ _('Language') }}</h2>
+        <div class="{{ ui.card }} p-3">{{ ui.language_switch(current_lang, languages, request.full_path if request.query_string else request.path) }}</div>
+        <p class="mt-2 px-4 text-[13px] text-fg-muted">{{ _('%(coach)s answers in this language too.', coach=coach_name) }}</p>
       </section>
 
       <div class="{{ ui.list }}">
         <button type="button" data-install data-install-action hidden class="press w-full {{ row }} text-left">
-          <span class="{{ row_label }} text-primary">Install app</span>
+          <span class="{{ row_label }} text-primary">{{ _('Install app') }}</span>
         </button>
-        <a href="{{ url_for('logout') }}" class="press {{ row }} justify-center text-[17px] sm:text-[15px] font-medium text-red-600 dark:text-red-400">Sign out</a>
+        <a href="{{ url_for('logout') }}" class="press {{ row }} justify-center text-[17px] sm:text-[15px] font-medium text-red-600 dark:text-red-400">{{ _('Sign out') }}</a>
       </div>
     </div>
   </div>

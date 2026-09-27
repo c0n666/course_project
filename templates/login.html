@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
-{% block title %}Sign In — Kolos{% endblock %}
+{% block title %}{{ _('Sign In — Kolos') }}{% endblock %}
 
 {#- Decorative product preview — mirrors the dashboard nutrition widget -#}
 {% macro preview() -%}
 <div class="relative rounded-3xl bg-white/[0.06] ring-1 ring-white/10 backdrop-blur p-5 text-white" aria-hidden="true">
   <div class="flex items-center justify-between mb-4">
-    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Today</p>
-    <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-300">630 left</span>
+    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ _('Today') }}</p>
+    <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-300">{{ _('630 left') }}</span>
   </div>
   <div class="flex items-center gap-5">
     <div class="relative h-24 w-24 shrink-0">
@@ -18,11 +18,11 @@
       </svg>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <span class="text-lg font-bold tabular-nums">1620</span>
-        <span class="text-[10px] text-slate-400">kcal</span>
+        <span class="text-[10px] text-slate-400">{{ _('kcal') }}</span>
       </div>
     </div>
     <ul class="flex-1 space-y-3">
-      {% for name, pct, color, track in [('Protein', 82, 'bg-protein', 'bg-sky-500/15'), ('Fat', 64, 'bg-fat', 'bg-amber-500/15'), ('Carbs', 71, 'bg-carbs', 'bg-indigo-500/20')] %}
+      {% for name, pct, color, track in [(_('Protein'), 82, 'bg-protein', 'bg-sky-500/15'), (_('Fat'), 64, 'bg-fat', 'bg-amber-500/15'), (_('Carbs'), 71, 'bg-carbs', 'bg-indigo-500/20')] %}
       <li>
         <div class="flex justify-between text-[11px] font-medium text-slate-300 mb-1"><span>{{ name }}</span><span class="tabular-nums text-slate-400">{{ pct }}%</span></div>
         <div class="h-1.5 rounded-full {{ track }} overflow-hidden"><div class="bar-fill h-full rounded-full {{ color }}" style="width: {{ pct }}%"></div></div>
@@ -46,8 +46,8 @@
         <span class="font-semibold">Kolos</span>
       </div>
       <div class="relative">
-        <h2 class="text-3xl font-bold tracking-tight leading-tight">Eat smarter.<br>Train better.</h2>
-        <p class="mt-3 text-sm text-slate-400 max-w-xs">Personal health monitoring for athletes and the trainers who guide them.</p>
+        <h2 class="text-3xl font-bold tracking-tight leading-tight">{{ _('Eat smarter.') }}<br>{{ _('Train better.') }}</h2>
+        <p class="mt-3 text-sm text-slate-400 max-w-xs">{{ _('Personal health monitoring for athletes and the trainers who guide them.') }}</p>
       </div>
       {{ preview() }}
     </div>
@@ -61,33 +61,33 @@
         <div class="mt-6 rounded-[28px] bg-chrome p-3 shadow-float">{{ preview() }}</div>
       </div>
 
-      <h1 class="mt-8 lg:mt-0 text-[28px] font-bold tracking-tight text-center lg:text-left">Welcome back</h1>
-      <p class="mt-1 text-[15px] text-fg-muted text-center lg:text-left">Sign in to continue.</p>
+      <h1 class="mt-8 lg:mt-0 text-[28px] font-bold tracking-tight text-center lg:text-left">{{ _('Welcome back') }}</h1>
+      <p class="mt-1 text-[15px] text-fg-muted text-center lg:text-left">{{ _('Sign in to continue.') }}</p>
 
       <form method="post" action="{{ url_for('login') }}" class="mt-8 space-y-5">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
-          <label for="email" class="{{ ui.label }}">Email</label>
+          <label for="email" class="{{ ui.label }}">{{ _('Email') }}</label>
           <input type="email" id="email" name="email" required autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="next"
-                 class="{{ ui.input }}" placeholder="you@university.edu">
+                 class="{{ ui.input }}" placeholder="{{ _('you@university.edu') }}">
         </div>
         <div>
-          <label for="password" class="{{ ui.label }}">Password</label>
+          <label for="password" class="{{ ui.label }}">{{ _('Password') }}</label>
           <div class="relative">
             <input type="password" id="password" name="password" required autocomplete="current-password" enterkeyhint="go"
                    class="{{ ui.input }} pr-12">
-            <button type="button" id="togglePassword" aria-label="Show password" aria-pressed="false"
+            <button type="button" id="togglePassword" aria-label="{{ _('Show password') }}" aria-pressed="false"
                     class="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-11 h-10 rounded-lg text-fg-subtle hover:text-fg">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
             </button>
           </div>
         </div>
-        <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">Sign in</button>
+        <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">{{ _('Sign in') }}</button>
       </form>
 
       <p class="mt-8 text-center text-[15px] text-fg-muted">
-        No account?
-        <a href="{{ url_for('register') }}" class="font-semibold text-primary hover:text-primary-strong">Create one</a>
+        {{ _('No account?') }}
+        <a href="{{ url_for('register') }}" class="font-semibold text-primary hover:text-primary-strong">{{ _('Create one') }}</a>
       </p>
     </div>
   </div>
@@ -103,7 +103,7 @@
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       btn.setAttribute('aria-pressed', String(show));
-      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      btn.setAttribute('aria-label', show ? {{ _('Hide password')|tojson }} : {{ _('Show password')|tojson }});
     });
   })();
 </script>

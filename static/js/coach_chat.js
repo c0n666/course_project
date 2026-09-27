@@ -30,7 +30,7 @@
     const message = text.trim();
     if (!message || sendBtn.disabled) return;
     if (!navigator.onLine) {
-      App.toast("You're offline. Reconnect to talk to the coach.", 'error');
+      App.toast(App.t("You're offline. Reconnect to talk to the coach."), 'error');
       return;
     }
     if (suggestions) suggestions.hidden = true;
@@ -50,7 +50,7 @@
       mine.remove();
       input.value = message;  // keep what they wrote so they can retry
       autosize();
-      App.toast(err.message || 'The coach could not answer. Please try again.', 'error');
+      App.toast(err.message || App.t('The coach could not answer. Please try again.'), 'error');
     } finally {
       typing.remove();
       input.disabled = sendBtn.disabled = false;

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import date, datetime, timedelta
 from typing import Any, Callable
 
@@ -18,6 +17,10 @@ from sqlalchemy.orm import joinedload
 
 import food_db
 from ai_service import collect_nutrition_context, rule_based_analysis
+from flask_babel import force_locale
+from flask_babel import gettext as _
+
+from i18n import DEFAULT_LANGUAGE, MODEL_LANGUAGE_NAMES, current_language
 from llm_providers import Provider, ProviderError, get_provider
 from models import CoachMessage, CoachReport, FoodLog, Goal, Product, Profile, WaterLog, WeightLog, db
 from nutrition import (
@@ -35,7 +38,6 @@ logger = logging.getLogger(__name__)
 APP_NAME = "Kolos"
 COACH_NAME = "Zernia"        # shown in the English UI
 COACH_NAME_UK = "Зернятко"   # how the coach calls itself in Ukrainian
-COACH_LANGUAGE = os.environ.get("COACH_LANGUAGE", "").strip() or "Ukrainian"
 MAX_TURNS = 10
 MAX_NUDGES = 2
 MAX_DAYS = 28
@@ -72,7 +74,7 @@ daily targets. Look the ingredients up with search_catalogue first.
 - Keep it short and scannable: a 2-3 sentence summary, findings of one sentence each, and changes with \
 a short actionable title plus one or two sentences of detail.
 
-Write all text for the athlete in {COACH_LANGUAGE}. Product names may stay as they are in the catalogue."""
+Write all text for the athlete in {{language}}. Product names may stay as they are in the catalogue."""
 
 
 CHAT_SYSTEM_PROMPT = f"""{PERSONA}
@@ -87,7 +89,7 @@ portions in grams with approximate calories and protein.
 - Stay on nutrition, training and healthy habits; politely decline unrelated requests. You are not a \
 doctor: for symptoms or medical conditions, recommend seeing a professional.
 
-Answer in the language the athlete writes in; if unsure, use {COACH_LANGUAGE}."""
+Answer in {{language}}, the athlete's app language. If the athlete clearly writes in another language, answer in that language instead."""
 
 
 def _obj(properties: dict, required: list[str] | None = None) -> dict:
@@ -189,6 +191,18 @@ LATEST_ANALYSIS_TOOL = {
     "input_schema": _obj({}),
 }
 
+def _language_name(lang: str | None) -> str:
+    return MODEL_LANGUAGE_NAMES.get(lang or DEFAULT_LANGUAGE, MODEL_LANGUAGE_NAMES[DEFAULT_LANGUAGE])
+
+
+def system_prompt(lang: str | None = None) -> str:
+    return SYSTEM_PROMPT.replace("{language}", _language_name(lang))
+
+
+def chat_system_prompt(lang: str | None = None) -> str:
+    return CHAT_SYSTEM_PROMPT.replace("{language}", _language_name(lang))
+
+
 SUBMIT_TOOL = {
     "name": "submit_report",
     "description": "Deliver the final analysis to the athlete. Call it once, after looking at the data.",
@@ -216,10 +230,11 @@ def _num(value: Any, digits: int = 1) -> float | None:
     return round(float(value), digits) if value is not None else None
 
 
-def _product_nutrition(p: Product) -> dict[str, Any]:
+def _product_nutrition(p: Product, lang: str) -> dict[str, Any]:
+    name = p.name_in(lang)
     return {
         "product_id": p.id,
-        "name": p.name if not p.brand else f"{p.name} ({p.brand})",
+        "name": name if not p.brand else f"{name} ({p.brand})",
         "kcal_per_100g": _num(p.calories_per_100g, 0),
         "protein_per_100g": _num(p.proteins),
         "fat_per_100g": _num(p.fats),
@@ -230,9 +245,10 @@ def _product_nutrition(p: Product) -> dict[str, Any]:
 class CoachTools:
     """The coach's read-only tools, bound to one athlete; the model never chooses whose data it reads."""
 
-    def __init__(self, user_id: int, today: date | None = None):
+    def __init__(self, user_id: int, today: date | None = None, lang: str = DEFAULT_LANGUAGE):
         self.user_id = user_id
         self.today = today or date.today()
+        self.lang = lang  # product names and catalogue search follow the athlete's language
         self.handlers: dict[str, Callable[..., Any]] = {
             "get_profile_and_targets": self.get_profile_and_targets,
             "get_daily_totals": self.get_daily_totals,
@@ -344,7 +360,7 @@ class CoachTools:
                 "date": log.date.isoformat(),
                 "meal": log.meal_type,
                 "product_id": log.product_id,
-                "product": log.product.name,
+                "product": log.product.name_in(self.lang),
                 "grams": _num(log.portion_grams, 0),
                 "calories": round(log.calories),
                 "protein_g": round(log.proteins_g, 1),
@@ -381,8 +397,8 @@ class CoachTools:
         }
 
     def search_catalogue(self, query: str) -> dict[str, Any]:
-        products = food_db.search_products(query, self.user_id, limit=8, remote=False)
-        return {"results": [_product_nutrition(p) for p in products]}
+        products = food_db.search_products(query, self.user_id, limit=8, remote=False, lang=self.lang)
+        return {"results": [_product_nutrition(p, self.lang) for p in products]}
 
     def get_latest_analysis(self) -> dict[str, Any]:
         report = latest_coach_report(self.user_id)
@@ -409,11 +425,11 @@ def _answer_tool_calls(convo, tools: CoachTools, calls) -> None:
     convo.add_tool_results(results)
 
 
-def run_agent(provider: Provider, tools: CoachTools, task: str) -> dict[str, Any]:
+def run_agent(provider: Provider, tools: CoachTools, task: str, lang: str | None = None) -> dict[str, Any]:
     """Drive the tool-use loop until the model calls submit_report; returns its arguments."""
-    convo = provider.start(SYSTEM_PROMPT, task, TOOL_DEFINITIONS + [SUBMIT_TOOL])
+    convo = provider.start(system_prompt(lang), task, TOOL_DEFINITIONS + [SUBMIT_TOOL])
     nudges = 0
-    for _ in range(MAX_TURNS):
+    for _turn in range(MAX_TURNS):
         reply = convo.send()
         submitted = next((c for c in reply.tool_calls if c.name == SUBMIT_TOOL["name"]), None)
         if submitted is not None and submitted.error is None:
@@ -428,11 +444,12 @@ def run_agent(provider: Provider, tools: CoachTools, task: str) -> dict[str, Any
     raise CoachError("The coach did not deliver a report.")
 
 
-def run_chat(provider: Provider, tools: CoachTools, history: list[dict[str, str]], message: str) -> str:
+def run_chat(provider: Provider, tools: CoachTools, history: list[dict[str, str]], message: str,
+             lang: str | None = None) -> str:
     """One chat turn: let the model use the tools, then return its text answer."""
-    convo = provider.start(CHAT_SYSTEM_PROMPT, message, TOOL_DEFINITIONS + [LATEST_ANALYSIS_TOOL], history)
+    convo = provider.start(chat_system_prompt(lang), message, TOOL_DEFINITIONS + [LATEST_ANALYSIS_TOOL], history)
     nudged = False
-    for _ in range(MAX_TURNS):
+    for _turn in range(MAX_TURNS):
         reply = convo.send()
         if reply.tool_calls:
             _answer_tool_calls(convo, tools, reply.tool_calls)
@@ -468,7 +485,7 @@ def _as_id(value: Any) -> int | None:
         return None
 
 
-def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
+def _clean_report(raw: dict[str, Any], user_id: int, lang: str = DEFAULT_LANGUAGE) -> dict[str, Any]:
     """Validate the model's report: keep only catalogue products the athlete can see, recompute dish
     nutrition from the catalogue and drop anything malformed (free models don't always follow the schema)."""
     if not isinstance(raw, dict) or not _text(raw.get("summary")):
@@ -486,7 +503,7 @@ def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
         product = products.get(_as_id(item.get("product_id")))
         if product:
             grams = max(1.0, min(1000.0, _as_float(item.get("portion_grams"), 100) or 100))
-            foods.append({**_product_nutrition(product), "portion_grams": round(grams),
+            foods.append({**_product_nutrition(product, lang), "portion_grams": round(grams),
                           "kcal": round(float(product.calories_per_100g) * grams / 100),
                           "reason": _text(item.get("reason"))})
 
@@ -504,7 +521,7 @@ def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
                 totals["protein_g"] += float(product.proteins or 0) * factor
                 totals["fat_g"] += float(product.fats or 0) * factor
                 totals["carbs_g"] += float(product.carbs or 0) * factor
-            name = product.name if product else _text(ing.get("name"))
+            name = product.name_in(lang) if product else _text(ing.get("name"))
             if name:
                 ingredients.append({"product_id": product.id if product else None, "name": name,
                                     "grams": round(grams)})
@@ -546,24 +563,28 @@ def _local_report(user_id: int, days: int) -> dict[str, Any]:
 
 
 def generate_coach_report(user_id: int, days: int = 7, provider: Provider | None = None,
-                          today: date | None = None) -> CoachReport:
-    """Run the coach for the last `days` days and store the report (rule-based without a provider)."""
+                          today: date | None = None, lang: str | None = None) -> CoachReport:
+    """Run the coach for the last `days` days and store the report in `lang` (default: the current
+    request's language); rule-based without a provider."""
     days = _clamp_days(days)
+    lang = lang or current_language()
     provider = provider or get_provider()
     engine, data, error = "local", None, None
     if provider is not None:
         try:
             task = (f"Analyze my nutrition for the last {days} days (today is {(today or date.today()).isoformat()}) "
                     f"and tell me what to change: findings, concrete changes, foods and dishes to add.")
-            data = _clean_report(run_agent(provider, CoachTools(user_id, today), task), user_id)
+            data = _clean_report(run_agent(provider, CoachTools(user_id, today, lang), task, lang), user_id, lang)
             engine = provider.engine
         except (ProviderError, CoachError) as exc:
             logger.warning("coach report failed, using the rule-based analysis: %s", exc)
             error = str(exc)
-    if data is None:
-        data = _local_report(user_id, days)
-    if error:
-        data["notice"] = f"{COACH_NAME} is unavailable right now, so this is a basic automatic analysis."
+    with force_locale(lang):
+        if data is None:
+            data = _local_report(user_id, days)
+        if error:
+            data["notice"] = _("%(coach)s is unavailable right now, so this is a basic automatic analysis.",
+                               coach=_("Zernia"))
 
     report = CoachReport(user_id=user_id, days=days, engine=engine[:40], grade=data["grade"],
                          summary=data["summary"] or "—", payload=json.dumps(data, ensure_ascii=False))
@@ -605,15 +626,19 @@ def messages_today(user_id: int) -> int:
     ).count()
 
 
-def coach_chat(user_id: int, message: str, provider: Provider | None = None) -> tuple[CoachMessage, CoachMessage]:
+def coach_chat(user_id: int, message: str, provider: Provider | None = None,
+               lang: str | None = None) -> tuple[CoachMessage, CoachMessage]:
     """Answer one athlete message and store both turns. Raises CoachError / ProviderError."""
+    lang = lang or current_language()
     provider = provider or get_provider()
     if provider is None:
         raise CoachError("The AI coach is not connected.")
     if messages_today(user_id) >= CHAT_DAILY_LIMIT:
-        raise ChatLimitError(f"You've reached today's limit of {CHAT_DAILY_LIMIT} messages. Try again tomorrow.")
+        with force_locale(lang):
+            raise ChatLimitError(_("You've reached today's limit of %(n)d messages. Try again tomorrow.",
+                                   n=CHAT_DAILY_LIMIT))
     history = [{"role": m.role, "content": m.content} for m in chat_history(user_id, CHAT_HISTORY)]
-    answer = run_chat(provider, CoachTools(user_id), history, message)
+    answer = run_chat(provider, CoachTools(user_id, lang=lang), history, message, lang)
     asked = CoachMessage(user_id=user_id, role="user", content=message)
     answered = CoachMessage(user_id=user_id, role="assistant", content=answer)
     db.session.add_all([asked, answered])

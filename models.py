@@ -6,6 +6,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint, event, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from i18n import current_language
+
 db = SQLAlchemy()
 
 
@@ -17,6 +19,7 @@ class User(UserMixin, db.Model):
     password_hash: Mapped[str] = mapped_column(db.String(255), nullable=False)
     role: Mapped[str] = mapped_column(db.String(20), nullable=False, default="user")
     trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    language: Mapped[str | None] = mapped_column(db.String(5), nullable=True)  # "en" | "uk"; None = browser default
 
     trainer: Mapped["User | None"] = relationship(
         "User",
@@ -102,7 +105,9 @@ class Product(db.Model):
     brand: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
     source: Mapped[str] = mapped_column(db.String(10), nullable=False, default=SOURCE_SEED)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    # Lower-cased "name brand aliases" for search: SQLite's LOWER()/LIKE only fold ASCII,
+    # Ukrainian display name when it differs from `name` (English, or the label as sold).
+    name_uk: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
+    # Lower-cased "name name_uk brand aliases" for search: SQLite's LOWER()/LIKE only fold ASCII,
     # so Cyrillic queries ("йогурт" vs "Йогурт") must match a Python-lowered copy.
     search_terms: Mapped[str | None] = mapped_column(db.String(600), nullable=True)
 
@@ -121,12 +126,24 @@ class Product(db.Model):
         return self.created_by_id is None or self.created_by_id == user_id
 
     def refresh_search_terms(self, aliases: str | None = None) -> None:
-        parts = (self.name, self.brand, aliases)
+        parts = (self.name, self.name_uk, self.brand, aliases)
         self.search_terms = " ".join(p for p in parts if p).lower()[:600]
+
+    def name_in(self, lang: str) -> str:
+        return self.name_uk if lang == "uk" and self.name_uk else self.name
+
+    def label_in(self, lang: str) -> str:
+        name = self.name_in(lang)
+        return f"{name} · {self.brand}" if self.brand else name
+
+    @property
+    def local_name(self) -> str:
+        """Name in the interface language."""
+        return self.name_in(current_language())
 
     @property
     def display_name(self) -> str:
-        return f"{self.name} · {self.brand}" if self.brand else self.name
+        return self.label_in(current_language())
 
     def _per_portion(self, per_100g: float, grams: float) -> float:
         return float(per_100g) * grams / 100.0

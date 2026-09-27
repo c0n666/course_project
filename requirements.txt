@@ -5,6 +5,7 @@ flask-wtf>=1.2.0
 sqlalchemy>=2.0.0
 werkzeug>=3.0.0
 click>=8.1.0
+flask-babel>=4.0.0
 
 # tests
 pytest>=8.0.0

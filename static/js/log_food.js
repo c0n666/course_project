@@ -26,8 +26,8 @@
   let selected = data.preselected ? remember(data.preselected) : null;
 
   const fmt = (n) => (Math.round(n * 10) / 10).toString();
-  const meta = (p) => `${Math.round(p.kcal)} kcal · P ${fmt(p.p)} · F ${fmt(p.f)} · C ${fmt(p.c)}`
-    + (p.portion ? ` · last ${Math.round(p.portion)} g` : ' / 100 g');
+  const meta = (p) => App.t('{kcal} kcal · P {p} · F {f} · C {c}', { kcal: Math.round(p.kcal), p: fmt(p.p), f: fmt(p.f), c: fmt(p.c) })
+    + ' · ' + (p.portion ? App.t('last {g} g', { g: Math.round(p.portion) }) : App.t('per 100 g'));
 
   /* ---------------------------------------------------------------- rendering */
   function row(p) {
@@ -43,7 +43,7 @@
     }
     const star = el.querySelector('[data-star]');
     star.setAttribute('aria-pressed', String(!!p.favorite));
-    star.setAttribute('aria-label', (p.favorite ? 'Remove ' : 'Add ') + p.label + (p.favorite ? ' from favorites' : ' to favorites'));
+    star.setAttribute('aria-label', App.t(p.favorite ? 'Remove {name} from favorites' : 'Add {name} to favorites', { name: p.label }));
     star.querySelector('svg').setAttribute('fill', p.favorite ? 'currentColor' : 'none');
     return el;
   }
@@ -72,11 +72,11 @@
 
   function renderTabs() {
     renderList(tabsScope.querySelector('[data-list="recent"]'), lists.recent,
-      'Foods you log will show up here with your usual portion. Search or scan to get started.');
+      App.t('Foods you log will show up here with your usual portion. Search or scan to get started.'));
     renderList(tabsScope.querySelector('[data-list="favorites"]'), lists.favorites,
-      'Tap the star next to a food to keep it here.');
+      App.t('Tap the star next to a food to keep it here.'));
     renderList(tabsScope.querySelector('[data-list="mine"]'), lists.mine,
-      'Foods you create appear here. Use “Create food” for home recipes.');
+      App.t('Foods you create appear here. Use “Create food” for home recipes.'));
   }
 
   function renderSelected() {
@@ -120,7 +120,7 @@
         lists.favorites = res.favorite ? [p, ...lists.favorites.filter(x => x.id !== p.id)] : lists.favorites.filter(x => x.id !== p.id);
         refresh();
       } catch (err) {
-        App.toast(err.message || 'Could not update favorites.', 'error');
+        App.toast(err.message || App.t('Could not update favorites.'), 'error');
       }
     }
   });
@@ -164,7 +164,7 @@
     const extra = lastRemote.filter(p => !localIds.has(p.id) && (q === lastRemoteQuery || (p.terms || '').includes(q)));
     results.replaceChildren();
     const box1 = document.createElement('div');
-    renderList(box1, local, navigator.onLine ? 'No matches in your foods yet…' : 'No matches. You are offline, so online search is unavailable.');
+    renderList(box1, local, navigator.onLine ? App.t('No matches in your foods yet…') : App.t('No matches. You are offline, so online search is unavailable.'));
     results.appendChild(box1);
     if (extra.length) {
       const box2 = document.createElement('div');
@@ -177,7 +177,7 @@
   async function runRemoteSearch(q, seq) {
     const status = document.createElement('p');
     status.className = 'mt-3 px-1 text-sm text-fg-muted';
-    status.textContent = 'Searching Open Food Facts…';
+    status.textContent = App.t('Searching Open Food Facts…');
     results.appendChild(status);
     try {
       const res = await fetch(`${data.urls.search}?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
@@ -190,11 +190,11 @@
       if (!results.querySelector('.product-row')) {
         const none = document.createElement('p');
         none.className = 'mt-3 px-1 text-sm text-fg-muted';
-        none.textContent = 'Nothing found. Try another name, scan the barcode, or create the food.';
+        none.textContent = App.t('Nothing found. Try another name, scan the barcode, or create the food.');
         results.appendChild(none);
       }
     } catch (_) {
-      if (seq === remoteSeq) status.textContent = 'Online search is unavailable right now.';
+      if (seq === remoteSeq) status.textContent = App.t('Online search is unavailable right now.');
     }
   }
 
@@ -234,7 +234,7 @@
     if (!hiddenId.value) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      App.toast('Choose a food first.', 'error');
+      App.toast(App.t('Choose a food first.'), 'error');
       document.getElementById('picker').scrollIntoView({ behavior: 'smooth', block: 'start' });
       search.focus({ preventScroll: true });
     } else if (!(parseFloat(portion.value) > 0)) {
@@ -278,7 +278,7 @@
     if (busy) return;
     busy = true;
     notFound.hidden = true;
-    scanStatus.textContent = `Looking up ${code}…`;
+    scanStatus.textContent = App.t('Looking up {code}…', { code });
     try {
       const res = await fetch(data.urls.barcode.replace('CODE', encodeURIComponent(code)), { headers: { Accept: 'application/json' } });
       const body = await res.json().catch(() => ({}));
@@ -286,16 +286,16 @@
         stopScanner();
         App.closeSheet('scanSheet');
         select(body.product);
-        App.toast(`Found: ${body.product.label}`, 'success');
+        App.toast(App.t('Found: {name}', { name: body.product.label }), 'success');
       } else if (res.status === 404) {
         lastCode = code;
-        scanStatus.textContent = `Barcode ${code}`;
+        scanStatus.textContent = App.t('Barcode {code}', { code });
         notFound.hidden = false;
       } else {
-        scanStatus.textContent = body.error || 'Could not look up this barcode.';  // e.g. 422 for RU/BY barcodes
+        scanStatus.textContent = body.error || App.t('Could not look up this barcode.');  // e.g. 422 for RU/BY barcodes
       }
     } catch (_) {
-      scanStatus.textContent = navigator.onLine ? 'Could not reach the food database.' : 'You are offline — try again when connected.';
+      scanStatus.textContent = navigator.onLine ? App.t('Could not reach the food database.') : App.t('You are offline — try again when connected.');
     } finally {
       busy = false;
     }
@@ -305,17 +305,17 @@
     notFound.hidden = true;
     lastCode = null;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      scanStatus.textContent = 'Camera needs a secure (HTTPS) connection. Type the number below instead.';
+      scanStatus.textContent = App.t('Camera needs a secure (HTTPS) connection. Type the number below instead.');
       return;
     }
-    scanStatus.textContent = 'Starting camera…';
+    scanStatus.textContent = App.t('Starting camera…');
     try {
       if ('BarcodeDetector' in window) {
         const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         video.srcObject = stream;
         await video.play();
-        scanStatus.textContent = 'Point the camera at a barcode.';
+        scanStatus.textContent = App.t('Point the camera at a barcode.');
         const tick = async () => {
           if (!stream) return;
           try {
@@ -328,7 +328,7 @@
       } else {
         await loadZXing();
         zxing = new ZXing.BrowserMultiFormatReader();
-        scanStatus.textContent = 'Point the camera at a barcode.';
+        scanStatus.textContent = App.t('Point the camera at a barcode.');
         await zxing.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, (result) => {
           if (result && !busy) { navigator.vibrate?.(15); lookup(result.getText()); }
         });
@@ -336,8 +336,8 @@
     } catch (err) {
       stopScanner();
       scanStatus.textContent = err && err.name === 'NotAllowedError'
-        ? 'Camera access was denied. Type the barcode number below instead.'
-        : 'Camera is not available. Type the barcode number below instead.';
+        ? App.t('Camera access was denied. Type the barcode number below instead.')
+        : App.t('Camera is not available. Type the barcode number below instead.');
     }
   }
 
@@ -347,7 +347,7 @@
     e.preventDefault();
     e.stopImmediatePropagation();  // not a server form: skip the global spinner
     const code = document.getElementById('manualCode').value.replace(/\D/g, '');
-    if (code.length < 8) { scanStatus.textContent = 'A barcode has 8 to 14 digits.'; return; }
+    if (code.length < 8) { scanStatus.textContent = App.t('A barcode has 8 to 14 digits.'); return; }
     lookup(code);
   });
   document.getElementById('scanCreate').addEventListener('click', () => {

@@ -2,16 +2,16 @@
 {% import '_ui.html' as ui %}
 {% import '_coach.html' as coach %}
 {% set page_back_url = url_for('trainer_dashboard') %}
-{% set page_back_label = 'Clients' %}
+{% set page_back_label = _('Clients') %}
 {% set page_bar_title = client.email %}
-{% block title %}{{ client.email }} — Client View{% endblock %}
+{% block title %}{{ client.email }} — {{ _('Client View') }}{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl" data-segments-scope>
   {# Desktop back link (mobile uses the app bar) #}
   <a href="{{ url_for('trainer_dashboard') }}" class="hidden lg:inline-flex {{ ui.back_link }} mb-2">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-    Clients
+    {{ _('Clients') }}
   </a>
 
   {# ---------- Header ---------- #}
@@ -20,7 +20,7 @@
     <div class="min-w-0">
       <h1 class="truncate text-[22px] sm:text-[28px] font-bold tracking-tight">{{ client.email }}</h1>
       <p class="text-[15px] text-fg-muted tabular-nums">
-        {% if profile %}{{ profile.weight or '—' }} kg · {{ profile.height or '—' }} cm · {% else %}No profile · {% endif %}{{ today.strftime('%b %d') }}
+        {% if profile %}{{ _('%(n)s kg', n=profile.weight or '—') }} · {{ _('%(n)s cm', n=profile.height or '—') }} · {% else %}{{ _('No profile') }} · {% endif %}{{ today|ldate }}
       </p>
     </div>
   </div>
@@ -28,10 +28,10 @@
   {# ---------- Today's numbers ---------- #}
   <div class="grid grid-cols-4 gap-2 sm:gap-3 mb-6">
     {% for label, value, unit, color in [
-      ('Calories', "%.0f"|format(summary.calories), 'kcal', 'text-kcal'),
-      ('Protein', "%.0f"|format(summary.proteins), 'g', 'text-sky-600 dark:text-sky-400'),
-      ('Fat', "%.0f"|format(summary.fats), 'g', 'text-amber-600 dark:text-amber-400'),
-      ('Carbs', "%.0f"|format(summary.carbs), 'g', 'text-indigo-600 dark:text-indigo-400'),
+      (_('Calories'), "%.0f"|format(summary.calories), _('kcal'), 'text-kcal'),
+      (_('Protein'), "%.0f"|format(summary.proteins), _('g'), 'text-sky-600 dark:text-sky-400'),
+      (_('Fat'), "%.0f"|format(summary.fats), _('g'), 'text-amber-600 dark:text-amber-400'),
+      (_('Carbs'), "%.0f"|format(summary.carbs), _('g'), 'text-indigo-600 dark:text-indigo-400'),
     ] %}
     <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
       <p class="text-[20px] sm:text-[26px] leading-none font-bold tracking-tight tabular-nums {{ color }}">{{ value }}</p>
@@ -43,29 +43,29 @@
   {# ---------- Habits (read-only) ---------- #}
   <dl class="grid grid-cols-3 gap-2 sm:gap-3 -mt-3 mb-6">
     <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
-      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Logging streak</dt>
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">{{ _('Logging streak') }}</dt>
       <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums">{{ streak.current }} <span class="text-[12px] font-medium text-fg-muted">{{ 'day' if streak.current == 1 else 'days' }}</span></dd>
     </div>
     <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
-      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Water today</dt>
-      <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ '{:,}'.format(water.total) }} <span class="text-[12px] font-medium text-fg-muted">/ {{ '{:,}'.format(water.goal) }} ml</span></dd>
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">{{ _('Water today') }}</dt>
+      <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ water.total|numberformat }} <span class="text-[12px] font-medium text-fg-muted">/ {{ _('%(n)s ml', n=water.goal|numberformat) }}</span></dd>
     </div>
     <div class="{{ ui.card }} px-2 sm:px-4 py-3 text-center sm:text-left">
-      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">Last weigh-in</dt>
+      <dt class="text-[11px] sm:text-[12px] font-medium text-fg-muted">{{ _('Last weigh-in') }}</dt>
       <dd class="mt-1 text-[17px] sm:text-[20px] font-bold tabular-nums">
-        {% if weight_log %}{{ weight_log.weight }} <span class="text-[12px] font-medium text-fg-muted">kg<span class="hidden sm:inline"> · {{ weight_log.date.strftime('%b %d') }}{% if weight_log.change_7d is not none %} · {{ '%+.1f'|format(weight_log.change_7d) }} vs wk ago{% endif %}</span></span>
+        {% if weight_log %}{{ weight_log.weight }} <span class="text-[12px] font-medium text-fg-muted">{{ _('kg') }}<span class="hidden sm:inline"> · {{ weight_log.date|ldate }}{% if weight_log.change_7d is not none %} · {{ _('%(n)s vs wk ago', n='%+.1f'|format(weight_log.change_7d)) }}{% endif %}</span></span>
         {% else %}<span class="text-[15px] font-medium text-fg-muted">—</span>{% endif %}
       </dd>
     </div>
   </dl>
 
   {# ---------- Segmented control ---------- #}
-  <div data-segments role="tablist" aria-label="Client sections" class="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1 max-w-sm">
+  <div data-segments role="tablist" aria-label="{{ _('Client sections') }}" class="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1 max-w-sm">
     <button type="button" role="tab" data-segment="log" aria-selected="true"
-            class="press h-9 rounded-lg text-[14px] font-semibold text-fg-muted aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm">Food log</button>
+            class="press h-9 rounded-lg text-[14px] font-semibold text-fg-muted aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm">{{ _('Food log') }}</button>
     <button type="button" role="tab" data-segment="coaching" aria-selected="false"
             class="press relative h-9 rounded-lg text-[14px] font-semibold text-fg-muted aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm">
-      Coaching
+      {{ _('Coaching') }}
       {% if pending_recommendations %}<span class="ml-1 inline-flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-red-500 text-[11px] text-white align-middle">{{ pending_recommendations|length }}</span>{% endif %}
     </button>
   </div>
@@ -73,27 +73,27 @@
   {# ============================================================ LOG #}
   <div data-segment-panel="log" role="tabpanel" class="space-y-6">
     <section aria-labelledby="log-heading">
-      <h2 id="log-heading" class="{{ ui.section_title }}">Today's food log</h2>
+      <h2 id="log-heading" class="{{ ui.section_title }}">{{ _("Today's food log") }}</h2>
       {% if food_logs %}
       <div class="{{ ui.list }}">
         {% for log in food_logs %}
         <div class="{{ ui.list_row }}">
           <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ ui.meal_dots.get(log.meal_type, 'bg-slate-400') }}" aria-hidden="true"></span>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-medium">{{ log.product.name }}</p>
-            <p class="text-[13px] text-fg-muted"><span class="capitalize">{{ log.meal_type }}</span> · {{ log.portion_grams }} g</p>
+            <p class="truncate text-[15px] font-medium">{{ log.product.local_name }}</p>
+            <p class="text-[13px] text-fg-muted"><span>{{ _(log.meal_type|capitalize) }}</span> · {{ _('%(n)s g', n=log.portion_grams) }}</p>
           </div>
-          <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">kcal</span></p>
+          <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">{{ _('kcal') }}</span></p>
         </div>
         {% endfor %}
       </div>
       {% else %}
-      <div class="{{ ui.card }} px-6 py-10 text-center text-sm text-fg-muted">No meals logged today.</div>
+      <div class="{{ ui.card }} px-6 py-10 text-center text-sm text-fg-muted">{{ _('No meals logged today.') }}</div>
       {% endif %}
     </section>
 
     <section aria-labelledby="micro-heading">
-      <h2 id="micro-heading" class="{{ ui.section_title }}">Key micronutrients</h2>
+      <h2 id="micro-heading" class="{{ ui.section_title }}">{{ _('Key micronutrients') }}</h2>
       {% if micronutrient_totals %}
       <div class="{{ ui.list }}">
         {% for item in micronutrient_totals[:5] %}
@@ -105,7 +105,7 @@
         {% endfor %}
       </div>
       {% else %}
-      <div class="{{ ui.card }} px-6 py-6 text-center text-sm text-fg-muted">No data yet.</div>
+      <div class="{{ ui.card }} px-6 py-6 text-center text-sm text-fg-muted">{{ _('No data yet.') }}</div>
       {% endif %}
     </section>
   </div>
@@ -114,14 +114,14 @@
   <div data-segment-panel="coaching" role="tabpanel" hidden class="space-y-6">
     {% if coach_report %}
     <section aria-labelledby="coach-heading">
-      <h2 id="coach-heading" class="{{ ui.section_title }}">Latest analysis by {{ coach_name }} · seen by the athlete</h2>
+      <h2 id="coach-heading" class="{{ ui.section_title }}">{{ _('Latest analysis by %(coach)s · seen by the athlete', coach=coach_name) }}</h2>
       {{ coach.report_body(coach_report, today.isoformat(), can_log=false) }}
     </section>
     {% endif %}
 
     {% if pending_recommendations %}
     <section aria-labelledby="pending-heading">
-      <h2 id="pending-heading" class="{{ ui.section_title }}">Awaiting approval · {{ pending_recommendations|length }}</h2>
+      <h2 id="pending-heading" class="{{ ui.section_title }}">{{ _('Awaiting approval') }} · {{ pending_recommendations|length }}</h2>
       <ul class="space-y-3">
         {% for rec in pending_recommendations %}
         {% set is_ai = rec.content.startswith('[AI') %}
@@ -129,12 +129,12 @@
           <form method="post" action="/trainer/recommendation/approve/{{ rec.id }}" class="space-y-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="pending-{{ rec.id }}" class="{{ ui.badge }} {{ 'bg-violet-500/15 text-violet-700 dark:text-violet-300' if is_ai else 'bg-surface-2 text-fg-muted' }}">
-              {{ 'AI suggestion · edit before approving' if is_ai else 'Athlete / system' }}
+              {{ _('AI suggestion · edit before approving') if is_ai else _('Athlete / system') }}
             </label>
             <textarea id="pending-{{ rec.id }}" name="content" rows="3" required class="{{ ui.textarea }}">{{ rec.content }}</textarea>
             <button type="submit" class="{{ ui.btn_primary }} w-full sm:w-auto">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              Approve
+              {{ _('Approve') }}
             </button>
           </form>
         </li>
@@ -144,18 +144,18 @@
     {% endif %}
 
     <section aria-labelledby="send-heading">
-      <h2 id="send-heading" class="{{ ui.section_title }}">New recommendation</h2>
+      <h2 id="send-heading" class="{{ ui.section_title }}">{{ _('New recommendation') }}</h2>
       <form method="post" action="{{ url_for('send_recommendation', client_id=client.id) }}" class="{{ ui.card }} p-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="rec-content" class="sr-only">Recommendation</label>
+        <label for="rec-content" class="sr-only">{{ _('Recommendation') }}</label>
         <textarea id="rec-content" name="content" rows="4" required
-                  placeholder="e.g. Increase protein at breakfast and add more leafy greens for iron."
+                  placeholder="{{ _('e.g. Increase protein at breakfast and add more leafy greens for iron.') }}"
                   class="w-full resize-none rounded-xl bg-transparent px-2 py-2 text-base sm:text-[15px] text-fg placeholder:text-fg-subtle outline-none"></textarea>
         <div class="flex items-center justify-between gap-3 border-t border-line pt-3 px-1">
-          <p class="text-[13px] text-fg-muted">Appears on the athlete's Coach tab.</p>
+          <p class="text-[13px] text-fg-muted">{{ _("Appears on the athlete's Coach tab.") }}</p>
           <button type="submit" class="{{ ui.btn_primary }} shrink-0 !h-10 !rounded-full !px-4">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
-            Send
+            {{ _('Send') }}
           </button>
         </div>
       </form>
@@ -163,7 +163,7 @@
 
     {% if recent_recommendations %}
     <section aria-labelledby="approved-heading">
-      <h2 id="approved-heading" class="{{ ui.section_title }}">Approved</h2>
+      <h2 id="approved-heading" class="{{ ui.section_title }}">{{ _('Approved') }}</h2>
       <ul class="{{ ui.list }}">
         {% for rec in recent_recommendations %}
         <li class="px-4 py-3.5">

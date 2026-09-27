@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
+from flask_babel import gettext as _
 from sqlalchemy.orm import joinedload
 
 from models import FoodLog, Goal, Micronutrient, Product, ProductMicronutrient, Profile
@@ -249,12 +250,12 @@ def _grade_from_score(score: float) -> str:
 
 
 def _build_recommendations(ctx: NutritionContext) -> list[str]:
-    """Prioritized tips: calories/macros first, micronutrients last."""
+    """Prioritized tips: calories/macros first, micronutrients last (in the current locale)."""
     if ctx.days_with_logs == 0:
         return [
-            "Логуйте кожен прийом їжі щонайменше 5 днів на тиждень для точного AI-звіту.",
-            "Додайте сніданок і перекус із білком (йогурт, яйця, курка) для стабільного балансу БЖВ.",
-            "Після тижня логів повторіть аналіз — тренер зможе затвердити рекомендації.",
+            _("Log every meal at least 5 days a week so the analysis is accurate."),
+            _("Add a breakfast and a snack with protein (yogurt, eggs, chicken) to balance your macros."),
+            _("Run the analysis again after a week of logging."),
         ]
 
     tips: list[str] = []
@@ -265,34 +266,21 @@ def _build_recommendations(ctx: NutritionContext) -> list[str]:
     carb_pct = ctx.adherence.get("carbs", 0)
 
     if goal_type == "weight_loss" and cal_pct > 100:
-        tips.append(
-            "Обмежте енергетичну щільність раціону: більше овочів і нежирного білка, "
-            "менше соусів, випічки та солодких напоїв — калорійність перевищує коридор для схуднення."
-        )
+        tips.append(_("Lower the energy density of your meals: more vegetables and lean protein, fewer sauces, "
+                      "pastries and sweet drinks — calories are above the weight-loss range."))
     elif cal_pct < 85:
-        tips.append(
-            "Збільште калорійність основних прийомів або додайте здоровий перекус "
-            "(горіхи, рис, йогурт), щоб наблизитися до добової цілі."
-        )
+        tips.append(_("Make your main meals bigger or add a healthy snack (nuts, rice, yogurt) "
+                      "to get closer to your daily target."))
     elif cal_pct > 115:
-        tips.append(
-            "Скоротіть калорійні напої, соуси та вечірні перекуси — споживання перевищує розрахункову ціль."
-        )
+        tips.append(_("Cut back on caloric drinks, sauces and late-evening snacks — intake is above your target."))
 
     if prot_pct < 85:
-        tips.append(
-            "Додайте 25–35 г білка на прийом (курка, риба, яйця, сир, йогурт) — "
-            "зараз білок нижче 85% від цілі."
-        )
-
+        tips.append(_("Add 25–35 g of protein per meal (chicken, fish, eggs, cottage cheese, yogurt) — "
+                      "protein is below %(pct)d%% of your target.", pct=85))
     if fat_pct < 75:
-        tips.append(
-            "Включіть корисні жири: авокадо, оливкова олія, горіхи — для гормонального балансу."
-        )
+        tips.append(_("Include healthy fats: avocado, olive oil, nuts — they support hormonal balance."))
     if carb_pct < 75:
-        tips.append(
-            "Додайте складні вуглеводи (овес, рис, гречка, банан) навколо тренувань для енергії."
-        )
+        tips.append(_("Add complex carbs (oats, rice, buckwheat, banana) around workouts for energy."))
 
     micro_deficits = sorted(
         [d for d in ctx.deficits if d["type"] == "micronutrient"],
@@ -301,15 +289,13 @@ def _build_recommendations(ctx: NutritionContext) -> list[str]:
     for deficit in micro_deficits:
         if len(tips) >= 3:
             break
-        tips.append(
-            f"Збагатіть раціон джерелами {deficit['name']} "
-            f"(зараз {deficit['daily_avg']:.1f} {deficit['unit']}/день, ціль {deficit['target']:.0f} {deficit['unit']})."
-        )
+        tips.append(_("Eat more foods rich in %(name)s (now %(avg).1f %(unit)s a day, target %(target).0f %(unit)s).",
+                      name=deficit["name"], avg=deficit["daily_avg"], unit=deficit["unit"], target=deficit["target"]))
 
     defaults = [
-        "Тримайте 3 основні прийоми + перекус із білком кожні 3–4 години для стабільного метаболізму.",
-        "Пийте 30–35 мл води на кг ваги та логуйте тренування для точнішого TDEE.",
-        "Раз на тиждень переглядайте ціль у профілі разом із тренером.",
+        _("Keep to 3 main meals plus a protein snack every 3–4 hours for a steady metabolism."),
+        _("Drink 30–35 ml of water per kg of body weight and log your workouts for a more accurate TDEE."),
+        _("Review your goal in the profile once a week together with your trainer."),
     ]
     fill_idx = 0
     while len(tips) < 3:
@@ -320,52 +306,50 @@ def _build_recommendations(ctx: NutritionContext) -> list[str]:
 
 
 def rule_based_analysis(ctx: NutritionContext) -> dict[str, Any]:
-    """Deterministic analyzer that mimics AI output from real deficits."""
+    """Deterministic analyzer that mimics AI output from real deficits (in the current locale)."""
     score = _score_from_context(ctx)
     grade = _grade_from_score(score)
     tips = _build_recommendations(ctx)
 
     if ctx.days_with_logs == 0:
-        summary = (
-            "За останні 7 днів немає записів у щоденнику харчування. "
-            "Система не може оцінити раціон — додайте прийоми їжі для аналізу."
-        )
+        summary = _("There are no food diary entries for the last 7 days, so your diet can't be assessed yet — "
+                    "log your meals to get an analysis.")
         return {"ai_grade": "C-", "nutrition_summary": summary, "recommendations": tips}
 
     cal_pct = ctx.adherence.get("calories", 0)
     prot_pct = ctx.adherence.get("proteins", 0)
     fat_pct = ctx.adherence.get("fats", 0)
     carb_pct = ctx.adherence.get("carbs", 0)
-    # The fallback report text is Ukrainian, so it keeps Ukrainian goal names (UI labels are English).
-    goal_names_uk = {"weight_loss": "схуднення", "maintenance": "підтримка форми", "muscle_gain": "набір маси"}
-    goal_label = goal_names_uk.get(ctx.goal.goal_type, "підтримка") if ctx.goal else "підтримка"
+    goal_names = {"weight_loss": _("weight loss"), "maintenance": _("maintenance"), "muscle_gain": _("muscle gain")}
+    goal_label = goal_names.get(ctx.goal.goal_type, _("maintenance")) if ctx.goal else _("maintenance")
 
-    cal_comment = "калорійність у цільовому коридорі"
+    cal_comment = _("calories within the target range")
     if cal_pct < 85:
-        cal_comment = "стійкий дефіцит калорій"
+        cal_comment = _("a steady calorie deficit")
     elif cal_pct > 115 or (ctx.goal and ctx.goal.goal_type == "weight_loss" and cal_pct > 100):
-        cal_comment = "перевищення калорійної цілі для схуднення"
+        cal_comment = _("calories above the weight-loss target")
 
-    prot_comment = "білок у нормі"
+    prot_comment = _("protein on target")
     if prot_pct < 85:
-        prot_comment = "недостатній білок"
+        prot_comment = _("not enough protein")
     elif prot_pct > 120:
-        prot_comment = "надлишок білка"
+        prot_comment = _("more protein than needed")
 
-    macro_comment = f"жири {fat_pct:.0f}%, вуглеводи {carb_pct:.0f}% від цілі"
+    macro_comment = _("fat %(fat).0f%%, carbs %(carbs).0f%% of target", fat=fat_pct, carbs=carb_pct)
     micro_deficits = [d for d in ctx.deficits if d["type"] == "micronutrient"]
     if micro_deficits:
         worst = min(micro_deficits, key=lambda d: d["percent"])
-        micro_comment = f"дефіцит {worst['name']} ({worst['percent']:.0f}% від норми)"
+        micro_comment = _("low %(name)s (%(percent).0f%% of the norm)", name=worst["name"], percent=worst["percent"])
     else:
-        micro_comment = "мікронутрієнти без критичних дефіцитів"
+        micro_comment = _("no critical micronutrient gaps")
 
-    summary = (
-        f"За {ctx.days_with_logs} дн. з логами (ціль: {goal_label}): {cal_comment}, {prot_comment}, {macro_comment}. "
-        f"Мікронутрієнти: {micro_comment}. "
-        f"Середньоденно {ctx.daily_averages['calories']:.0f} ккал / білок {ctx.daily_averages['proteins']:.0f} г "
-        f"при цілі {ctx.targets.get('calories', '—')} ккал / {ctx.targets.get('proteins', '—')} г білка. "
-        f"Оцінка: {grade} ({score:.0f}/100)."
+    summary = _(
+        "Over %(days)s logged days (goal: %(goal)s): %(calories)s, %(protein)s, %(macros)s. "
+        "Micronutrients: %(micros)s. Daily average %(kcal).0f kcal / %(prot).0f g protein "
+        "against a target of %(target_kcal)s kcal / %(target_prot)s g protein. Score: %(grade)s (%(score).0f/100).",
+        days=ctx.days_with_logs, goal=goal_label, calories=cal_comment, protein=prot_comment, macros=macro_comment,
+        micros=micro_comment, kcal=ctx.daily_averages["calories"], prot=ctx.daily_averages["proteins"],
+        target_kcal=ctx.targets.get("calories", "—"), target_prot=ctx.targets.get("proteins", "—"),
+        grade=grade, score=score,
     )
-
     return {"ai_grade": grade, "nutrition_summary": summary, "recommendations": tips}
