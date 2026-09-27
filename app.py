@@ -12,6 +12,8 @@ from functools import wraps
 import click
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from flask_babel import Babel, format_date, lazy_gettext, ngettext
+from flask_babel import gettext as _
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from markupsafe import Markup, escape
 from sqlalchemy import event, func
@@ -44,7 +46,6 @@ import food_db
 from coach_agent import (
     APP_NAME,
     CHAT_MAX_CHARS,
-    COACH_NAME,
     ChatLimitError,
     CoachError,
     chat_history,
@@ -52,6 +53,18 @@ from coach_agent import (
     coach_chat,
     generate_coach_report,
     latest_coach_report,
+)
+from i18n import (
+    DEFAULT_LANGUAGE,
+    LANG_COOKIE,
+    LANG_COOKIE_MAX_AGE,
+    LANGUAGES,
+    coach_display_name,
+    current_language,
+    format_local_date,
+    js_translations,
+    normalize_language,
+    select_locale,
 )
 from llm_providers import ProviderError
 from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
@@ -69,6 +82,7 @@ from nutrition import (
 
 logger = logging.getLogger(__name__)
 csrf = CSRFProtect()
+babel = Babel()
 
 MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
 
@@ -139,10 +153,11 @@ def create_app(test_config: dict | None = None) -> Flask:
     db.init_app(app)
     _register_sqlite_pragmas(app)
     csrf.init_app(app)
+    babel.init_app(app, locale_selector=select_locale, default_locale=DEFAULT_LANGUAGE)
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(_exc):
-        message = "Your session expired or the request was invalid. Refresh the page and try again."
+        message = _("Your session expired or the request was invalid. Refresh the page and try again.")
         if request.is_json or request.accept_mimetypes.best == "application/json":
             return jsonify(error=message), 400  # fetch() callers need JSON, not a redirect
         flash(message, "error")
@@ -156,13 +171,21 @@ def create_app(test_config: dict | None = None) -> Flask:
         _enable_wal_on_existing_db()
 
     app.add_template_filter(coach_markup, "coach_markup")
+    app.add_template_filter(format_local_date, "ldate")
 
     @app.context_processor
     def _brand():
-        return {"app_name": APP_NAME, "coach_name": COACH_NAME}
+        return {
+            "app_name": APP_NAME,
+            "coach_name": coach_display_name(),
+            "current_lang": current_language(),
+            "languages": LANGUAGES,
+            "js_i18n": js_translations(),
+        }
 
     login_manager = LoginManager(app)
     login_manager.login_view = "login"
+    login_manager.login_message = lazy_gettext("Please sign in to continue.")
     login_manager.login_message_category = "info"
 
     @login_manager.user_loader
@@ -199,7 +222,7 @@ def role_required(*roles: str):
         @login_required
         def wrapped(*args, **kwargs):
             if current_user.role not in roles:
-                flash("You do not have permission to access this page.", "error")
+                flash(_("You do not have permission to access this page."), "error")
                 return redirect(url_for("dashboard"))
             return view(*args, **kwargs)
 
@@ -399,7 +422,7 @@ def calorie_trend_7_days(user_id: int, end_day: date | None = None) -> dict:
     labels, values = [], []
     for offset in range(6, -1, -1):
         day = end_day - timedelta(days=offset)
-        labels.append(day.strftime("%a %d"))
+        labels.append(format_local_date(day, "chart"))
         values.append(round(daily_calories(user_id, day), 1))
     return {"labels": labels, "values": values}
 
@@ -518,6 +541,10 @@ def _migrate_profile_goals_schema() -> None:
             text("ALTER TABLE profiles ADD COLUMN activity_level VARCHAR(20)")
         )
 
+    user_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(users)")).fetchall()}
+    if "language" not in user_cols:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR(5)"))
+
     tables = {
         row[0]
         for row in db.session.execute(
@@ -539,6 +566,18 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("dashboard"))
         return redirect(url_for("login"))
 
+    @app.route("/language", methods=["POST"])
+    def set_language():
+        """Language switcher: saved on the account when signed in, and in a cookie for every visitor."""
+        lang = normalize_language(request.form.get("lang")) or DEFAULT_LANGUAGE
+        next_url = request.form.get("next", "").strip()
+        response = redirect(next_url if is_safe_local_path(next_url) else url_for("index"))
+        if current_user.is_authenticated:
+            current_user.language = lang
+            db_commit_with_retry()
+        response.set_cookie(LANG_COOKIE, lang, max_age=LANG_COOKIE_MAX_AGE, samesite="Lax")
+        return response
+
     @app.route("/sw.js")
     def service_worker():
         # Served from the site root (not /static/) so the worker's scope covers every page.
@@ -559,10 +598,10 @@ def register_routes(app: Flask) -> None:
 
             if user and check_password_hash(user.password_hash, password):
                 login_user(user)
-                flash("Welcome back!", "success")
+                flash(_("Welcome back!"), "success")
                 return redirect(url_for("index"))
 
-            flash("Invalid email or password.", "error")
+            flash(_("Invalid email or password."), "error")
 
         return render_template("login.html")
 
@@ -582,17 +621,17 @@ def register_routes(app: Flask) -> None:
 
             errors = []
             if not email or not password:
-                errors.append("Email and password are required.")
+                errors.append(_("Email and password are required."))
             elif "@" not in email or len(email) > 255:
-                errors.append("Enter a valid email address.")
+                errors.append(_("Enter a valid email address."))
             if password and len(password) < 6:
-                errors.append("Password must be at least 6 characters.")
+                errors.append(_("Password must be at least 6 characters."))
             if password != confirm:
-                errors.append("Passwords do not match.")
+                errors.append(_("Passwords do not match."))
             if User.query.filter_by(email=email).first():
-                errors.append("An account with this email already exists.")
+                errors.append(_("An account with this email already exists."))
             if role not in ("user", "trainer"):
-                errors.append("Invalid role selected.")
+                errors.append(_("Invalid role selected."))
 
             gender = birth_date = activity_level = goal_type = None
             height = weight = target_weight = None
@@ -606,23 +645,23 @@ def register_routes(app: Flask) -> None:
                 weight = parse_number(request.form.get("weight"), 30, 300)
                 target_weight = parse_number(request.form.get("target_weight"), 30, 300)
                 if height is None or weight is None or target_weight is None:
-                    errors.append("Enter valid height, weight, and target weight.")
+                    errors.append(_("Enter valid height, weight, and target weight."))
                 if gender not in ("male", "female"):
-                    errors.append("Select a valid gender.")
+                    errors.append(_("Select a valid gender."))
                 if activity_level not in ("sedentary", "light", "moderate", "active"):
-                    errors.append("Select a valid activity level.")
+                    errors.append(_("Select a valid activity level."))
                 if goal_type not in ("weight_loss", "maintenance", "muscle_gain"):
-                    errors.append("Select a valid goal type.")
+                    errors.append(_("Select a valid goal type."))
                 birth_date = parse_date_strict(birth_date_str)
                 if birth_date is None or not (date(1900, 1, 1) <= birth_date < date.today()):
-                    errors.append("Enter a valid birth date.")
+                    errors.append(_("Enter a valid birth date."))
 
                 if trainer_id:
                     trainer = (
                         db.session.get(User, int(trainer_id)) if trainer_id.isdigit() else None
                     )
                     if not trainer or trainer.role != "trainer":
-                        errors.append("The selected trainer was not found.")
+                        errors.append(_("The selected trainer was not found."))
 
             if errors:
                 for msg in errors:
@@ -664,11 +703,11 @@ def register_routes(app: Flask) -> None:
                         db.session.add(Profile(user_id=user.id))
 
                     db.session.commit()
-                    flash("Account created. Please sign in.", "success")
+                    flash(_("Account created. Please sign in."), "success")
                     return redirect(url_for("login"))
                 except Exception:
                     db.session.rollback()
-                    flash("Registration failed. Please try again.", "error")
+                    flash(_("Registration failed. Please try again."), "error")
 
         return render_template("register.html", trainers=trainers)
 
@@ -676,7 +715,7 @@ def register_routes(app: Flask) -> None:
     @login_required
     def logout():
         logout_user()
-        flash("You have been signed out.", "info")
+        flash(_("You have been signed out."), "info")
         return redirect(url_for("login"))
 
     @app.route("/dashboard")
@@ -721,7 +760,7 @@ def register_routes(app: Flask) -> None:
         )
 
         chart_macros = {
-            "labels": ["Protein", "Fat", "Carbs"],
+            "labels": [_("Protein"), _("Fat"), _("Carbs")],
             "values": [
                 round(summary["proteins"], 1),
                 round(summary["fats"], 1),
@@ -783,18 +822,18 @@ def register_routes(app: Flask) -> None:
         message = str(data.get("message", "")).strip()
         error, status = None, 200
         if not message or len(message) > CHAT_MAX_CHARS:
-            error, status = f"Write a message of up to {CHAT_MAX_CHARS} characters.", 400
+            error, status = _("Write a message of up to %(n)d characters.", n=CHAT_MAX_CHARS), 400
         elif not coach_available():
-            error, status = f"{COACH_NAME} is not connected yet.", 503
+            error, status = _("%(coach)s is not connected yet.", coach=coach_display_name()), 503
         else:
             try:
-                asked, answered = coach_chat(current_user.id, message)
+                asked, answered = coach_chat(current_user.id, message, lang=current_language())
             except ChatLimitError as exc:
                 error, status = str(exc), 429
             except (CoachError, ProviderError) as exc:
                 app.logger.warning("coach chat failed: %s", exc)
                 db.session.rollback()
-                error, status = f"{COACH_NAME} couldn't answer right now. Please try again in a minute.", 502
+                error, status = _("%(coach)s couldn't answer right now. Please try again in a minute.", coach=coach_display_name()), 502
 
         if wants_json():
             if error:
@@ -809,7 +848,7 @@ def register_routes(app: Flask) -> None:
     def clear_coach_chat():
         CoachMessage.query.filter_by(user_id=current_user.id).delete()
         db_commit_with_retry()
-        flash("Chat cleared.", "success")
+        flash(_("Chat cleared."), "success")
         return redirect(url_for("coach_chat_page"))
 
     @app.route("/targets/adaptive", methods=["POST"])
@@ -821,23 +860,23 @@ def register_routes(app: Flask) -> None:
             if profile and profile.calorie_target_override:
                 profile.calorie_target_override = None
                 db_commit_with_retry()
-                flash("Back to the calculated calorie target.", "success")
+                flash(_("Back to the calculated calorie target."), "success")
             return redirect(back)
 
         if not profile_complete(profile):
-            flash("Complete your profile first.", "error")
+            flash(_("Complete your profile first."), "error")
             return redirect(url_for("profile_page"))
         # Recomputed on the server: the form only says "apply", never the number.
         checkin = weekly_checkin(current_user.id, profile, get_active_goal(current_user.id))
         if not checkin["ready"]:
-            flash("Not enough data yet for a check-in.", "error")
+            flash(_("Not enough data yet for a check-in."), "error")
             return redirect(back)
         profile.calorie_target_override = checkin["suggested_target"]
         try:
             db_commit_with_retry()
-            flash(f"New daily target: {checkin['suggested_target']} kcal.", "success")
+            flash(_("New daily target: %(kcal)s kcal.", kcal=checkin["suggested_target"]), "success")
         except OperationalError:
-            flash("Could not save the target. Please try again.", "error")
+            flash(_("Could not save the target. Please try again."), "error")
         return redirect(back)
 
     @app.route("/dashboard/ai-report", methods=["POST"])
@@ -848,18 +887,18 @@ def register_routes(app: Flask) -> None:
 
         profile = Profile.query.filter_by(user_id=current_user.id).first()
         if not profile_complete(profile):
-            flash("Complete your profile (weight, height, activity) to run the AI analysis.", "error")
+            flash(_("Complete your profile (weight, height, activity) to run the AI analysis."), "error")
             return redirect(url_for("profile_page"))
 
         try:
-            report = generate_coach_report(current_user.id, days=7)
+            report = generate_coach_report(current_user.id, days=7, lang=current_language())
             if report.engine == "local":
-                flash(f"Basic analysis ready ({COACH_NAME} is not connected).", "info")
+                flash(_("Basic analysis ready (%(coach)s is not connected).", coach=coach_display_name()), "info")
             else:
-                flash(f"{COACH_NAME} has finished your analysis.", "success")
+                flash(_("%(coach)s has finished your analysis.", coach=coach_display_name()), "success")
         except OperationalError:
             db.session.rollback()
-            flash("Could not save the analysis. Please try again.", "error")
+            flash(_("Could not save the analysis. Please try again."), "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
@@ -878,16 +917,16 @@ def register_routes(app: Flask) -> None:
 
         rec = get_pending_recommendation_for_athlete(rec_id, current_user.id)
         if not rec:
-            flash("Recommendation not found or it cannot be deleted.", "error")
+            flash(_("Recommendation not found or it cannot be deleted."), "error")
             return redirect(url_for("dashboard"))
 
         try:
             db.session.delete(rec)
             db_commit_with_retry()
-            flash("Recommendation deleted.", "success")
+            flash(_("Recommendation deleted."), "success")
         except OperationalError:
             db.session.rollback()
-            flash("Could not delete. Please try again.", "error")
+            flash(_("Could not delete. Please try again."), "error")
 
         selected = parse_selected_date(
             request.args.get("date") or request.form.get("date")
@@ -898,7 +937,7 @@ def register_routes(app: Flask) -> None:
     @login_required
     def profile_page():
         if current_user.role == "trainer":
-            flash("Trainers use a simplified profile. Contact admin to update.", "info")
+            flash(_("Trainers use a simplified profile. Contact admin to update."), "info")
             return redirect(url_for("trainer_dashboard"))
 
         profile = Profile.query.filter_by(user_id=current_user.id).first()
@@ -912,7 +951,7 @@ def register_routes(app: Flask) -> None:
         if request.method == "POST":
             new_weight = parse_number(request.form.get("weight"), 30, 300)
             if new_weight is None:
-                flash("Enter a valid current weight.", "error")
+                flash(_("Enter a valid current weight."), "error")
                 return redirect(url_for("profile_page"))
 
             water_goal = None
@@ -920,7 +959,7 @@ def register_routes(app: Flask) -> None:
             if raw_water_goal:
                 water_goal = parse_number(raw_water_goal, 500, 6000, integer=True)
                 if water_goal is None:
-                    flash("Water goal must be a whole number between 500 and 6000 ml.", "error")
+                    flash(_("Water goal must be a whole number between 500 and 6000 ml."), "error")
                     return redirect(url_for("profile_page"))
 
             if profile is None:
@@ -939,7 +978,7 @@ def register_routes(app: Flask) -> None:
                 target_val = parse_number(new_target, 30, 300)
                 if target_val is None:
                     db.session.rollback()
-                    flash("Enter a valid target weight when changing goal.", "error")
+                    flash(_("Enter a valid target weight when changing goal."), "error")
                     return redirect(url_for("profile_page"))
 
                 if active_goal and active_goal.goal_type == new_goal_type:
@@ -966,9 +1005,9 @@ def register_routes(app: Flask) -> None:
 
             try:
                 db_commit_with_retry()
-                flash("Profile updated. Daily targets recalculated.", "success")
+                flash(_("Profile updated. Daily targets recalculated."), "success")
             except OperationalError:
-                flash("Could not save your profile. Please try again.", "error")
+                flash(_("Could not save your profile. Please try again."), "error")
             return redirect(url_for("profile_page"))
 
         progress = (
@@ -1035,16 +1074,16 @@ def register_routes(app: Flask) -> None:
 
             error = None
             if request.form.get("date") and parse_date_strict(request.form.get("date")) is None:
-                error = "Invalid date."
+                error = _("Invalid date.")
             elif portion_val is None or portion_val <= 0:
-                error = "Enter a valid portion in grams."
+                error = _("Enter a valid portion in grams.")
             elif meal_type not in MEAL_TYPES:
-                error = "Choose a valid meal type."
+                error = _("Choose a valid meal type.")
             product = db.session.get(Product, int(product_id)) if product_id.isdigit() else None
             if product and not product.is_visible_to(current_user.id):
                 product = None  # another user's private food
             if error is None and not product:
-                error = "Please select a product."
+                error = _("Please select a product.")
 
             if error:
                 flash(error, "error")
@@ -1060,9 +1099,9 @@ def register_routes(app: Flask) -> None:
             db.session.add(entry)
             try:
                 db_commit_with_retry()
-                flash(f"Logged {product.name} ({portion_val} g).", "success")
+                flash(_("Logged %(name)s (%(grams)s g).", name=product.name, grams=portion_val), "success")
             except OperationalError:
-                flash("Could not save the entry. Please try again.", "error")
+                flash(_("Could not save the entry. Please try again."), "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
 
         # ?product=<id>&grams=<g>&meal=<type> pre-fills the form (used by coach suggestions).
@@ -1091,12 +1130,12 @@ def register_routes(app: Flask) -> None:
     @login_required
     def api_product_barcode(code: str):
         if not food_db.normalize_barcode(code):
-            return jsonify(error="That doesn't look like a barcode."), 400
+            return jsonify(error=_("That doesn't look like a barcode.")), 400
         if food_db.is_blocked_barcode(code):
-            return jsonify(error="Products from Russia and Belarus are not supported."), 422
+            return jsonify(error=_("Products from Russia and Belarus are not supported.")), 422
         product = food_db.find_by_barcode(code, current_user.id)
         if not product:
-            return jsonify(error="Product not found."), 404
+            return jsonify(error=_("Product not found.")), 404
         return jsonify(product=product_payload(product, favorite_ids_for(current_user.id)))
 
     @app.route("/favorites/<int:product_id>/toggle", methods=["POST"])
@@ -1104,7 +1143,7 @@ def register_routes(app: Flask) -> None:
     def toggle_favorite(product_id: int):
         product = db.session.get(Product, product_id)
         if not product or not product.is_visible_to(current_user.id) or product.source == SOURCE_QUICK:
-            return jsonify(error="Product not found."), 404
+            return jsonify(error=_("Product not found.")), 404
         fav = FavoriteProduct.query.filter_by(user_id=current_user.id, product_id=product_id).first()
         if fav:
             db.session.delete(fav)
@@ -1127,15 +1166,15 @@ def register_routes(app: Flask) -> None:
 
         error = None
         if not name:
-            error = "Give the food a name."
+            error = _("Give the food a name.")
         elif kcal is None:
-            error = "Enter calories per 100 g (0–950)."
+            error = _("Enter calories per 100 g (0–950).")
         elif any(m is None for m in macros):
-            error = "Protein, fat and carbs must be between 0 and 100 g."
+            error = _("Protein, fat and carbs must be between 0 and 100 g.")
         elif raw_barcode and not barcode:
-            error = "That doesn't look like a barcode."
+            error = _("That doesn't look like a barcode.")
         elif barcode and Product.query.filter_by(barcode=barcode).first():
-            error = "A product with this barcode already exists."
+            error = _("A product with this barcode already exists.")
         if error:
             flash(error, "error")
             return redirect(back)
@@ -1148,7 +1187,7 @@ def register_routes(app: Flask) -> None:
         product.refresh_search_terms()
         db.session.add(product)
         db_commit_with_retry()
-        flash(f"Saved \u201c{name}\u201d to My foods.", "success")
+        flash(_("Saved \u201c%(name)s\u201d to My foods.", name=name), "success")
         return redirect(url_for("log_food", date=selected.isoformat(), product=product.id))
 
     @app.route("/log-food/quick", methods=["POST"])
@@ -1161,13 +1200,13 @@ def register_routes(app: Flask) -> None:
         meal_type = request.form.get("meal_type", "")
         macros = [parse_number(request.form.get(f) or "0", 0, 500) for f in ("proteins", "fats", "carbs")]
         if kcal is None:
-            flash("Enter calories between 1 and 5000.", "error")
+            flash(_("Enter calories between 1 and 5000."), "error")
             return redirect(back)
         if meal_type not in MEAL_TYPES:
-            flash("Choose a valid meal type.", "error")
+            flash(_("Choose a valid meal type."), "error")
             return redirect(back)
         if any(m is None for m in macros):
-            flash("Macros must be between 0 and 500 g.", "error")
+            flash(_("Macros must be between 0 and 500 g."), "error")
             return redirect(back)
 
         # A private one-off product logged as a 100 g portion keeps FoodLog unchanged.
@@ -1183,9 +1222,9 @@ def register_routes(app: Flask) -> None:
                                product_id=product.id, portion_grams=100))
         try:
             db_commit_with_retry()
-            flash(f"Added {kcal:.0f} kcal to {meal_type}.", "success")
+            flash(_("Added %(kcal).0f kcal to %(meal)s.", kcal=kcal, meal=_(meal_type.capitalize()).lower()), "success")
         except OperationalError:
-            flash("Could not save the entry. Please try again.", "error")
+            flash(_("Could not save the entry. Please try again."), "error")
         return redirect(back)
 
     @app.route("/log-food/copy", methods=["POST"])
@@ -1197,10 +1236,10 @@ def register_routes(app: Flask) -> None:
         next_url = request.form.get("next", "").strip()
         back = next_url if is_safe_local_path(next_url) else url_for("log_food", date=to_date.isoformat())
         if meal_type != "all" and meal_type not in MEAL_TYPES:
-            flash("Choose a valid meal type.", "error")
+            flash(_("Choose a valid meal type."), "error")
             return redirect(back)
         if from_date == to_date:
-            flash("Pick a different day to copy from.", "error")
+            flash(_("Pick a different day to copy from."), "error")
             return redirect(back)
 
         query = FoodLog.query.filter_by(user_id=current_user.id, date=from_date)
@@ -1208,18 +1247,19 @@ def register_routes(app: Flask) -> None:
             query = query.filter_by(meal_type=meal_type)
         source_logs = query.order_by(FoodLog.id).all()
         if not source_logs:
-            flash("Nothing to copy from that day.", "info")
+            flash(_("Nothing to copy from that day."), "info")
             return redirect(back)
         for log in source_logs:
             db.session.add(FoodLog(user_id=current_user.id, date=to_date, meal_type=log.meal_type,
                                    product_id=log.product_id, portion_grams=log.portion_grams))
         try:
             db_commit_with_retry()
-            what = "meals" if meal_type == "all" else meal_type
-            noun = "item" if len(source_logs) == 1 else "items"
-            flash(f"Copied {len(source_logs)} {noun} ({what}) from {from_date.strftime('%b %d')}.", "success")
+            what = _("meals") if meal_type == "all" else _(meal_type.capitalize()).lower()
+            flash(ngettext("Copied %(num)d item (%(what)s) from %(day)s.",
+                           "Copied %(num)d items (%(what)s) from %(day)s.",
+                           len(source_logs), what=what, day=format_date(from_date, "d MMM")), "success")
         except OperationalError:
-            flash("Could not copy. Please try again.", "error")
+            flash(_("Could not copy. Please try again."), "error")
         return redirect(back)
 
     def _water_response(selected: date, message: str | None = None, error: str | None = None):
@@ -1241,13 +1281,13 @@ def register_routes(app: Flask) -> None:
             return _water_response(date.today(), error="You can't log water for a future day.")
         amount = parse_number(data.get("amount_ml"), 50, 2000, integer=True)
         if amount is None:
-            return _water_response(selected, error="Enter between 50 and 2000 ml.")
+            return _water_response(selected, error=_("Enter between 50 and 2000 ml."))
         db.session.add(WaterLog(user_id=current_user.id, date=selected, amount_ml=amount))
         try:
             db_commit_with_retry()
         except OperationalError:
-            return _water_response(selected, error="Could not save. Please try again.")
-        return _water_response(selected, message=f"Added {amount} ml of water.")
+            return _water_response(selected, error=_("Could not save. Please try again."))
+        return _water_response(selected, message=_("Added %(ml)d ml of water.", ml=amount))
 
     @app.route("/water/undo", methods=["POST"])
     @login_required
@@ -1260,14 +1300,14 @@ def register_routes(app: Flask) -> None:
             .first()
         )
         if not entry:
-            return _water_response(selected, error="Nothing to undo for this day.")
+            return _water_response(selected, error=_("Nothing to undo for this day."))
         amount = entry.amount_ml
         db.session.delete(entry)
         try:
             db_commit_with_retry()
         except OperationalError:
-            return _water_response(selected, error="Could not undo. Please try again.")
-        return _water_response(selected, message=f"Removed {amount} ml.")
+            return _water_response(selected, error=_("Could not undo. Please try again."))
+        return _water_response(selected, message=_("Removed %(ml)d ml.", ml=amount))
 
     @app.route("/weight", methods=["POST"])
     @login_required
@@ -1277,17 +1317,17 @@ def register_routes(app: Flask) -> None:
         weight = parse_number(request.form.get("weight_kg"), 30, 300)
         day = parse_date_strict(request.form.get("date")) or date.today()
         if weight is None:
-            flash("Enter a weight between 30 and 300 kg.", "error")
+            flash(_("Enter a weight between 30 and 300 kg."), "error")
             return redirect(back)
         if day > date.today():
-            flash("You can't log weight for a future day.", "error")
+            flash(_("You can't log weight for a future day."), "error")
             return redirect(back)
         record_weight(current_user.id, day, weight)
         try:
             db_commit_with_retry()
-            flash(f"Logged {weight:.1f} kg for {day.strftime('%b %d')}.", "success")
+            flash(_("Logged %(kg).1f kg for %(day)s.", kg=weight, day=format_date(day, "d MMM")), "success")
         except OperationalError:
-            flash("Could not save your weight. Please try again.", "error")
+            flash(_("Could not save your weight. Please try again."), "error")
         return redirect(back)
 
     @app.route("/log-food/delete/<int:entry_id>", methods=["POST"])
@@ -1297,7 +1337,7 @@ def register_routes(app: Flask) -> None:
             FoodLog.query.filter_by(id=entry_id, user_id=current_user.id).first()
         )
         if not entry:
-            flash("Entry not found or access denied.", "error")
+            flash(_("Entry not found or access denied."), "error")
             return redirect(url_for("dashboard"))
 
         log_date = entry.date.isoformat()
@@ -1308,12 +1348,12 @@ def register_routes(app: Flask) -> None:
                 synchronize_session=False
             )
             db_commit_with_retry()
-            flash("Entry deleted.", "success")
+            flash(_("Entry deleted."), "success")
         except OperationalError:
             db.session.rollback()
             flash(
-                "The database is temporarily busy. Close DB Browser/SQLite Studio, "
-                "restart the server and try again.",
+                _("The database is temporarily busy. Close DB Browser/SQLite Studio, "
+                  "restart the server and try again."),
                 "error",
             )
 
@@ -1331,11 +1371,11 @@ def register_routes(app: Flask) -> None:
         selected = parse_selected_date(request.form.get("date") or request.args.get("date"))
 
         if duration_val is None or calories_val is None:
-            flash("Enter valid workout duration.", "error")
+            flash(_("Enter valid workout duration."), "error")
             return redirect(url_for("dashboard", date=selected.isoformat()))
 
         if not workout_type:
-            flash("Workout type is required.", "error")
+            flash(_("Workout type is required."), "error")
             return redirect(url_for("dashboard", date=selected.isoformat()))
 
         workout = Workout(
@@ -1349,9 +1389,9 @@ def register_routes(app: Flask) -> None:
         db.session.add(workout)
         try:
             db_commit_with_retry()
-            flash("Workout logged.", "success")
+            flash(_("Workout logged."), "success")
         except OperationalError:
-            flash("Could not save the workout. Please try again.", "error")
+            flash(_("Could not save the workout. Please try again."), "error")
         return redirect(url_for("dashboard", date=selected.isoformat()))
 
     @app.route("/trainer")
@@ -1397,7 +1437,7 @@ def register_routes(app: Flask) -> None:
     def trainer_client(client_id: int):
         client = get_trainer_client(current_user.id, client_id)
         if not client:
-            flash("Client not found or not assigned to you.", "error")
+            flash(_("Client not found or not assigned to you."), "error")
             return redirect(url_for("trainer_dashboard"))
 
         today = date.today()
@@ -1450,12 +1490,12 @@ def register_routes(app: Flask) -> None:
     def send_recommendation(client_id: int):
         client = get_trainer_client(current_user.id, client_id)
         if not client:
-            flash("Client not found or not assigned to you.", "error")
+            flash(_("Client not found or not assigned to you."), "error")
             return redirect(url_for("trainer_dashboard"))
 
         content = request.form.get("content", "").strip()
         if not content:
-            flash("Recommendation message cannot be empty.", "error")
+            flash(_("Recommendation message cannot be empty."), "error")
             return redirect(url_for("trainer_client", client_id=client_id))
 
         report = Report(
@@ -1474,7 +1514,7 @@ def register_routes(app: Flask) -> None:
         db.session.add(recommendation)
         db.session.commit()
 
-        flash(f"Recommendation sent to {client.email}.", "success")
+        flash(_("Recommendation sent to %(email)s.", email=client.email), "success")
         return redirect(url_for("trainer_client", client_id=client_id))
 
     @app.route(
@@ -1487,23 +1527,23 @@ def register_routes(app: Flask) -> None:
     def approve_recommendation(rec_id: int):
         rec = get_pending_recommendation_for_trainer(rec_id, current_user.id)
         if not rec:
-            flash("Recommendation not found or already processed.", "error")
+            flash(_("Recommendation not found or already processed."), "error")
             return redirect(url_for("trainer_dashboard"))
 
         client_id = rec.report.user_id
         content = request.form.get("content", "").strip()
         if not content:
-            flash("Recommendation text cannot be empty.", "error")
+            flash(_("Recommendation text cannot be empty."), "error")
             return redirect(url_for("trainer_client", client_id=client_id))
 
         rec.content = content
         rec.status = "approved"
         try:
             db_commit_with_retry()
-            flash("Recommendation approved and sent to the athlete.", "success")
+            flash(_("Recommendation approved and sent to the athlete."), "success")
         except OperationalError:
             db.session.rollback()
-            flash("Could not save. Please try again.", "error")
+            flash(_("Could not save. Please try again."), "error")
 
         return redirect(url_for("trainer_client", client_id=client_id))
 
@@ -1516,7 +1556,7 @@ def register_routes(app: Flask) -> None:
         if not user:
             print(f"User {user_id} not found.")
             return
-        report = generate_coach_report(user_id, days=days)
+        report = generate_coach_report(user_id, days=days, lang=user.language or DEFAULT_LANGUAGE)
         print(f"engine: {report.engine}")
         print(json.dumps(report.data, indent=2, ensure_ascii=False))
 

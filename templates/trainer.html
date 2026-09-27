@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
-{% set page_title = 'Clients' %}
-{% set page_subtitle = today.strftime('%A, %B %d') %}
-{% block title %}Trainer Dashboard — Kolos{% endblock %}
+{% set page_title = _('Clients') %}
+{% set page_subtitle = today|ldate('full') %}
+{% block title %}{{ _('Trainer Dashboard — Kolos') }}{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl">
   {# ---------- Summary ---------- #}
   {% set logged_today = clients|selectattr('calories_today', 'gt', 0)|list|length %}
   <div class="grid grid-cols-3 gap-3 mb-6">
-    {% for label, value, color in [('Athletes', client_count, 'text-fg'), ('Logged today', logged_today, 'text-kcal'), ('Workouts', clients|sum(attribute='workouts_today'), 'text-emerald-600 dark:text-emerald-400')] %}
+    {% for label, value, color in [(_('Athletes'), client_count, 'text-fg'), (_('Logged today'), logged_today, 'text-kcal'), (_('Workouts'), clients|sum(attribute='workouts_today'), 'text-emerald-600 dark:text-emerald-400')] %}
     <div class="{{ ui.card }} px-4 py-3.5">
       <p class="text-[26px] leading-none font-bold tracking-tight tabular-nums {{ color }}">{{ value }}</p>
       <p class="mt-1.5 text-[12px] font-medium text-fg-muted">{{ label }}</p>
@@ -21,8 +21,8 @@
   {# ---------- Search ---------- #}
   <div class="relative mb-3">
     <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-    <label for="clientSearch" class="sr-only">Search athletes</label>
-    <input type="search" id="clientSearch" placeholder="Search athletes" autocomplete="off" enterkeyhint="search" class="{{ ui.input }} pl-11">
+    <label for="clientSearch" class="sr-only">{{ _('Search athletes') }}</label>
+    <input type="search" id="clientSearch" placeholder="{{ _('Search athletes') }}" autocomplete="off" enterkeyhint="search" class="{{ ui.input }} pl-11">
   </div>
 
   {# ---------- Roster ---------- #}
@@ -36,8 +36,8 @@
           <p class="truncate text-[15px] font-semibold">{{ item.user.email }}</p>
           <p class="text-[13px] text-fg-muted tabular-nums">
             {% if item.profile and (item.profile.weight or item.profile.height) %}
-              {% if item.profile.weight %}{{ item.profile.weight }} kg{% endif %}{% if item.profile.weight and item.profile.height %} · {% endif %}{% if item.profile.height %}{{ item.profile.height }} cm{% endif %}
-            {% else %}No profile{% endif %}
+              {% if item.profile.weight %}{{ _('%(n)s kg', n=item.profile.weight) }}{% endif %}{% if item.profile.weight and item.profile.height %} · {% endif %}{% if item.profile.height %}{{ _('%(n)s cm', n=item.profile.height) }}{% endif %}
+            {% else %}{{ _('No profile') }}{% endif %}
             · ID #{{ item.user.id }}
           </p>
         </div>
@@ -45,22 +45,22 @@
           <span class="{{ ui.badge }} tabular-nums
             {% if item.calories_today > 2500 %}bg-amber-500/15 text-amber-700 dark:text-amber-300
             {% elif item.calories_today > 0 %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-300
-            {% else %}bg-surface-2 text-fg-muted{% endif %}">{{ item.calories_today }} kcal</span>
-          <p class="mt-1 text-[12px] text-fg-muted tabular-nums">{{ item.workouts_today }} {{ 'workout' if item.workouts_today == 1 else 'workouts' }}</p>
+            {% else %}bg-surface-2 text-fg-muted{% endif %}">{{ _('%(n)s kcal', n=item.calories_today) }}</span>
+          <p class="mt-1 text-[12px] text-fg-muted tabular-nums">{{ ngettext('%(num)d workout', '%(num)d workouts', item.workouts_today) }}</p>
         </div>
         <svg class="w-4 h-4 shrink-0 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
       </a>
     </li>
     {% endfor %}
-    <li id="noClients" hidden class="px-4 py-8 text-center text-sm text-fg-muted">No athletes match your search.</li>
+    <li id="noClients" hidden class="px-4 py-8 text-center text-sm text-fg-muted">{{ _('No athletes match your search.') }}</li>
   </ul>
   {% else %}
   <div class="{{ ui.card }} px-6 py-14 text-center">
     <span class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
       <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
     </span>
-    <p class="mt-4 text-[17px] font-semibold">No athletes yet</p>
-    <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">Athletes can select you as their trainer during registration.</p>
+    <p class="mt-4 text-[17px] font-semibold">{{ _('No athletes yet') }}</p>
+    <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">{{ _('Athletes can select you as their trainer during registration.') }}</p>
   </div>
   {% endif %}
 </div>

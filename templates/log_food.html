@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% import '_ui.html' as ui %}
 {% set presented = true %}
-{% set page_bar_title = 'Log food' %}
+{% set page_bar_title = _('Log food') %}
 {% set page_back_url = url_for('dashboard', date=selected_date.isoformat()) %}
-{% block title %}Log Food — Kolos{% endblock %}
+{% block title %}{{ _('Log Food — Kolos') }}{% endblock %}
 
 {% macro meal_segments(name_prefix, checked_first=true) -%}
 <div class="grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
-  {% for value, text in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('dinner', 'Dinner'), ('snack', 'Snack')] %}
+  {% for value, text in [('breakfast', _('Breakfast')), ('lunch', _('Lunch')), ('dinner', _('Dinner')), ('snack', _('Snack'))] %}
   <label class="relative">
     <input type="radio" name="meal_type" value="{{ value }}" class="peer sr-only" required data-meal-radio="{{ name_prefix }}" {% if checked_first and loop.first %}checked{% endif %}>
     <span class="press flex flex-col items-center justify-center gap-1 h-14 rounded-xl text-[13px] font-semibold text-fg-muted
@@ -27,9 +27,9 @@
 <div class="hidden lg:block mb-6">
   <a href="{{ page_back_url }}" class="{{ ui.back_link }}">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-    Today
+    {{ _('Today') }}
   </a>
-  <h1 class="{{ ui.h1 }} mt-1">Log food</h1>
+  <h1 class="{{ ui.h1 }} mt-1">{{ _('Log food') }}</h1>
 </div>
 
 {% include 'day_strip.html' %}
@@ -39,24 +39,24 @@
   <button type="button" data-sheet-open="scanSheet" data-scan-open
           class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
     <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"/></svg>
-    Scan barcode
+    {{ _('Scan barcode') }}
   </button>
   <button type="button" data-sheet-open="quickSheet"
           class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
     <svg class="w-6 h-6 text-kcal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg>
-    Quick add
+    {{ _('Quick add') }}
   </button>
   <button type="button" data-sheet-open="createSheet"
           class="press flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface shadow-card min-h-[76px] text-[13px] font-semibold">
     <svg class="w-6 h-6 text-carbs" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-    Create food
+    {{ _('Create food') }}
   </button>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
   {# ============================================================ Form #}
   <section class="lg:col-span-3" aria-labelledby="form-heading">
-    <h2 id="form-heading" class="sr-only">New entry</h2>
+    <h2 id="form-heading" class="sr-only">{{ _('New entry') }}</h2>
     <form method="post" action="{{ log_url }}" id="logFoodForm" class="space-y-6" novalidate>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
@@ -64,13 +64,13 @@
       <input type="hidden" name="product_id" id="product_id" value="{{ preselected.id if preselected else '' }}">
 
       <fieldset>
-        <legend id="meal_type" class="{{ ui.section_title }}">Meal</legend>
+        <legend id="meal_type" class="{{ ui.section_title }}">{{ _('Meal') }}</legend>
         {{ meal_segments('main') }}
       </fieldset>
 
       {# ---------- Product picker ---------- #}
       <div id="picker">
-        <p class="{{ ui.section_title }}">Food</p>
+        <p class="{{ ui.section_title }}">{{ _('Food') }}</p>
 
         <div id="selectedCard" class="{{ ui.card }} mb-3 flex items-center gap-3 p-4 ring-2 ring-primary/40" hidden aria-live="polite">
           <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
@@ -80,19 +80,19 @@
             <p class="truncate text-[15px] font-semibold" id="selectedName"></p>
             <p class="text-[13px] text-fg-muted tabular-nums" id="selectedMeta"></p>
           </div>
-          <button type="button" id="clearSelected" class="press h-9 px-3 rounded-full bg-surface-2 text-sm font-semibold">Change</button>
+          <button type="button" id="clearSelected" class="press h-9 px-3 rounded-full bg-surface-2 text-sm font-semibold">{{ _('Change') }}</button>
         </div>
 
         <div class="relative mb-3">
           <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-          <label for="productSearch" class="sr-only">Search foods</label>
-          <input type="search" id="productSearch" placeholder="Search foods or brands" autocomplete="off" enterkeyhint="search"
+          <label for="productSearch" class="sr-only">{{ _('Search foods') }}</label>
+          <input type="search" id="productSearch" placeholder="{{ _('Search foods or brands') }}" autocomplete="off" enterkeyhint="search"
                  class="{{ ui.input }} pl-11">
         </div>
 
         <div data-segments-scope>
-          <div id="pickerTabs" data-segments role="tablist" aria-label="Food lists" class="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
-            {% for key, label in [('recent', 'Recent'), ('favorites', 'Favorites'), ('mine', 'My foods')] %}
+          <div id="pickerTabs" data-segments role="tablist" aria-label="{{ _('Food lists') }}" class="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
+            {% for key, label in [('recent', _('Recent')), ('favorites', _('Favorites')), ('mine', _('My foods'))] %}
             <button type="button" role="tab" data-segment="{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}"
                     class="press h-9 rounded-lg text-[13px] font-semibold text-fg-muted aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm">{{ label }}</button>
             {% endfor %}
@@ -106,27 +106,27 @@
 
       {# ---------- Portion ---------- #}
       <div id="portionBlock">
-        <label for="portion_grams" class="{{ ui.section_title }} block">Portion</label>
+        <label for="portion_grams" class="{{ ui.section_title }} block">{{ _('Portion') }}</label>
         <div class="{{ ui.card }} p-4">
           <div class="flex items-center gap-3">
-            <button type="button" data-step="-10" aria-label="Decrease by 10 grams"
+            <button type="button" data-step="-10" aria-label="{{ _('Decrease by 10 grams') }}"
                     class="press inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
             </button>
             <div class="relative flex-1">
               <input type="number" id="portion_grams" name="portion_grams" required min="1" step="1" value="100" inputmode="numeric"
                      class="w-full h-12 rounded-xl bg-transparent text-center text-[28px] font-bold tabular-nums text-fg outline-none focus:ring-4 focus:ring-primary/15">
-              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-fg-muted">g</span>
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-fg-muted">{{ _('g') }}</span>
             </div>
-            <button type="button" data-step="10" aria-label="Increase by 10 grams"
+            <button type="button" data-step="10" aria-label="{{ _('Increase by 10 grams') }}"
                     class="press inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             </button>
           </div>
-          <div class="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="Quick portion">
+          <div class="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="{{ _('Quick portion') }}">
             {% for g in [50, 100, 150, 200] %}
             <button type="button" data-portion="{{ g }}"
-                    class="press h-10 rounded-full bg-surface-2 text-sm font-semibold tabular-nums text-fg-muted aria-pressed:bg-primary/15 aria-pressed:text-primary">{{ g }} g</button>
+                    class="press h-10 rounded-full bg-surface-2 text-sm font-semibold tabular-nums text-fg-muted aria-pressed:bg-primary/15 aria-pressed:text-primary">{{ _('%(n)s g', n=g) }}</button>
             {% endfor %}
           </div>
         </div>
@@ -135,27 +135,27 @@
       {# Live estimate for the chosen portion #}
       <div id="macros" hidden class="{{ ui.card }} p-4" aria-live="polite">
         <div class="flex items-baseline justify-between">
-          <p class="text-[13px] font-semibold uppercase tracking-wide text-fg-muted">This portion</p>
+          <p class="text-[13px] font-semibold uppercase tracking-wide text-fg-muted">{{ _('This portion') }}</p>
           <p id="est-cal" class="text-[22px] font-bold tabular-nums text-kcal"></p>
         </div>
         <div class="mt-3 grid grid-cols-3 gap-2 text-center">
           <div class="rounded-2xl bg-sky-500/10 py-2.5">
             <p class="text-[17px] font-bold tabular-nums text-sky-700 dark:text-sky-300" id="m-p">—</p>
-            <p class="text-[11px] font-medium text-fg-muted">Protein, g</p>
+            <p class="text-[11px] font-medium text-fg-muted">{{ _('Protein, g') }}</p>
           </div>
           <div class="rounded-2xl bg-amber-500/10 py-2.5">
             <p class="text-[17px] font-bold tabular-nums text-amber-700 dark:text-amber-300" id="m-f">—</p>
-            <p class="text-[11px] font-medium text-fg-muted">Fat, g</p>
+            <p class="text-[11px] font-medium text-fg-muted">{{ _('Fat, g') }}</p>
           </div>
           <div class="rounded-2xl bg-indigo-500/10 py-2.5">
             <p class="text-[17px] font-bold tabular-nums text-indigo-700 dark:text-indigo-300" id="m-c">—</p>
-            <p class="text-[11px] font-medium text-fg-muted">Carbs, g</p>
+            <p class="text-[11px] font-medium text-fg-muted">{{ _('Carbs, g') }}</p>
           </div>
         </div>
       </div>
 
       <div class="action-bar">
-        <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">Save meal</button>
+        <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">{{ _('Save meal') }}</button>
       </div>
     </form>
   </section>
@@ -164,24 +164,24 @@
   <aside class="lg:col-span-2 space-y-6">
     <section aria-labelledby="day-heading">
       <div class="flex items-center justify-between mb-2 px-1">
-        <h2 id="day-heading" class="{{ ui.h2 }}">Logged {{ 'today' if selected_date == today else selected_date.strftime('%b %d') }}</h2>
+        <h2 id="day-heading" class="{{ ui.h2 }}">{{ _('Logged today') if selected_date == today else _('Logged %(day)s', day=selected_date|ldate) }}</h2>
         {% if food_logs %}
-        <span class="{{ ui.badge }} bg-orange-500/15 text-orange-700 dark:text-orange-300 tabular-nums">{{ "%.0f"|format(food_logs|sum(attribute='calories')) }} kcal</span>
+        <span class="{{ ui.badge }} bg-orange-500/15 text-orange-700 dark:text-orange-300 tabular-nums">{{ _('%(n).0f kcal', n=food_logs|sum(attribute='calories')) }}</span>
         {% endif %}
       </div>
       {% if food_logs %}
       <div class="{{ ui.list }}">
         {% for log in food_logs %}{{ ui.food_row(log, log_url, show_meal=true) }}{% endfor %}
       </div>
-      <p class="touch-only mt-2 px-1 text-xs text-fg-subtle">Swipe an entry left to delete it.</p>
+      <p class="touch-only mt-2 px-1 text-xs text-fg-subtle">{{ _('Swipe an entry left to delete it.') }}</p>
       {% else %}
-      <div class="{{ ui.card }} px-6 py-8 text-center text-sm text-fg-muted">Nothing logged for this day yet.</div>
+      <div class="{{ ui.card }} px-6 py-8 text-center text-sm text-fg-muted">{{ _('Nothing logged for this day yet.') }}</div>
       {% endif %}
     </section>
 
     {% if copy_from_meals %}
     <section aria-labelledby="copy-heading">
-      <h2 id="copy-heading" class="{{ ui.section_title }}">Copy from {{ copy_from_date.strftime('%A') }}</h2>
+      <h2 id="copy-heading" class="{{ ui.section_title }}">{{ _('Copy from %(day)s', day=copy_from_date|ldate('weekday')) }}</h2>
       <div class="{{ ui.list }}">
         {% for meal in ['breakfast', 'lunch', 'dinner', 'snack'] if meal in copy_from_meals %}
         {% set info = copy_from_meals[meal] %}
@@ -193,10 +193,10 @@
           <input type="hidden" name="next" value="{{ log_url }}">
           <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ ui.meal_dots[meal] }}" aria-hidden="true"></span>
           <div class="min-w-0 flex-1">
-            <p class="text-[15px] font-medium capitalize">{{ meal }}</p>
-            <p class="text-[13px] text-fg-muted tabular-nums">{{ info.count }} {{ 'item' if info.count == 1 else 'items' }} · {{ "%.0f"|format(info.kcal) }} kcal</p>
+            <p class="text-[15px] font-medium">{{ _(meal|capitalize) }}</p>
+            <p class="text-[13px] text-fg-muted tabular-nums">{{ ngettext('%(num)d item', '%(num)d items', info.count) }} · {{ _('%(n).0f kcal', n=info.kcal) }}</p>
           </div>
-          <button type="submit" class="press h-9 px-4 rounded-full bg-primary/10 text-sm font-semibold text-primary">Copy</button>
+          <button type="submit" class="press h-9 px-4 rounded-full bg-primary/10 text-sm font-semibold text-primary">{{ _('Copy') }}</button>
         </form>
         {% endfor %}
       </div>
@@ -212,8 +212,8 @@
   <div class="sheet-backdrop" data-sheet-close></div>
   <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
     <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
-      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
-      <h2 id="scanTitle" class="text-[17px] font-semibold">Scan barcode</h2>
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">{{ _('Cancel') }}</button>
+      <h2 id="scanTitle" class="text-[17px] font-semibold">{{ _('Scan barcode') }}</h2>
       <span class="w-16" aria-hidden="true"></span>
     </div>
     <div class="sheet-body px-4 pb-5">
@@ -221,16 +221,16 @@
         <video id="scanVideo" class="h-full w-full object-cover" playsinline muted></video>
         <div class="pointer-events-none absolute inset-x-10 top-1/2 -translate-y-1/2 h-28 rounded-2xl ring-2 ring-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,.35)]" aria-hidden="true"></div>
       </div>
-      <p id="scanStatus" class="mt-3 text-center text-sm text-fg-muted" role="status">Point the camera at a barcode.</p>
+      <p id="scanStatus" class="mt-3 text-center text-sm text-fg-muted" role="status">{{ _('Point the camera at a barcode.') }}</p>
       <div id="scanNotFound" hidden class="mt-3 rounded-2xl bg-surface-2 p-4 text-center">
-        <p class="text-[15px] font-semibold">Not in the database yet</p>
-        <p class="mt-1 text-sm text-fg-muted">Add it once and it will be ready next time.</p>
-        <button type="button" id="scanCreate" class="{{ ui.btn_primary }} mt-3 w-full">Create this food</button>
+        <p class="text-[15px] font-semibold">{{ _('Not in the database yet') }}</p>
+        <p class="mt-1 text-sm text-fg-muted">{{ _('Add it once and it will be ready next time.') }}</p>
+        <button type="button" id="scanCreate" class="{{ ui.btn_primary }} mt-3 w-full">{{ _('Create this food') }}</button>
       </div>
       <form id="manualBarcode" class="mt-4 flex gap-2">
-        <label for="manualCode" class="sr-only">Barcode number</label>
-        <input id="manualCode" inputmode="numeric" autocomplete="off" placeholder="Or type the barcode number" class="{{ ui.input }} flex-1">
-        <button type="submit" class="{{ ui.btn_secondary }} shrink-0">Find</button>
+        <label for="manualCode" class="sr-only">{{ _('Barcode number') }}</label>
+        <input id="manualCode" inputmode="numeric" autocomplete="off" placeholder="{{ _('Or type the barcode number') }}" class="{{ ui.input }} flex-1">
+        <button type="submit" class="{{ ui.btn_secondary }} shrink-0">{{ _('Find') }}</button>
       </form>
     </div>
   </div>
@@ -241,8 +241,8 @@
   <div class="sheet-backdrop" data-sheet-close></div>
   <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="quickTitle">
     <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
-      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
-      <h2 id="quickTitle" class="text-[17px] font-semibold">Quick add</h2>
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">{{ _('Cancel') }}</button>
+      <h2 id="quickTitle" class="text-[17px] font-semibold">{{ _('Quick add') }}</h2>
       <span class="w-16" aria-hidden="true"></span>
     </div>
     <div class="sheet-body px-4 pb-5">
@@ -252,20 +252,20 @@
         <input type="hidden" name="next" value="{{ log_url }}">
         {{ meal_segments('quick') }}
         <div>
-          <label for="q-kcal" class="{{ ui.label }}">Calories</label>
+          <label for="q-kcal" class="{{ ui.label }}">{{ _('Calories') }}</label>
           <div class="relative">
             <input type="number" id="q-kcal" name="calories" required min="1" max="5000" step="1" inputmode="numeric" placeholder="350" class="{{ ui.input }} pr-14">
-            <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-fg-muted">kcal</span>
+            <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-fg-muted">{{ _('kcal') }}</span>
           </div>
         </div>
         <div>
-          <label for="q-name" class="{{ ui.label }}">Label <span class="font-normal text-fg-muted">(optional)</span></label>
-          <input type="text" id="q-name" name="name" maxlength="80" placeholder="e.g. Restaurant lunch" class="{{ ui.input }}">
+          <label for="q-name" class="{{ ui.label }}">{{ _('Label') }} <span class="font-normal text-fg-muted">{{ _('(optional)') }}</span></label>
+          <input type="text" id="q-name" name="name" maxlength="80" placeholder="{{ _('e.g. Restaurant lunch') }}" class="{{ ui.input }}">
         </div>
         <details class="group">
-          <summary class="press cursor-pointer list-none text-sm font-semibold text-primary">+ Add macros</summary>
+          <summary class="press cursor-pointer list-none text-sm font-semibold text-primary">{{ _('+ Add macros') }}</summary>
           <div class="mt-3 grid grid-cols-3 gap-3">
-            {% for field, label in [('proteins', 'Protein'), ('fats', 'Fat'), ('carbs', 'Carbs')] %}
+            {% for field, label in [('proteins', _('Protein')), ('fats', _('Fat')), ('carbs', _('Carbs'))] %}
             <div>
               <label for="q-{{ field }}" class="{{ ui.label }}">{{ label }}, g</label>
               <input type="number" id="q-{{ field }}" name="{{ field }}" min="0" max="500" step="0.1" inputmode="decimal" class="{{ ui.input }}">
@@ -273,7 +273,7 @@
             {% endfor %}
           </div>
         </details>
-        <button type="submit" class="{{ ui.btn_primary }} w-full">Add</button>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">{{ _('Add') }}</button>
       </form>
     </div>
   </div>
@@ -284,8 +284,8 @@
   <div class="sheet-backdrop" data-sheet-close></div>
   <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="createTitle">
     <div data-sheet-drag class="flex items-center justify-between px-4 pt-1 pb-2">
-      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">Cancel</button>
-      <h2 id="createTitle" class="text-[17px] font-semibold">Create food</h2>
+      <button type="button" data-sheet-close class="h-11 px-2 text-[17px] text-primary">{{ _('Cancel') }}</button>
+      <h2 id="createTitle" class="text-[17px] font-semibold">{{ _('Create food') }}</h2>
       <span class="w-16" aria-hidden="true"></span>
     </div>
     <div class="sheet-body px-4 pb-5">
@@ -294,17 +294,17 @@
         <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label for="c-name" class="{{ ui.label }}">Name</label>
-            <input type="text" id="c-name" name="name" required maxlength="255" placeholder="e.g. Homemade granola" class="{{ ui.input }}">
+            <label for="c-name" class="{{ ui.label }}">{{ _('Name') }}</label>
+            <input type="text" id="c-name" name="name" required maxlength="255" placeholder="{{ _('e.g. Homemade granola') }}" class="{{ ui.input }}">
           </div>
           <div>
-            <label for="c-brand" class="{{ ui.label }}">Brand <span class="font-normal text-fg-muted">(optional)</span></label>
+            <label for="c-brand" class="{{ ui.label }}">{{ _('Brand') }} <span class="font-normal text-fg-muted">{{ _('(optional)') }}</span></label>
             <input type="text" id="c-brand" name="brand" maxlength="255" class="{{ ui.input }}">
           </div>
         </div>
-        <p class="{{ ui.section_title }} !mb-0">Per 100 g</p>
+        <p class="{{ ui.section_title }} !mb-0">{{ _('Per 100 g') }}</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {% for field, label, mx in [('calories_per_100g', 'Calories', 950), ('proteins', 'Protein, g', 100), ('fats', 'Fat, g', 100), ('carbs', 'Carbs, g', 100)] %}
+          {% for field, label, mx in [('calories_per_100g', _('Calories'), 950), ('proteins', _('Protein, g'), 100), ('fats', _('Fat, g'), 100), ('carbs', _('Carbs, g'), 100)] %}
           <div>
             <label for="c-{{ field }}" class="{{ ui.label }}">{{ label }}</label>
             <input type="number" id="c-{{ field }}" name="{{ field }}" {% if loop.first %}required{% endif %} min="0" max="{{ mx }}" step="0.1" inputmode="decimal" class="{{ ui.input }}">
@@ -312,10 +312,10 @@
           {% endfor %}
         </div>
         <div>
-          <label for="c-barcode" class="{{ ui.label }}">Barcode <span class="font-normal text-fg-muted">(optional)</span></label>
+          <label for="c-barcode" class="{{ ui.label }}">{{ _('Barcode') }} <span class="font-normal text-fg-muted">{{ _('(optional)') }}</span></label>
           <input type="text" id="c-barcode" name="barcode" inputmode="numeric" maxlength="20" autocomplete="off" class="{{ ui.input }}">
         </div>
-        <button type="submit" class="{{ ui.btn_primary }} w-full">Save to My foods</button>
+        <button type="submit" class="{{ ui.btn_primary }} w-full">{{ _('Save to My foods') }}</button>
       </form>
     </div>
   </div>

@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     password_hash: Mapped[str] = mapped_column(db.String(255), nullable=False)
     role: Mapped[str] = mapped_column(db.String(20), nullable=False, default="user")
     trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    language: Mapped[str | None] = mapped_column(db.String(5), nullable=True)  # "en" | "uk"; None = browser default
 
     trainer: Mapped["User | None"] = relationship(
         "User",

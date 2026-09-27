@@ -46,19 +46,19 @@
 {% macro food_row(log, next_url, show_meal=false) -%}
 <div class="swipe-row">
   <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" id="del-{{ log.id }}" class="swipe-actions"
-        data-confirm="Delete “{{ log.product.name }}” from {{ log.meal_type }}?" data-confirm-action="Delete entry">
+        data-confirm="{{ _('Delete “%(name)s” from %(meal)s?', name=log.product.name, meal=_(log.meal_type|capitalize)|lower) }}" data-confirm-action="{{ _('Delete entry') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ next_url }}">
-    <button type="submit" data-no-confirm tabindex="-1" class="w-[88px] bg-red-500 text-white text-[15px] font-semibold">Delete</button>
+    <button type="submit" data-no-confirm tabindex="-1" class="w-[88px] bg-red-500 text-white text-[15px] font-semibold">{{ _('Delete') }}</button>
   </form>
   <div class="swipe-content {{ list_row }} pr-2 sm:pr-3">
     {% if show_meal %}<span class="h-2.5 w-2.5 shrink-0 rounded-full {{ meal_dots.get(log.meal_type, 'bg-slate-400') }}" aria-hidden="true"></span>{% endif %}
     <div class="min-w-0 flex-1">
       <p class="truncate text-[15px] font-medium">{{ log.product.name }}</p>
-      <p class="text-[13px] text-fg-muted tabular-nums">{% if show_meal %}<span class="capitalize">{{ log.meal_type }}</span> · {% endif %}{{ log.portion_grams }} g</p>
+      <p class="text-[13px] text-fg-muted tabular-nums">{% if show_meal %}<span>{{ _(log.meal_type|capitalize) }}</span> · {% endif %}{{ _('%(n)s g', n=log.portion_grams) }}</p>
     </div>
-    <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">kcal</span></p>
-    <button type="submit" form="del-{{ log.id }}" title="Delete" aria-label="Delete {{ log.product.name }}" class="pointer-only {{ btn_icon_danger }}">
+    <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">{{ _('kcal') }}</span></p>
+    <button type="submit" form="del-{{ log.id }}" title="{{ _('Delete') }}" aria-label="Delete {{ log.product.name }}" class="pointer-only {{ btn_icon_danger }}">
       <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ trash_path }}"/></svg>
     </button>
   </div>
@@ -72,9 +72,9 @@
   'sun': 'M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z',
   'moon': 'M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z',
 } %}
-<div role="radiogroup" aria-label="Appearance"
+<div role="radiogroup" aria-label="{{ _('Appearance') }}"
      class="grid grid-cols-3 gap-1 rounded-xl p-1 {{ 'bg-white/5' if on_chrome else 'bg-surface-2' }}">
-  {% for key, label, ic in [('system', 'Auto', 'auto'), ('light', 'Light', 'sun'), ('dark', 'Dark', 'moon')] %}
+  {% for key, label, ic in [('system', _('Auto'), 'auto'), ('light', _('Light'), 'sun'), ('dark', _('Dark'), 'moon')] %}
   <button type="button" role="radio" aria-checked="false" data-theme-set="{{ key }}"
           class="press flex items-center justify-center gap-1.5 h-9 rounded-lg text-[13px] font-semibold
                  {{ 'text-slate-400 hover:text-white aria-checked:bg-white/15 aria-checked:text-white' if on_chrome
@@ -96,4 +96,20 @@
   <circle cx="13.7" cy="14.6" r=".85" fill="{{ face }}"/>
   <path d="M10.6 17.1c.8.7 2 .7 2.8 0" stroke="{{ face }}" stroke-width=".9" stroke-linecap="round"/>
 </svg>
+{%- endmacro %}
+
+{#- Language switcher: posts to /language (saved on the account and in a cookie), then returns here.
+    Macros imported without context cannot see the page, so the caller passes the state in. -#}
+{% macro language_switch(current, languages, back, on_chrome=false) -%}
+<form method="post" action="{{ url_for('set_language') }}" aria-label="{{ _('Language') }}"
+      class="grid grid-cols-2 gap-1 rounded-xl p-1 {{ 'bg-white/5' if on_chrome else 'bg-surface-2' }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ back }}">
+  {% for code, label in languages.items() %}
+  <button type="submit" name="lang" value="{{ code }}" lang="{{ code }}" aria-pressed="{{ 'true' if code == current else 'false' }}"
+          class="press flex items-center justify-center h-9 rounded-lg text-[13px] font-semibold
+                 {{ 'text-slate-400 hover:text-white aria-pressed:bg-white/15 aria-pressed:text-white' if on_chrome
+                    else 'text-fg-muted aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow-sm' }}">{{ label }}</button>
+  {% endfor %}
+</form>
 {%- endmacro %}

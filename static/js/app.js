@@ -156,14 +156,14 @@
     const form = e.target;
     if (!navigator.onLine) return;  // the offline guard below blocks the submit instead
     if (!form.matches('form[data-confirm]') || form.dataset.confirmed === '1') return;
-    if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;  // swipe "Delete" is the confirmation
+    if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;  // swipe App.t("Delete") is the confirmation
     const sheet = document.getElementById('confirmSheet');
     if (!sheet) return;  // no sheet → submit normally
     e.preventDefault();
     e.stopImmediatePropagation();
     sheet.querySelector('[data-confirm-message]').textContent = form.dataset.confirm;
     const ok = sheet.querySelector('[data-confirm-ok]');
-    ok.textContent = form.dataset.confirmAction || 'Delete';
+    ok.textContent = form.dataset.confirmAction || App.t('Delete');
     ok.onclick = () => {
       form.dataset.confirmed = '1';
       haptic(12);
@@ -416,6 +416,16 @@
     if (last && !document.querySelector('.fixed.inset-0:not(.hidden)')) dismissToast(last);
   });
 
+  /* UI strings: English source → current language (JSON from base.html, filled by i18n.js_translations).
+     App.t('Found: {name}', {name}) also fills {placeholders}. */
+  const I18N = (() => {
+    try { return JSON.parse(document.getElementById('i18n')?.textContent || '{}'); } catch (_) { return {}; }
+  })();
+  App.t = function (text, vars) {
+    const s = I18N[text] || text;
+    return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+  };
+
   /* JSON POST with the Flask-WTF CSRF token (from <meta name="csrf-token">) */
   App.post = async function (url, data) {
     const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -448,7 +458,7 @@
     el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
     el.innerHTML = `<span class="toast-icon"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${icon}"/></svg></span>`
       + '<p class="flex-1 min-w-0 pt-1.5 text-[15px] sm:text-sm font-medium leading-snug"></p>'
-      + '<button type="button" data-toast-close aria-label="Dismiss notification" class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-fg-subtle">✕</button>'
+      + '<button type="button" data-toast-close aria-label="' + App.t('Dismiss notification') + '" class="-mr-1 -mt-0.5 shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-fg-subtle">✕</button>'
       + '<span class="toast-progress" aria-hidden="true"></span>';
     el.querySelector('p').textContent = message;
     region.appendChild(el);
@@ -459,7 +469,7 @@
      Water card: +ml / undo without a reload (plain POST forms without JS)
      ===================================================================== */
   function renderWater(card, state) {
-    const fmt = (n) => Number(n).toLocaleString('en-US');
+    const fmt = (n) => Number(n).toLocaleString(document.documentElement.lang || 'en');
     card.querySelector('[data-water-total]').textContent = fmt(state.total);
     card.querySelector('[data-water-goal]').textContent = fmt(state.goal);
     const ring = card.querySelector('[data-water-ring]');
@@ -484,7 +494,7 @@
         try {
           state = await App.post(form.action, data);
         } catch (err) {
-          App.toast(err.message || 'Could not save. Please try again.', 'error');
+          App.toast(err.message || App.t('Could not save. Please try again.'), 'error');
         }
         btn.disabled = false;
         if (state) renderWater(form.closest('[data-water]'), state);  // also sets Undo's disabled state
@@ -510,7 +520,7 @@
       pill.setAttribute('role', 'status');
       pill.className = 'fixed left-1/2 -translate-x-1/2 z-[58] inline-flex items-center gap-2 rounded-full bg-fg text-canvas px-4 h-9 text-[13px] font-semibold shadow-float';
       pill.style.top = 'calc(var(--safe-top) + 56px)';
-      pill.innerHTML = '<span class="h-2 w-2 rounded-full bg-amber-400" aria-hidden="true"></span>Offline — showing saved data';
+      pill.innerHTML = '<span class="h-2 w-2 rounded-full bg-amber-400" aria-hidden="true"></span>' + App.t('Offline — showing saved data');
       document.body.appendChild(pill);
     }
     pill.hidden = false;
@@ -524,7 +534,7 @@
     if (navigator.onLine || form.method.toLowerCase() === 'get') return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    App.toast("You're offline. Reconnect to save your changes.", 'error');
+    App.toast(App.t("You're offline. Reconnect to save your changes."), 'error');
   }, true);
 
   /* =====================================================================
