@@ -77,7 +77,8 @@ from ml_inference import (
     recognize_photo,
     score_model_ready,
 )
-from seed_foods import GENERIC_FOODS, UK_NAMES, UK_SEARCH_NAMES
+from seed_foods import GENERIC_FOODS, RETIRED_FOODS, UK_NAMES, UK_SEARCH_NAMES
+from usda_micros import USDA_MICROS
 from nutrition import (
     auto_water_goal_ml,
     calculate_daily_targets,
@@ -1727,96 +1728,37 @@ MICRONUTRIENT_CATALOG = [
     ("Omega-3", "g"),
 ]
 
+# Macros per 100 g; micronutrients come from USDA FoodData Central (usda_micros.py) like every built-in food.
 PRODUCT_SEED = {
     "Chicken breast": {
         "calories_per_100g": 165,
         "proteins": 31,
         "fats": 3.6,
         "carbs": 0,
-        "micronutrients": {
-            "Potassium": 256,
-            "Sodium": 74,
-            "Magnesium": 28,
-            "Calcium": 15,
-            "Zinc": 1.0,
-            "Iron": 1.0,
-            "Vitamin C": 0,
-            "Vitamin D": 4,
-            "Vitamin B12": 0.3,
-            "Omega-3": 0.03,
-        },
     },
     "Brown rice": {
         "calories_per_100g": 111,
         "proteins": 2.6,
         "fats": 0.9,
         "carbs": 23,
-        "micronutrients": {
-            "Potassium": 86,
-            "Sodium": 5,
-            "Magnesium": 43,
-            "Calcium": 10,
-            "Zinc": 1.2,
-            "Iron": 0.6,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0.01,
-        },
     },
     "Greek yogurt": {
         "calories_per_100g": 97,
         "proteins": 9,
         "fats": 5,
         "carbs": 3.6,
-        "micronutrients": {
-            "Potassium": 141,
-            "Sodium": 36,
-            "Magnesium": 11,
-            "Calcium": 110,
-            "Zinc": 0.5,
-            "Iron": 0.1,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0.5,
-            "Omega-3": 0,
-        },
     },
     "Banana": {
         "calories_per_100g": 89,
         "proteins": 1.1,
         "fats": 0.3,
         "carbs": 23,
-        "micronutrients": {
-            "Potassium": 358,
-            "Sodium": 1,
-            "Magnesium": 27,
-            "Calcium": 5,
-            "Zinc": 0.2,
-            "Iron": 0.3,
-            "Vitamin C": 8.7,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0,
-        },
     },
     "Oatmeal": {
         "calories_per_100g": 68,
         "proteins": 2.4,
         "fats": 1.4,
         "carbs": 12,
-        "micronutrients": {
-            "Potassium": 61,
-            "Sodium": 2,
-            "Magnesium": 177,
-            "Calcium": 54,
-            "Zinc": 2.6,
-            "Iron": 4.7,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0.11,
-        },
     },
 }
 
@@ -1858,30 +1800,48 @@ def _seed_products_and_links() -> None:
         product.name_uk = UK_NAMES.get(name)
         product.refresh_search_terms(UK_SEARCH_NAMES.get(name))
 
-        for nut_name, amount in data["micronutrients"].items():
-            micro = nutrient_map[nut_name]
-            link = ProductMicronutrient.query.filter_by(
-                product_id=product.id, micronutrient_id=micro.id
-            ).first()
-            if link:
-                link.amount_per_100g = amount
-            else:
-                db.session.add(
-                    ProductMicronutrient(
-                        product_id=product.id,
-                        micronutrient_id=micro.id,
-                        amount_per_100g=amount,
-                    )
-                )
-
+    db.session.flush()
+    _sync_usda_micronutrients(nutrient_map)
     db.session.commit()
     if created_products:
         print("Seeded sample products.")
-    print("Synced product micronutrient links.")
+
+
+def _sync_usda_micronutrients(nutrient_map: dict[str, Micronutrient] | None = None) -> None:
+    """Set the micronutrients of built-in foods from USDA FoodData Central (idempotent; caller commits)."""
+    nutrient_map = nutrient_map or {m.name: m for m in Micronutrient.query.all()}
+    products = Product.query.filter(
+        Product.created_by_id.is_(None), Product.source == SOURCE_SEED, Product.name.in_(USDA_MICROS)
+    ).all()
+    existing = {
+        (link.product_id, link.micronutrient_id): link
+        for link in ProductMicronutrient.query.filter(ProductMicronutrient.product_id.in_([p.id for p in products]))
+    }
+    for product in products:
+        for nut_name, amount in USDA_MICROS[product.name][2].items():
+            micro = nutrient_map[nut_name]
+            link = existing.get((product.id, micro.id))
+            if link:
+                link.amount_per_100g = amount
+            else:
+                db.session.add(ProductMicronutrient(product_id=product.id, micronutrient_id=micro.id,
+                                                    amount_per_100g=amount))
+
+
+def _retire_builtin_foods() -> None:
+    """Delete built-in foods dropped from the catalogue; ones already in someone's log stay."""
+    for product in Product.query.filter(
+        Product.created_by_id.is_(None), Product.source == SOURCE_SEED, Product.name.in_(RETIRED_FOODS)
+    ):
+        if FoodLog.query.filter_by(product_id=product.id).first() is None:
+            FavoriteProduct.query.filter_by(product_id=product.id).delete()
+            db.session.delete(product)  # micronutrient links go with it (delete-orphan)
+    db.session.flush()
 
 
 def _seed_generic_foods() -> None:
     """Add the built-in generic food catalogue (idempotent, keyed by name)."""
+    _retire_builtin_foods()
     existing = {name for (name,) in db.session.query(Product.name).filter(Product.created_by_id.is_(None))}
     added = 0
     for name, kcal, protein, fat, carbs in GENERIC_FOODS:
@@ -1896,6 +1856,7 @@ def _seed_generic_foods() -> None:
     for product in Product.query.filter(Product.created_by_id.is_(None), Product.source == SOURCE_SEED):
         product.name_uk = UK_NAMES.get(product.name)
         product.refresh_search_terms(UK_SEARCH_NAMES.get(product.name))
+    _sync_usda_micronutrients()
     db.session.commit()
     if added:
         print(f"Seeded {added} generic foods.")
