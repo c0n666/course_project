@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-27 12:12+0300\n"
+"POT-Creation-Date: 2026-09-27 15:50+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -19,19 +19,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: ai_service.py:256
 msgid "Log every meal at least 5 days a week so the analysis is accurate."
 msgstr "Записуйте кожен прийом їжі щонайменше 5 днів на тиждень, щоб аналіз був точним."
 
-#: ai_service.py:257
 msgid "Add a breakfast and a snack with protein (yogurt, eggs, chicken) to balance your macros."
 msgstr "Додайте сніданок і перекус із білком (йогурт, яйця, курка) для збалансованого БЖВ."
 
-#: ai_service.py:258
 msgid "Run the analysis again after a week of logging."
 msgstr "Повторіть аналіз після тижня записів."
 
-#: ai_service.py:269
 msgid ""
 "Lower the energy density of your meals: more vegetables and lean protein, fewer sauces, pastries "
 "and sweet drinks — calories are above the weight-loss range."
@@ -39,7 +35,6 @@ msgstr ""
 "Зменште енергетичну щільність раціону: більше овочів і нежирного білка, менше соусів, випічки та "
 "солодких напоїв — калорійність вища за коридор для схуднення."
 
-#: ai_service.py:272
 msgid ""
 "Make your main meals bigger or add a healthy snack (nuts, rice, yogurt) to get closer to your "
 "daily target."
@@ -47,11 +42,9 @@ msgstr ""
 "Збільште основні прийоми їжі або додайте корисний перекус (горіхи, рис, йогурт), щоб наблизитися "
 "до добової цілі."
 
-#: ai_service.py:275
 msgid "Cut back on caloric drinks, sauces and late-evening snacks — intake is above your target."
 msgstr "Скоротіть калорійні напої, соуси й пізні вечірні перекуси — споживання вище за ціль."
 
-#: ai_service.py:278
 #, python-format
 msgid ""
 "Add 25–35 g of protein per meal (chicken, fish, eggs, cottage cheese, yogurt) — protein is below "
@@ -60,36 +53,29 @@ msgstr ""
 "Додавайте 25–35 г білка на прийом (курка, риба, яйця, сир, йогурт) — білок нижче %(pct)d%% від "
 "цілі."
 
-#: ai_service.py:281
 msgid "Include healthy fats: avocado, olive oil, nuts — they support hormonal balance."
 msgstr "Додайте корисні жири: авокадо, оливкову олію, горіхи — вони підтримують гормональний баланс."
 
-#: ai_service.py:283
 msgid "Add complex carbs (oats, rice, buckwheat, banana) around workouts for energy."
 msgstr "Додайте складні вуглеводи (вівсянка, рис, гречка, банан) навколо тренувань для енергії."
 
-#: ai_service.py:292
 #, python-format
 msgid "Eat more foods rich in %(name)s (now %(avg).1f %(unit)s a day, target %(target).0f %(unit)s)."
 msgstr ""
 "Їжте більше продуктів, багатих на %(name)s (зараз %(avg).1f %(unit)s на день, ціль %(target).0f "
 "%(unit)s)."
 
-#: ai_service.py:296
 msgid "Keep to 3 main meals plus a protein snack every 3–4 hours for a steady metabolism."
 msgstr ""
 "Тримайтеся 3 основних прийомів їжі та білкового перекусу кожні 3–4 години для стабільного "
 "метаболізму."
 
-#: ai_service.py:297
 msgid "Drink 30–35 ml of water per kg of body weight and log your workouts for a more accurate TDEE."
 msgstr "Пийте 30–35 мл води на кг ваги та записуйте тренування для точнішого TDEE."
 
-#: ai_service.py:298
 msgid "Review your goal in the profile once a week together with your trainer."
 msgstr "Раз на тиждень переглядайте ціль у профілі разом із тренером."
 
-#: ai_service.py:315
 msgid ""
 "There are no food diary entries for the last 7 days, so your diet can't be assessed yet — log "
 "your meals to get an analysis."
@@ -97,57 +83,44 @@ msgstr ""
 "За останні 7 днів немає записів у щоденнику харчування, тож оцінити раціон поки неможливо — "
 "записуйте прийоми їжі, щоб отримати аналіз."
 
-#: ai_service.py:323
 msgid "weight loss"
 msgstr "схуднення"
 
-#: ai_service.py:323 ai_service.py:324
 msgid "maintenance"
 msgstr "підтримка форми"
 
-#: ai_service.py:323
 msgid "muscle gain"
 msgstr "набір маси"
 
-#: ai_service.py:326
 msgid "calories within the target range"
 msgstr "калорійність у цільовому коридорі"
 
-#: ai_service.py:328
 msgid "a steady calorie deficit"
 msgstr "стійкий дефіцит калорій"
 
-#: ai_service.py:330
 msgid "calories above the weight-loss target"
 msgstr "калорійність вища за ціль для схуднення"
 
-#: ai_service.py:332
 msgid "protein on target"
 msgstr "білок у нормі"
 
-#: ai_service.py:334
 msgid "not enough protein"
 msgstr "недостатньо білка"
 
-#: ai_service.py:336
 msgid "more protein than needed"
 msgstr "білка більше, ніж потрібно"
 
-#: ai_service.py:338
 #, python-format
 msgid "fat %(fat).0f%%, carbs %(carbs).0f%% of target"
 msgstr "жири %(fat).0f%%, вуглеводи %(carbs).0f%% від цілі"
 
-#: ai_service.py:342
 #, python-format
 msgid "low %(name)s (%(percent).0f%% of the norm)"
 msgstr "дефіцит %(name)s (%(percent).0f%% від норми)"
 
-#: ai_service.py:344
 msgid "no critical micronutrient gaps"
 msgstr "без критичних дефіцитів мікронутрієнтів"
 
-#: ai_service.py:347
 #, python-format
 msgid ""
 "Over %(days)s logged days (goal: %(goal)s): %(calories)s, %(protein)s, %(macros)s. "
@@ -158,279 +131,210 @@ msgstr ""
 "Мікронутрієнти: %(micros)s. У середньому %(kcal).0f ккал / %(prot).0f г білка на день при цілі "
 "%(target_kcal)s ккал / %(target_prot)s г білка. Оцінка: %(grade)s (%(score).0f/100)."
 
-#: app.py:160
 msgid "Your session expired or the request was invalid. Refresh the page and try again."
 msgstr "Сесія завершилася або запит недійсний. Оновіть сторінку й спробуйте ще раз."
 
-#: app.py:188
 msgid "Please sign in to continue."
 msgstr "Увійдіть, щоб продовжити."
 
-#: app.py:225
 msgid "You do not have permission to access this page."
 msgstr "У вас немає доступу до цієї сторінки."
 
-#: app.py:601
 msgid "Welcome back!"
 msgstr "З поверненням!"
 
-#: app.py:604
 msgid "Invalid email or password."
 msgstr "Неправильна пошта або пароль."
 
-#: app.py:624
 msgid "Email and password are required."
 msgstr "Потрібні пошта й пароль."
 
-#: app.py:626
 msgid "Enter a valid email address."
 msgstr "Введіть правильну адресу пошти."
 
-#: app.py:628
 msgid "Password must be at least 6 characters."
 msgstr "Пароль має містити щонайменше 6 символів."
 
-#: app.py:630
 msgid "Passwords do not match."
 msgstr "Паролі не збігаються."
 
-#: app.py:632
 msgid "An account with this email already exists."
 msgstr "Акаунт із такою поштою вже існує."
 
-#: app.py:634
 msgid "Invalid role selected."
 msgstr "Вибрано недійсну роль."
 
-#: app.py:648
 msgid "Enter valid height, weight, and target weight."
 msgstr "Введіть правильні зріст, вагу й цільову вагу."
 
-#: app.py:650
 msgid "Select a valid gender."
 msgstr "Виберіть стать."
 
-#: app.py:652
 msgid "Select a valid activity level."
 msgstr "Виберіть рівень активності."
 
-#: app.py:654
 msgid "Select a valid goal type."
 msgstr "Виберіть тип цілі."
 
-#: app.py:657
 msgid "Enter a valid birth date."
 msgstr "Введіть правильну дату народження."
 
-#: app.py:664
 msgid "The selected trainer was not found."
 msgstr "Вибраного тренера не знайдено."
 
-#: app.py:706
 msgid "Account created. Please sign in."
 msgstr "Акаунт створено. Увійдіть."
 
-#: app.py:710
 msgid "Registration failed. Please try again."
 msgstr "Не вдалося зареєструватися. Спробуйте ще раз."
 
-#: app.py:718
 msgid "You have been signed out."
 msgstr "Ви вийшли з акаунта."
 
-#: app.py:763 templates/dashboard.html:19 templates/log_food.html:268 templates/login.html:25
-#: templates/profile.html:36 templates/trainer_client.html:32
 msgid "Protein"
 msgstr "Білки"
 
-#: app.py:763 templates/dashboard.html:20 templates/log_food.html:268 templates/login.html:25
-#: templates/profile.html:36 templates/trainer_client.html:33
 msgid "Fat"
 msgstr "Жири"
 
-#: app.py:763 templates/dashboard.html:21 templates/log_food.html:268 templates/login.html:25
-#: templates/profile.html:36 templates/trainer_client.html:34
 msgid "Carbs"
 msgstr "Вуглеводи"
 
-#: app.py:825
 #, python-format
 msgid "Write a message of up to %(n)d characters."
 msgstr "Напишіть повідомлення довжиною до %(n)d символів."
 
-#: app.py:827
 #, python-format
 msgid "%(coach)s is not connected yet."
 msgstr "%(coach)s ще не підключене."
 
-#: app.py:836
 #, python-format
 msgid "%(coach)s couldn't answer right now. Please try again in a minute."
 msgstr "%(coach)s не змогло відповісти. Спробуйте ще раз за хвилину."
 
-#: app.py:851
 msgid "Chat cleared."
 msgstr "Чат очищено."
 
-#: app.py:863
 msgid "Back to the calculated calorie target."
 msgstr "Повернено розраховану ціль калорій."
 
-#: app.py:867
 msgid "Complete your profile first."
 msgstr "Спершу заповніть профіль."
 
-#: app.py:872
 msgid "Not enough data yet for a check-in."
 msgstr "Поки замало даних для чекіну."
 
-#: app.py:877
 #, python-format
 msgid "New daily target: %(kcal)s kcal."
 msgstr "Нова добова ціль: %(kcal)s ккал."
 
-#: app.py:879
 msgid "Could not save the target. Please try again."
 msgstr "Не вдалося зберегти ціль. Спробуйте ще раз."
 
-#: app.py:890
 msgid "Complete your profile (weight, height, activity) to run the AI analysis."
 msgstr "Заповніть профіль (вага, зріст, активність), щоб запустити AI-аналіз."
 
-#: app.py:896
 #, python-format
 msgid "Basic analysis ready (%(coach)s is not connected)."
 msgstr "Базовий аналіз готовий (%(coach)s не підключене)."
 
-#: app.py:898
 #, python-format
 msgid "%(coach)s has finished your analysis."
 msgstr "%(coach)s завершило аналіз."
 
-#: app.py:901
 msgid "Could not save the analysis. Please try again."
 msgstr "Не вдалося зберегти аналіз. Спробуйте ще раз."
 
-#: app.py:920
 msgid "Recommendation not found or it cannot be deleted."
 msgstr "Рекомендацію не знайдено або її не можна видалити."
 
-#: app.py:926
 msgid "Recommendation deleted."
 msgstr "Рекомендацію видалено."
 
-#: app.py:929
 msgid "Could not delete. Please try again."
 msgstr "Не вдалося видалити. Спробуйте ще раз."
 
-#: app.py:940
 msgid "Trainers use a simplified profile. Contact admin to update."
 msgstr "Тренери мають спрощений профіль. Щоб змінити дані, зверніться до адміністратора."
 
-#: app.py:954
 msgid "Enter a valid current weight."
 msgstr "Введіть правильну поточну вагу."
 
-#: app.py:962
 msgid "Water goal must be a whole number between 500 and 6000 ml."
 msgstr "Ціль води — ціле число від 500 до 6000 мл."
 
-#: app.py:981
 msgid "Enter a valid target weight when changing goal."
 msgstr "Під час зміни цілі введіть правильну цільову вагу."
 
-#: app.py:1008
 msgid "Profile updated. Daily targets recalculated."
 msgstr "Профіль оновлено. Добові цілі перераховано."
 
-#: app.py:1010
 msgid "Could not save your profile. Please try again."
 msgstr "Не вдалося зберегти профіль. Спробуйте ще раз."
 
-#: app.py:1077
 msgid "Invalid date."
 msgstr "Неправильна дата."
 
-#: app.py:1079
 msgid "Enter a valid portion in grams."
 msgstr "Введіть правильну порцію в грамах."
 
-#: app.py:1081 app.py:1206 app.py:1239
 msgid "Choose a valid meal type."
 msgstr "Виберіть прийом їжі."
 
-#: app.py:1086
 msgid "Please select a product."
 msgstr "Виберіть продукт."
 
-#: app.py:1102
 #, python-format
 msgid "Logged %(name)s (%(grams)s g)."
 msgstr "Записано %(name)s (%(grams)s г)."
 
-#: app.py:1104 app.py:1227
 msgid "Could not save the entry. Please try again."
 msgstr "Не вдалося зберегти запис. Спробуйте ще раз."
 
-#: app.py:1133 app.py:1175
 msgid "That doesn't look like a barcode."
 msgstr "Це не схоже на штрихкод."
 
-#: app.py:1135
 msgid "Products from Russia and Belarus are not supported."
 msgstr "Продукти з росії та білорусі не підтримуються."
 
-#: app.py:1138 app.py:1146
 msgid "Product not found."
 msgstr "Продукт не знайдено."
 
-#: app.py:1169
 msgid "Give the food a name."
 msgstr "Дайте продукту назву."
 
-#: app.py:1171
 msgid "Enter calories per 100 g (0–950)."
 msgstr "Введіть калорійність на 100 г (0–950)."
 
-#: app.py:1173
 msgid "Protein, fat and carbs must be between 0 and 100 g."
 msgstr "Білки, жири й вуглеводи мають бути від 0 до 100 г."
 
-#: app.py:1177
 msgid "A product with this barcode already exists."
 msgstr "Продукт із таким штрихкодом уже існує."
 
-#: app.py:1190
 #, python-format
 msgid "Saved “%(name)s” to My foods."
 msgstr "«%(name)s» збережено в «Мої продукти»."
 
-#: app.py:1203
 msgid "Enter calories between 1 and 5000."
 msgstr "Введіть калорії від 1 до 5000."
 
-#: app.py:1209
 msgid "Macros must be between 0 and 500 g."
 msgstr "БЖВ мають бути від 0 до 500 г."
 
-#: app.py:1225
 #, python-format
 msgid "Added %(kcal).0f kcal to %(meal)s."
 msgstr "Додано %(kcal).0f ккал до прийому «%(meal)s»."
 
-#: app.py:1242
 msgid "Pick a different day to copy from."
 msgstr "Виберіть інший день для копіювання."
 
-#: app.py:1250
 msgid "Nothing to copy from that day."
 msgstr "За той день нема чого копіювати."
 
-#: app.py:1257
 msgid "meals"
 msgstr "прийоми їжі"
 
-#: app.py:1258
 #, python-format
 msgid "Copied %(num)d item (%(what)s) from %(day)s."
 msgid_plural "Copied %(num)d items (%(what)s) from %(day)s."
@@ -438,62 +342,48 @@ msgstr[0] "Скопійовано %(num)d запис (%(what)s) за %(day)s."
 msgstr[1] "Скопійовано %(num)d записи (%(what)s) за %(day)s."
 msgstr[2] "Скопійовано %(num)d записів (%(what)s) за %(day)s."
 
-#: app.py:1262
 msgid "Could not copy. Please try again."
 msgstr "Не вдалося скопіювати. Спробуйте ще раз."
 
-#: app.py:1284
 msgid "Enter between 50 and 2000 ml."
 msgstr "Введіть від 50 до 2000 мл."
 
-#: app.py:1289 app.py:1546 i18n.py:47
 msgid "Could not save. Please try again."
 msgstr "Не вдалося зберегти. Спробуйте ще раз."
 
-#: app.py:1290
 #, python-format
 msgid "Added %(ml)d ml of water."
 msgstr "Додано %(ml)d мл води."
 
-#: app.py:1303
 msgid "Nothing to undo for this day."
 msgstr "За цей день нема чого скасовувати."
 
-#: app.py:1309
 msgid "Could not undo. Please try again."
 msgstr "Не вдалося скасувати. Спробуйте ще раз."
 
-#: app.py:1310
 #, python-format
 msgid "Removed %(ml)d ml."
 msgstr "Прибрано %(ml)d мл."
 
-#: app.py:1320
 msgid "Enter a weight between 30 and 300 kg."
 msgstr "Введіть вагу від 30 до 300 кг."
 
-#: app.py:1323
 msgid "You can't log weight for a future day."
 msgstr "Не можна записати вагу на майбутній день."
 
-#: app.py:1328
 #, python-format
 msgid "Logged %(kg).1f kg for %(day)s."
 msgstr "Записано %(kg).1f кг за %(day)s."
 
-#: app.py:1330
 msgid "Could not save your weight. Please try again."
 msgstr "Не вдалося зберегти вагу. Спробуйте ще раз."
 
-#: app.py:1340
 msgid "Entry not found or access denied."
 msgstr "Запис не знайдено або доступ заборонено."
 
-#: app.py:1351
 msgid "Entry deleted."
 msgstr "Запис видалено."
 
-#: app.py:1355
 msgid ""
 "The database is temporarily busy. Close DB Browser/SQLite Studio, restart the server and try "
 "again."
@@ -501,574 +391,432 @@ msgstr ""
 "База даних тимчасово зайнята. Закрийте DB Browser/SQLite Studio, перезапустіть сервер і спробуйте"
 " ще раз."
 
-#: app.py:1374
 msgid "Enter valid workout duration."
 msgstr "Введіть правильну тривалість тренування."
 
-#: app.py:1378
 msgid "Workout type is required."
 msgstr "Вкажіть тип тренування."
 
-#: app.py:1392
 msgid "Workout logged."
 msgstr "Тренування записано."
 
-#: app.py:1394
 msgid "Could not save the workout. Please try again."
 msgstr "Не вдалося зберегти тренування. Спробуйте ще раз."
 
-#: app.py:1440 app.py:1493
 msgid "Client not found or not assigned to you."
 msgstr "Клієнта не знайдено або він не закріплений за вами."
 
-#: app.py:1498
 msgid "Recommendation message cannot be empty."
 msgstr "Рекомендація не може бути порожньою."
 
-#: app.py:1517
 #, python-format
 msgid "Recommendation sent to %(email)s."
 msgstr "Рекомендацію надіслано %(email)s."
 
-#: app.py:1530
 msgid "Recommendation not found or already processed."
 msgstr "Рекомендацію не знайдено або її вже оброблено."
 
-#: app.py:1536
 msgid "Recommendation text cannot be empty."
 msgstr "Текст рекомендації не може бути порожнім."
 
-#: app.py:1543
 msgid "Recommendation approved and sent to the athlete."
 msgstr "Рекомендацію схвалено й надіслано атлету."
 
-#: coach_agent.py:584
 #, python-format
 msgid "%(coach)s is unavailable right now, so this is a basic automatic analysis."
 msgstr "%(coach)s зараз недоступне, тому це базовий автоматичний аналіз."
 
-#: coach_agent.py:585 i18n.py:39 i18n.py:102
 msgid "Zernia"
 msgstr "Зернятко"
 
-#: coach_agent.py:636
 #, python-format
 msgid "You've reached today's limit of %(n)d messages. Try again tomorrow."
 msgstr "Ви досягли денного ліміту в %(n)d повідомлень. Спробуйте завтра."
 
-#: i18n.py:35 templates/log_food.html:10
 msgid "Breakfast"
 msgstr "Сніданок"
 
-#: i18n.py:35 templates/log_food.html:10
 msgid "Lunch"
 msgstr "Обід"
 
-#: i18n.py:35 templates/log_food.html:10
 msgid "Dinner"
 msgstr "Вечеря"
 
-#: i18n.py:35 templates/log_food.html:10
 msgid "Snack"
 msgstr "Перекус"
 
-#: i18n.py:35
 msgid "Other"
 msgstr "Інше"
 
-#: i18n.py:36 templates/register.html:138
 msgid "Weight loss"
 msgstr "Схуднення"
 
-#: i18n.py:36 templates/register.html:139
 msgid "Maintenance"
 msgstr "Підтримка форми"
 
-#: i18n.py:36 templates/register.html:140
 msgid "Muscle gain"
 msgstr "Набір маси"
 
-#: i18n.py:37 templates/profile.html:84 templates/register.html:123
 msgid "Sedentary"
 msgstr "Сидячий"
 
-#: i18n.py:37 templates/profile.html:86 templates/register.html:123
 msgid "Moderate"
 msgstr "Помірний"
 
-#: i18n.py:37 templates/profile.html:87 templates/register.html:123
 msgid "Active"
 msgstr "Активний"
 
-#: i18n.py:38 templates/register.html:97
 msgid "Male"
 msgstr "Чоловік"
 
-#: i18n.py:38 templates/register.html:97
 msgid "Female"
 msgstr "Жінка"
 
-#: i18n.py:44
 msgid "You're offline. Reconnect to save your changes."
 msgstr "Ви офлайн. Підключіться до мережі, щоб зберегти зміни."
 
-#: i18n.py:45
 msgid "You're offline. Reconnect to talk to the coach."
 msgstr "Ви офлайн. Підключіться до мережі, щоб поговорити з коучем."
 
-#: i18n.py:46
 msgid "Offline — showing saved data"
 msgstr "Офлайн — показано збережені дані"
 
-#: i18n.py:48
 msgid "The coach could not answer. Please try again."
 msgstr "Коуч не зміг відповісти. Спробуйте ще раз."
 
-#: i18n.py:49 templates/base.html:176
 msgid "Dismiss notification"
 msgstr "Закрити сповіщення"
 
-#: i18n.py:50 templates/_ui.html:52 templates/_ui.html:61 templates/base.html:434
-#: templates/dashboard.html:600
 msgid "Delete"
 msgstr "Видалити"
 
-#: i18n.py:51
 #, python-brace-format
 msgid "{kcal} kcal · P {p} · F {f} · C {c}"
 msgstr "{kcal} ккал · Б {p} · Ж {f} · В {c}"
 
-#: i18n.py:52
 #, python-brace-format
 msgid "last {g} g"
 msgstr "востаннє {g} г"
 
-#: i18n.py:53
 msgid "per 100 g"
 msgstr "на 100 г"
 
-#: i18n.py:54
 #, python-brace-format
 msgid "Add {name} to favorites"
 msgstr "Додати {name} в улюблені"
 
-#: i18n.py:55
 #, python-brace-format
 msgid "Remove {name} from favorites"
 msgstr "Прибрати {name} з улюблених"
 
-#: i18n.py:56
 msgid "Foods you log will show up here with your usual portion. Search or scan to get started."
 msgstr ""
 "Тут з'являтимуться продукти, які ви записуєте, разом зі звичною порцією. Почніть із пошуку чи "
 "сканування."
 
-#: i18n.py:57
 msgid "Tap the star next to a food to keep it here."
 msgstr "Натисніть зірочку біля продукту, щоб зберегти його тут."
 
-#: i18n.py:58
 msgid "Foods you create appear here. Use “Create food” for home recipes."
 msgstr "Тут з'являються створені вами продукти. Для домашніх страв скористайтеся «Створити продукт»."
 
-#: i18n.py:59
 msgid "Could not update favorites."
 msgstr "Не вдалося оновити улюблені."
 
-#: i18n.py:60
 msgid "No matches in your foods yet…"
 msgstr "Серед ваших продуктів поки нічого…"
 
-#: i18n.py:61
 msgid "No matches. You are offline, so online search is unavailable."
 msgstr "Нічого не знайдено. Ви офлайн, тож онлайн-пошук недоступний."
 
-#: i18n.py:62
 msgid "Searching Open Food Facts…"
 msgstr "Шукаємо в Open Food Facts…"
 
-#: i18n.py:63
 msgid "Nothing found. Try another name, scan the barcode, or create the food."
 msgstr "Нічого не знайдено. Спробуйте іншу назву, відскануйте штрихкод або створіть продукт."
 
-#: i18n.py:64
 msgid "Online search is unavailable right now."
 msgstr "Онлайн-пошук зараз недоступний."
 
-#: i18n.py:65
 msgid "Choose a food first."
 msgstr "Спершу виберіть продукт."
 
-#: i18n.py:66
 #, python-brace-format
 msgid "Looking up {code}…"
 msgstr "Шукаємо {code}…"
 
-#: i18n.py:67
 #, python-brace-format
 msgid "Found: {name}"
 msgstr "Знайдено: {name}"
 
-#: i18n.py:68
 #, python-brace-format
 msgid "Barcode {code}"
 msgstr "Штрихкод {code}"
 
-#: i18n.py:69
 msgid "Could not look up this barcode."
 msgstr "Не вдалося знайти цей штрихкод."
 
-#: i18n.py:70
 msgid "Could not reach the food database."
 msgstr "Не вдалося зв'язатися з базою продуктів."
 
-#: i18n.py:71
 msgid "You are offline — try again when connected."
 msgstr "Ви офлайн — спробуйте, коли з'явиться зв'язок."
 
-#: i18n.py:72
 msgid "Camera needs a secure (HTTPS) connection. Type the number below instead."
 msgstr "Камера працює лише через захищене (HTTPS) з'єднання. Введіть номер нижче."
 
-#: i18n.py:73
 msgid "Starting camera…"
 msgstr "Вмикаємо камеру…"
 
-#: i18n.py:74 templates/log_food.html:224
 msgid "Point the camera at a barcode."
 msgstr "Наведіть камеру на штрихкод."
 
-#: i18n.py:75
 msgid "Camera access was denied. Type the barcode number below instead."
 msgstr "Доступ до камери заборонено. Введіть номер штрихкоду нижче."
 
-#: i18n.py:76
 msgid "Camera is not available. Type the barcode number below instead."
 msgstr "Камера недоступна. Введіть номер штрихкоду нижче."
 
-#: i18n.py:77
 msgid "A barcode has 8 to 14 digits."
 msgstr "Штрихкод має від 8 до 14 цифр."
 
-#: templates/_coach.html:23
 #, python-format
 msgid "Grade %(grade)s"
 msgstr "Оцінка %(grade)s"
 
-#: templates/_coach.html:26
 msgid "Summary"
 msgstr "Підсумок"
 
-#: templates/_coach.html:28
 #, python-format
 msgid "Last %(n)s days"
 msgstr "Останні %(n)s дн."
 
-#: templates/_coach.html:29
 msgid "· basic analysis"
 msgstr "· базовий аналіз"
 
-#: templates/_coach.html:46
 msgid "Going well"
 msgstr "Що вдається"
 
-#: templates/_coach.html:59
 msgid "Needs attention"
 msgstr "Потребує уваги"
 
-#: templates/_coach.html:76
 msgid "What to change"
 msgstr "Що змінити"
 
-#: templates/_coach.html:94
 msgid "Foods to add"
 msgstr "Що додати в раціон"
 
-#: templates/_coach.html:100 templates/_coach.html:136 templates/_ui.html:58
-#: templates/log_food.html:129 templates/profile.html:40 templates/trainer_client.html:84
 #, python-format
 msgid "%(n)s g"
 msgstr "%(n)s г"
 
-#: templates/_coach.html:100 templates/_coach.html:129 templates/trainer.html:48
 #, python-format
 msgid "%(n)s kcal"
 msgstr "%(n)s ккал"
 
-#: templates/_coach.html:100
 #, python-format
 msgid "Protein %(n)s g"
 msgstr "Білки %(n)s г"
 
-#: templates/_coach.html:106
 #, python-format
 msgid "Log %(name)s, %(grams)s g"
 msgstr "Записати %(name)s, %(grams)s г"
 
-#: templates/_coach.html:108 templates/dashboard.html:224
 msgid "Log"
 msgstr "Записати"
 
-#: templates/_coach.html:120
 msgid "Dish ideas"
 msgstr "Ідеї страв"
 
-#: templates/_coach.html:129
 #, python-format
 msgid "P %(p)s · F %(f)s · C %(c)s g"
 msgstr "Б %(p)s · Ж %(f)s · В %(c)s г"
 
-#: templates/_ui.html:49
 #, python-format
 msgid "Delete “%(name)s” from %(meal)s?"
 msgstr "Видалити «%(name)s» з прийому «%(meal)s»?"
 
-#: templates/_ui.html:49
 msgid "Delete entry"
 msgstr "Видалити запис"
 
-#: templates/_ui.html:60 templates/dashboard.html:318 templates/dashboard.html:371
-#: templates/dashboard.html:372 templates/log_food.html:258 templates/login.html:21
-#: templates/profile.html:34 templates/trainer_client.html:31 templates/trainer_client.html:86
 msgid "kcal"
 msgstr "ккал"
 
-#: templates/_ui.html:75 templates/base.html:330 templates/profile.html:132
+#, python-format
+msgid "Delete %(name)s"
+msgstr "Видалити «%(name)s»"
+
 msgid "Appearance"
 msgstr "Вигляд"
 
-#: templates/_ui.html:77
 msgid "Auto"
 msgstr "Авто"
 
-#: templates/_ui.html:77
 msgid "Light"
 msgstr "Світла"
 
-#: templates/_ui.html:77
 msgid "Dark"
 msgstr "Темна"
 
-#: templates/_ui.html:104 templates/base.html:332 templates/profile.html:137
 msgid "Language"
 msgstr "Мова"
 
-#: templates/base.html:15
 msgid "Kolos — nutrition & training"
 msgstr "Kolos — харчування й тренування"
 
-#: templates/base.html:133 templates/trainer.html:3 templates/trainer_client.html:5
-#: templates/trainer_client.html:14
 msgid "Clients"
 msgstr "Клієнти"
 
-#: templates/base.html:137 templates/dashboard.html:4 templates/day_strip.html:15
-#: templates/log_food.html:30 templates/login.html:9
 msgid "Today"
 msgstr "Сьогодні"
 
-#: templates/base.html:138 templates/dashboard.html:329
 msgid "Insights"
 msgstr "Аналітика"
 
-#: templates/base.html:139 templates/coach_chat.html:4 templates/coach_chat.html:23
-#: templates/dashboard.html:521
 msgid "Coach"
 msgstr "Коуч"
 
-#: templates/base.html:140 templates/profile.html:3
 msgid "Me"
 msgstr "Я"
 
-#: templates/base.html:165
 msgid "Skip to content"
 msgstr "Перейти до вмісту"
 
-#: templates/base.html:197
 msgid "Nutrition & training"
 msgstr "Харчування й тренування"
 
-#: templates/base.html:205 templates/base.html:292 templates/base.html:348 templates/log_food.html:59
 msgid "New entry"
 msgstr "Новий запис"
 
-#: templates/base.html:210 templates/base.html:280
 msgid "Main"
 msgstr "Головне меню"
 
-#: templates/base.html:221 templates/base.html:327 templates/profile.html:144
 msgid "Install app"
 msgstr "Встановити застосунок"
 
-#: templates/base.html:232 templates/base.html:335 templates/profile.html:146
 msgid "Sign out"
 msgstr "Вийти"
 
-#: templates/base.html:242 templates/base.html:369 templates/base.html:379 templates/base.html:437
-#: templates/dashboard.html:657 templates/log_food.html:215 templates/log_food.html:244
-#: templates/log_food.html:287
 msgid "Cancel"
 msgstr "Скасувати"
 
-#: templates/base.html:245 templates/register.html:160
 msgid "Back"
 msgstr "Назад"
 
-#: templates/base.html:254 templates/base.html:286
 msgid "Account"
 msgstr "Акаунт"
 
-#: templates/base.html:274 templates/base.html:424
 msgid "Kolos · personal nutrition & training"
 msgstr "Kolos · персональне харчування й тренування"
 
-#: templates/base.html:323
 msgid "Profile & goals"
 msgstr "Профіль і цілі"
 
-#: templates/base.html:353 templates/dashboard.html:280 templates/log_food.html:4
-#: templates/log_food.html:32
 msgid "Log food"
 msgstr "Записати їжу"
 
-#: templates/base.html:353
 msgid "Meal or snack"
 msgstr "Прийом їжі чи перекус"
 
-#: templates/base.html:358 templates/base.html:380
 msgid "Log workout"
 msgstr "Записати тренування"
 
-#: templates/base.html:358
 msgid "Training session"
 msgstr "Тренування"
 
-#: templates/base.html:366 templates/log_food.html:42 templates/log_food.html:216
 msgid "Scan barcode"
 msgstr "Сканувати штрихкод"
 
-#: templates/base.html:388
 msgid "Type"
 msgstr "Тип"
 
-#: templates/base.html:389
 msgid "e.g. Running, Strength"
 msgstr "напр. Біг, Силове"
 
-#: templates/base.html:390
 msgid "Suggestions"
 msgstr "Підказки"
 
-#: templates/base.html:391
 msgid "Running"
 msgstr "Біг"
 
-#: templates/base.html:391
 msgid "Strength"
 msgstr "Силове"
 
-#: templates/base.html:391
 msgid "Cycling"
 msgstr "Велосипед"
 
-#: templates/base.html:391
 msgid "Swimming"
 msgstr "Плавання"
 
-#: templates/base.html:391
 msgid "Yoga"
 msgstr "Йога"
 
-#: templates/base.html:398
 msgid "Duration (min)"
 msgstr "Тривалість (хв)"
 
-#: templates/base.html:402
 msgid "Calories burned"
 msgstr "Спалено калорій"
 
-#: templates/base.html:406
 msgid "Save workout"
 msgstr "Зберегти тренування"
 
-#: templates/base.html:451 templates/dashboard.html:34
 msgid "Install the app"
 msgstr "Встановіть застосунок"
 
-#: templates/base.html:452
 msgid "Full screen, one tap from your Home Screen."
 msgstr "На весь екран, в один дотик із головного екрана."
 
-#: templates/base.html:456 templates/base.html:458
 msgid "Tap"
 msgstr "Натисніть"
 
-#: templates/base.html:456
 msgid "Share"
 msgstr "Поділитися"
 
-#: templates/base.html:456
 msgid "in the browser bar"
 msgstr "на панелі браузера"
 
-#: templates/base.html:457
 msgid "Choose"
 msgstr "Виберіть"
 
-#: templates/base.html:457
 msgid "Add to Home Screen"
 msgstr "На початковий екран"
 
-#: templates/base.html:458 templates/dashboard.html:250 templates/dashboard.html:304
-#: templates/log_food.html:276
 msgid "Add"
 msgstr "Додати"
 
-#: templates/base.html:460
 msgid "Got it"
 msgstr "Зрозуміло"
 
-#: templates/coach_chat.html:9
 msgid "What should I eat for dinner to get more protein?"
 msgstr "Що мені з'їсти на вечерю, щоб добрати білок?"
 
-#: templates/coach_chat.html:10
 msgid "How many calories do I have left today?"
 msgstr "Скільки калорій у мене лишилось на сьогодні?"
 
-#: templates/coach_chat.html:11
 msgid "Why isn't my weight changing?"
 msgstr "Чому моя вага не змінюється?"
 
-#: templates/coach_chat.html:12
 msgid "Suggest a snack under 200 kcal"
 msgstr "Запропонуй перекус до 200 ккал"
 
-#: templates/coach_chat.html:34
 msgid "Your AI nutrition coach · sees your log, targets and weight"
 msgstr "Твій AI-нутриціолог · бачить журнал, цілі й вагу"
 
-#: templates/coach_chat.html:34
 msgid "Not connected yet"
 msgstr "Ще не підключено"
 
-#: templates/coach_chat.html:39
 msgid "Clear the whole conversation?"
 msgstr "Очистити всю розмову?"
 
-#: templates/coach_chat.html:39
 msgid "Clear chat"
 msgstr "Очистити чат"
 
-#: templates/coach_chat.html:41
 msgid "Clear"
 msgstr "Очистити"
 
-#: templates/coach_chat.html:47
 msgid "Conversation"
 msgstr "Розмова"
 
-#: templates/coach_chat.html:49
 msgid ""
 "Hi! I'm <strong>Zernia</strong>, your AI coach in Kolos. I can see your food log, targets and "
 "weight. Ask me what to eat, how to get more protein or why your weight is stuck. Small steps!"
@@ -1076,7 +824,6 @@ msgstr ""
 "Привіт! Я <strong>Зернятко</strong> — твій AI-коуч у Kolos. Бачу твій журнал їжі, цілі та вагу. "
 "Питай, що з'їсти, як добрати білок чи чому стоїть вага. Рухаємось маленькими кроками!"
 
-#: templates/coach_chat.html:63
 #, python-format
 msgid ""
 "%(coach)s is not connected yet. Add a free <strong>GEMINI_API_KEY</strong> or "
@@ -1085,48 +832,38 @@ msgstr ""
 "%(coach)s ще не підключене. Додайте безкоштовний <strong>GEMINI_API_KEY</strong> або "
 "<strong>GROQ_API_KEY</strong> на сервері, щоб почати розмову."
 
-#: templates/coach_chat.html:78
 #, python-format
 msgid "Message to %(coach)s"
 msgstr "Повідомлення для %(coach)s"
 
-#: templates/coach_chat.html:82 templates/trainer_client.html:158
 msgid "Send"
 msgstr "Надіслати"
 
-#: templates/coach_chat.html:92
 #, python-format
 msgid "%(coach)s is typing"
 msgstr "%(coach)s друкує"
 
-#: templates/dashboard.html:6
 msgid "Dashboard — Kolos"
 msgstr "Головна — Kolos"
 
-#: templates/dashboard.html:35
 msgid "Full screen, right from your Home Screen"
 msgstr "На весь екран, прямо з головного екрана"
 
-#: templates/dashboard.html:37
 msgid "Install"
 msgstr "Встановити"
 
-#: templates/dashboard.html:38
 msgid "Dismiss"
 msgstr "Закрити"
 
-#: templates/dashboard.html:46
 msgid "New recommendation from your coach"
 msgid_plural "New recommendations from your coach"
 msgstr[0] "Нова рекомендація від тренера"
 msgstr[1] "Нові рекомендації від тренера"
 msgstr[2] "Нові рекомендації від тренера"
 
-#: templates/dashboard.html:57
 msgid "Nutrition"
 msgstr "Харчування"
 
-#: templates/dashboard.html:60
 #, python-format
 msgid "Best streak: %(num)d day"
 msgid_plural "Best streak: %(num)d days"
@@ -1134,7 +871,6 @@ msgstr[0] "Найкраща серія: %(num)d день"
 msgstr[1] "Найкраща серія: %(num)d дні"
 msgstr[2] "Найкраща серія: %(num)d днів"
 
-#: templates/dashboard.html:62
 #, python-format
 msgid "%(num)d-day streak"
 msgid_plural "%(num)d-day streak"
@@ -1142,168 +878,126 @@ msgstr[0] "%(num)d день поспіль"
 msgstr[1] "%(num)d дні поспіль"
 msgstr[2] "%(num)d днів поспіль"
 
-#: templates/dashboard.html:67
 msgid "Adaptive target from check-in"
 msgstr "Адаптивна ціль із чекіну"
 
-#: templates/dashboard.html:67
 #, python-format
 msgid "BMR %(bmr)s · TDEE %(tdee)s"
 msgstr "BMR %(bmr)s · TDEE %(tdee)s"
 
-#: templates/dashboard.html:69
 msgid "Complete your profile to unlock targets"
 msgstr "Заповніть профіль, щоб отримати цілі"
 
-#: templates/dashboard.html:73
 msgid "Targets"
 msgstr "Цілі"
 
-#: templates/dashboard.html:73
 msgid "Set up"
 msgstr "Налаштувати"
 
-#: templates/dashboard.html:79
 #, python-format
 msgid "%(eaten).0f kcal eaten of %(target)s kcal target"
 msgstr "З'їдено %(eaten).0f ккал із цілі %(target)s ккал"
 
-#: templates/dashboard.html:79
 #, python-format
 msgid "%(eaten).0f kcal eaten"
 msgstr "З'їдено %(eaten).0f ккал"
 
-#: templates/dashboard.html:90
 #, python-format
 msgid "of %(n)s kcal"
 msgstr "з %(n)s ккал"
 
-#: templates/dashboard.html:90
 msgid "kcal eaten"
 msgstr "ккал з'їдено"
 
-#: templates/dashboard.html:94
 #, python-format
 msgid "%(n).0f over"
 msgstr "+%(n).0f понад ціль"
 
-#: templates/dashboard.html:94
 #, python-format
 msgid "%(n).0f left"
 msgstr "лишилось %(n).0f"
 
-#: templates/dashboard.html:109 templates/dashboard.html:723 templates/trainer_client.html:32
-#: templates/trainer_client.html:33 templates/trainer_client.html:34
 msgid "g"
 msgstr "г"
 
-#: templates/dashboard.html:126 templates/log_food.html:73
 msgid "Food"
 msgstr "Їжа"
 
-#: templates/dashboard.html:131
 msgid "Workout"
 msgstr "Тренування"
 
-#: templates/dashboard.html:136
 msgid "Micros"
 msgstr "Мікро"
 
-#: templates/dashboard.html:146
 msgid "Burned"
 msgstr "Спалено"
 
-#: templates/dashboard.html:149
 msgid "kcal from workouts"
 msgstr "ккал на тренуваннях"
 
-#: templates/dashboard.html:154
 msgid "Net"
 msgstr "Баланс"
 
-#: templates/dashboard.html:157
 msgid "kcal eaten − burned"
 msgstr "ккал з'їдено − спалено"
 
-#: templates/dashboard.html:179
 msgid "Water"
 msgstr "Вода"
 
-#: templates/dashboard.html:182 templates/profile.html:96
 msgid "ml"
 msgstr "мл"
 
-#: templates/dashboard.html:201
 msgid "Undo last water entry"
 msgstr "Скасувати останній запис води"
 
-#: templates/dashboard.html:202
 msgid "Undo"
 msgstr "Скасувати"
 
-#: templates/dashboard.html:206
 msgid "You can log water once this day comes."
 msgstr "Воду можна буде записати, коли настане цей день."
 
-#: templates/dashboard.html:214 templates/dashboard.html:373 templates/dashboard.html:508
 msgid "Weight"
 msgstr "Вага"
 
-#: templates/dashboard.html:217 templates/dashboard.html:373 templates/dashboard.html:828
-#: templates/profile.html:78 templates/profile.html:119 templates/trainer_client.html:56
 msgid "kg"
 msgstr "кг"
 
-#: templates/dashboard.html:218
 msgid "No weigh-ins yet"
 msgstr "Ще немає зважувань"
 
-#: templates/dashboard.html:232 templates/dashboard.html:442 templates/dashboard.html:446
-#: templates/dashboard.html:450 templates/dashboard.html:508 templates/trainer.html:39
-#: templates/trainer_client.html:23
 #, python-format
 msgid "%(n)s kg"
 msgstr "%(n)s кг"
 
-#: templates/dashboard.html:232
 msgid "vs a week earlier"
 msgstr "порівняно з тижнем раніше"
 
-#: templates/dashboard.html:234
 msgid "Last weigh-in today"
 msgstr "Останнє зважування сьогодні"
 
-#: templates/dashboard.html:234
 #, python-format
 msgid "Last weigh-in %(day)s"
 msgstr "Останнє зважування %(day)s"
 
-#: templates/dashboard.html:236
 msgid "From your profile · log weigh-ins to track the trend"
 msgstr "З профілю · записуйте зважування, щоб бачити динаміку"
 
-#: templates/dashboard.html:238
 msgid "Log your first weigh-in to track the trend"
 msgstr "Запишіть перше зважування, щоб бачити динаміку"
 
-#: templates/dashboard.html:247
 msgid "Meals"
 msgstr "Прийоми їжі"
 
-#: templates/dashboard.html:265 templates/log_food.html:169 templates/log_food.html:197
 #, python-format
 msgid "%(n).0f kcal"
 msgstr "%(n).0f ккал"
 
-#: templates/dashboard.html:277
 msgid "No meals logged for this day"
 msgstr "За цей день немає записів їжі"
 
-#: templates/dashboard.html:278
 msgid "Add a meal to fill your rings."
 msgstr "Додайте прийом їжі, щоб заповнити кільця."
 
-#: templates/dashboard.html:289
 #, python-format
 msgid "Copy yesterday · %(num)d item"
 msgid_plural "Copy yesterday · %(num)d items"
@@ -1311,162 +1005,125 @@ msgstr[0] "Скопіювати вчорашнє · %(num)d запис"
 msgstr[1] "Скопіювати вчорашнє · %(num)d записи"
 msgstr[2] "Скопіювати вчорашнє · %(num)d записів"
 
-#: templates/dashboard.html:301 templates/trainer.html:12
 msgid "Workouts"
 msgstr "Тренування"
 
-#: templates/dashboard.html:316
 #, python-format
 msgid "%(n)s min"
 msgstr "%(n)s хв"
 
-#: templates/dashboard.html:323
 msgid "No workouts logged for this day."
 msgstr "За цей день немає тренувань."
 
-#: templates/dashboard.html:340
 #, python-format
 msgid "%(coach)s · AI coach"
 msgstr "%(coach)s · AI-коуч"
 
-#: templates/dashboard.html:341
 #, python-format
 msgid "Latest analysis · %(day)s"
 msgstr "Останній аналіз · %(day)s"
 
-#: templates/dashboard.html:341
 msgid "What to change in your diet, foods and dishes to add"
 msgstr "Що змінити в раціоні, які продукти й страви додати"
 
-#: templates/dashboard.html:351
 msgid "Open full analysis"
 msgstr "Відкрити повний аналіз"
 
-#: templates/dashboard.html:351
 msgid "Open coach"
 msgstr "Відкрити коуча"
 
-#: templates/dashboard.html:360
 msgid "Weekly check-in"
 msgstr "Щотижневий чекін"
 
-#: templates/dashboard.html:361
 #, python-format
 msgid "Your real energy needs from intake and weigh-ins · last %(n)s days"
 msgstr "Ваші реальні енерговитрати за споживанням і зважуваннями · останні %(n)s дн."
 
-#: templates/dashboard.html:364
 msgid "Adaptive target on"
 msgstr "Адаптивна ціль увімкнена"
 
-#: templates/dashboard.html:371
 msgid "Real TDEE"
 msgstr "Реальний TDEE"
 
-#: templates/dashboard.html:372
 msgid "Avg intake"
 msgstr "Сер. споживання"
 
-#: templates/dashboard.html:382
 #, python-format
 msgid "The formula estimate is %(n)s kcal."
 msgstr "Оцінка за формулою — %(n)s ккал."
 
-#: templates/dashboard.html:383
 #, python-format
 msgid "For %(goal)s we suggest <strong>%(n)s kcal</strong> a day"
 msgstr "Для мети «%(goal)s» пропонуємо <strong>%(n)s ккал</strong> на день"
 
-#: templates/dashboard.html:384
 msgid "— that's your current target"
 msgstr "— це ваша поточна ціль"
 
-#: templates/dashboard.html:384
 #, python-format
 msgid "(now %(n)s)"
 msgstr "(зараз %(n)s)"
 
-#: templates/dashboard.html:390
 #, python-format
 msgid "Apply %(n)s kcal"
 msgstr "Застосувати %(n)s ккал"
 
-#: templates/dashboard.html:397
 #, python-format
 msgid "Use calculated (%(n)s)"
 msgstr "Повернути розраховану (%(n)s)"
 
-#: templates/dashboard.html:404
 msgid "Keep logging — the check-in unlocks when you have:"
 msgstr "Продовжуйте записувати — чекін відкриється, коли буде:"
 
-#: templates/dashboard.html:407
 msgid "Days with food logged"
 msgstr "Днів із записами їжі"
 
-#: templates/dashboard.html:408
 msgid "Days between first and last weigh-in"
 msgstr "Днів між першим і останнім зважуванням"
 
-#: templates/dashboard.html:426
 #, python-format
 msgid "Use calculated target (%(n)s)"
 msgstr "Повернути розраховану ціль (%(n)s)"
 
-#: templates/dashboard.html:436 templates/dashboard.html:453
 msgid "Goal progress"
 msgstr "Прогрес до мети"
 
-#: templates/dashboard.html:441
 msgid "Start"
 msgstr "Старт"
 
-#: templates/dashboard.html:445
 msgid "Current"
 msgstr "Зараз"
 
-#: templates/dashboard.html:449 templates/dashboard.html:750
 msgid "Target"
 msgstr "Ціль"
 
-#: templates/dashboard.html:458
 #, python-format
 msgid "%(n)s%% toward goal"
 msgstr "%(n)s%% до мети"
 
-#: templates/dashboard.html:464
 msgid "Macro distribution"
 msgstr "Розподіл БЖВ"
 
-#: templates/dashboard.html:465
 msgid "Protein, fat & carbs · grams"
 msgstr "Білки, жири й вуглеводи · грами"
 
-#: templates/dashboard.html:467
 msgid "Macro distribution chart"
 msgstr "Діаграма розподілу БЖВ"
 
-#: templates/dashboard.html:471
 msgid "Calorie trend"
 msgstr "Динаміка калорій"
 
-#: templates/dashboard.html:472
 msgid "Daily intake · last 7 days"
 msgstr "Споживання за день · останні 7 днів"
 
-#: templates/dashboard.html:474
 msgid "Calorie trend chart"
 msgstr "Графік динаміки калорій"
 
-#: templates/dashboard.html:483
 msgid "Weight forecast"
 msgstr "Прогноз ваги"
 
-#: templates/dashboard.html:485
 msgid "Non-linear model (TDEE adaptation −24 kcal/kg) · 7700 kcal ≈ 1 kg"
 msgstr "Нелінійна модель (адаптація TDEE −24 ккал/кг) · 7700 ккал ≈ 1 кг"
 
-#: templates/dashboard.html:486
 #, python-format
 msgid ""
 "balance <strong class=\"text-fg\">%(balance)s</strong> kcal/day (intake %(intake)s, expenditure "
@@ -1475,311 +1132,235 @@ msgstr ""
 "баланс <strong class=\"text-fg\">%(balance)s</strong> ккал/день (споживання %(intake)s, витрати "
 "%(spent)s)"
 
-#: templates/dashboard.html:491
 #, python-format
 msgid "Target: %(n)s kg"
 msgstr "Ціль: %(n)s кг"
 
-#: templates/dashboard.html:495
 msgid "Weight forecast chart"
 msgstr "Графік прогнозу ваги"
 
-#: templates/dashboard.html:498
 msgid "Your weigh-ins"
 msgstr "Ваші зважування"
 
-#: templates/dashboard.html:498
 msgid "Estimated actual weight (from logs)"
 msgstr "Оцінка фактичної ваги (за записами)"
 
-#: templates/dashboard.html:499
 msgid "System forecast (30 days)"
 msgstr "Прогноз системи (30 днів)"
 
-#: templates/dashboard.html:506
 msgid "Body"
 msgstr "Тіло"
 
-#: templates/dashboard.html:508 templates/profile.html:56 templates/register.html:95
 msgid "Gender"
 msgstr "Стать"
 
-#: templates/dashboard.html:508 templates/profile.html:56
 msgid "Height"
 msgstr "Зріст"
 
-#: templates/dashboard.html:508 templates/profile.html:56 templates/trainer.html:39
-#: templates/trainer_client.html:23
 #, python-format
 msgid "%(n)s cm"
 msgstr "%(n)s см"
 
-#: templates/dashboard.html:508 templates/profile.html:56 templates/register.html:107
 msgid "Birth date"
 msgstr "Дата народження"
 
-#: templates/dashboard.html:530
 #, python-format
 msgid "%(coach)s · your AI coach"
 msgstr "%(coach)s · твій AI-коуч"
 
-#: templates/dashboard.html:531
 msgid "Looks at your food log, weight and water, then tells you what to change and what to eat."
 msgstr "Дивиться на журнал їжі, вагу й воду та підказує, що змінити і що їсти."
 
-#: templates/dashboard.html:538
 msgid "Run a new analysis"
 msgstr "Запустити новий аналіз"
 
-#: templates/dashboard.html:538
 msgid "Analyze my last 7 days"
 msgstr "Проаналізувати останні 7 днів"
 
-#: templates/dashboard.html:541
 msgid "Takes up to a minute."
 msgstr "Займає до хвилини."
 
-#: templates/dashboard.html:541
 #, python-format
 msgid "Basic mode — %(coach)s is not connected yet."
 msgstr "Базовий режим — %(coach)s ще не підключене."
 
-#: templates/dashboard.html:550
 #, python-format
 msgid "Ask %(coach)s"
 msgstr "Запитати %(coach)s"
 
-#: templates/dashboard.html:551
 msgid "Questions about your meals, calories left today or your weight"
 msgstr "Питання про їжу, залишок калорій на сьогодні чи вагу"
 
-#: templates/dashboard.html:556
 msgid "Open chat"
 msgstr "Відкрити чат"
 
-#: templates/dashboard.html:560
 msgid "What should I eat for dinner?"
 msgstr "Що з'їсти на вечерю?"
 
-#: templates/dashboard.html:560
 msgid "How many calories are left?"
 msgstr "Скільки калорій лишилось?"
 
-#: templates/dashboard.html:560
 msgid "Snack idea"
 msgstr "Ідея перекусу"
 
-#: templates/dashboard.html:573 templates/dashboard.html:588
 msgid "From your trainer"
 msgstr "Від тренера"
 
-#: templates/dashboard.html:588
 msgid "AI · pending trainer review"
 msgstr "AI · чекає перевірки тренера"
 
-#: templates/dashboard.html:595
 msgid "Delete this recommendation?"
 msgstr "Видалити цю рекомендацію?"
 
-#: templates/dashboard.html:595
 msgid "Delete recommendation"
 msgstr "Видалити рекомендацію"
 
-#: templates/dashboard.html:621
 msgid "Micronutrients"
 msgstr "Мікронутрієнти"
 
-#: templates/dashboard.html:622
 msgid "consumed this day"
 msgstr "спожито за день"
 
-#: templates/dashboard.html:624
 msgid "Close"
 msgstr "Закрити"
 
-#: templates/dashboard.html:633
 msgid "Micronutrient"
 msgstr "Мікронутрієнт"
 
-#: templates/dashboard.html:633
 msgid "Consumed"
 msgstr "Спожито"
 
-#: templates/dashboard.html:633
 msgid "Unit"
 msgstr "Одиниця"
 
-#: templates/dashboard.html:647
 msgid "Done"
 msgstr "Готово"
 
-#: templates/dashboard.html:658
 msgid "Log weight"
 msgstr "Записати вагу"
 
-#: templates/dashboard.html:667 templates/dashboard.html:821
 msgid "Weight (kg)"
 msgstr "Вага (кг)"
 
-#: templates/dashboard.html:672 templates/day_strip.html:19
 msgid "Date"
 msgstr "Дата"
 
-#: templates/dashboard.html:677
 msgid "One weigh-in per day — logging again replaces it. The latest weigh-in updates your targets."
 msgstr "Одне зважування на день — повторний запис замінює його. Останнє зважування оновлює ваші цілі."
 
-#: templates/dashboard.html:678
 msgid "Save weight"
 msgstr "Зберегти вагу"
 
-#: templates/dashboard.html:723
 msgid "Log food to see macros"
 msgstr "Запишіть їжу, щоб побачити БЖВ"
 
-#: templates/dashboard.html:735
 msgid "Calories (kcal)"
 msgstr "Калорії (ккал)"
 
-#: templates/dashboard.html:778
 msgid "Weigh-in"
 msgstr "Зважування"
 
-#: templates/dashboard.html:778
 msgid "Estimated actual weight"
 msgstr "Оцінка фактичної ваги"
 
-#: templates/dashboard.html:789
 msgid "System forecast"
 msgstr "Прогноз системи"
 
-#: templates/dashboard.html:804 templates/profile.html:116
 msgid "Target weight"
 msgstr "Цільова вага"
 
-#: templates/day_strip.html:10
 msgid "Choose day"
 msgstr "Вибір дня"
 
-#: templates/day_strip.html:18
 msgid "Pick a date"
 msgstr "Виберіть дату"
 
-#: templates/day_strip.html:31
 msgid "Previous week"
 msgstr "Попередній тиждень"
 
-#: templates/day_strip.html:44
 msgid "(today)"
 msgstr "(сьогодні)"
 
-#: templates/day_strip.html:52
 msgid "Next week"
 msgstr "Наступний тиждень"
 
-#: templates/log_food.html:6
 msgid "Log Food — Kolos"
 msgstr "Запис їжі — Kolos"
 
-#: templates/log_food.html:47 templates/log_food.html:245
 msgid "Quick add"
 msgstr "Швидке додавання"
 
-#: templates/log_food.html:52 templates/log_food.html:288
 msgid "Create food"
 msgstr "Створити продукт"
 
-#: templates/log_food.html:67
 msgid "Meal"
 msgstr "Прийом їжі"
 
-#: templates/log_food.html:83
 msgid "Change"
 msgstr "Змінити"
 
-#: templates/log_food.html:88
 msgid "Search foods"
 msgstr "Пошук продуктів"
 
-#: templates/log_food.html:89
 msgid "Search foods or brands"
 msgstr "Пошук продуктів або брендів"
 
-#: templates/log_food.html:94
 msgid "Food lists"
 msgstr "Списки продуктів"
 
-#: templates/log_food.html:95
 msgid "Recent"
 msgstr "Недавні"
 
-#: templates/log_food.html:95
 msgid "Favorites"
 msgstr "Улюблені"
 
-#: templates/log_food.html:95
 msgid "My foods"
 msgstr "Мої продукти"
 
-#: templates/log_food.html:109
 msgid "Portion"
 msgstr "Порція"
 
-#: templates/log_food.html:112
 msgid "Decrease by 10 grams"
 msgstr "Зменшити на 10 грамів"
 
-#: templates/log_food.html:121
 msgid "Increase by 10 grams"
 msgstr "Збільшити на 10 грамів"
 
-#: templates/log_food.html:126
 msgid "Quick portion"
 msgstr "Швидка порція"
 
-#: templates/log_food.html:138
 msgid "This portion"
 msgstr "Ця порція"
 
-#: templates/log_food.html:144 templates/log_food.html:307
 msgid "Protein, g"
 msgstr "Білки, г"
 
-#: templates/log_food.html:148 templates/log_food.html:307
 msgid "Fat, g"
 msgstr "Жири, г"
 
-#: templates/log_food.html:152 templates/log_food.html:307
 msgid "Carbs, g"
 msgstr "Вуглеводи, г"
 
-#: templates/log_food.html:158
 msgid "Save meal"
 msgstr "Зберегти"
 
-#: templates/log_food.html:167 templates/trainer.html:12
 msgid "Logged today"
 msgstr "Записано сьогодні"
 
-#: templates/log_food.html:167
 #, python-format
 msgid "Logged %(day)s"
 msgstr "Записано %(day)s"
 
-#: templates/log_food.html:176
 msgid "Swipe an entry left to delete it."
 msgstr "Проведіть запис уліво, щоб видалити його."
 
-#: templates/log_food.html:178
 msgid "Nothing logged for this day yet."
 msgstr "За цей день ще нічого не записано."
 
-#: templates/log_food.html:184
 #, python-format
 msgid "Copy from %(day)s"
 msgstr "Скопіювати з дня: %(day)s"
 
-#: templates/log_food.html:197
 #, python-format
 msgid "%(num)d item"
 msgid_plural "%(num)d items"
@@ -1787,363 +1368,273 @@ msgstr[0] "%(num)d запис"
 msgstr[1] "%(num)d записи"
 msgstr[2] "%(num)d записів"
 
-#: templates/log_food.html:199
 msgid "Copy"
 msgstr "Скопіювати"
 
-#: templates/log_food.html:226
 msgid "Not in the database yet"
 msgstr "Цього продукту ще немає в базі"
 
-#: templates/log_food.html:227
 msgid "Add it once and it will be ready next time."
 msgstr "Додайте його один раз — наступного разу він уже буде тут."
 
-#: templates/log_food.html:228
 msgid "Create this food"
 msgstr "Створити цей продукт"
 
-#: templates/log_food.html:231
 msgid "Barcode number"
 msgstr "Номер штрихкоду"
 
-#: templates/log_food.html:232
 msgid "Or type the barcode number"
 msgstr "Або введіть номер штрихкоду"
 
-#: templates/log_food.html:233
 msgid "Find"
 msgstr "Знайти"
 
-#: templates/log_food.html:255 templates/log_food.html:307 templates/profile.html:33
-#: templates/trainer_client.html:31
 msgid "Calories"
 msgstr "Калорії"
 
-#: templates/log_food.html:262
 msgid "Label"
 msgstr "Назва"
 
-#: templates/log_food.html:262 templates/log_food.html:301 templates/log_food.html:315
-#: templates/register.html:80
 msgid "(optional)"
 msgstr "(необов'язково)"
 
-#: templates/log_food.html:263
 msgid "e.g. Restaurant lunch"
 msgstr "напр. Обід у ресторані"
 
-#: templates/log_food.html:266
 msgid "+ Add macros"
 msgstr "+ Додати БЖВ"
 
-#: templates/log_food.html:297
 msgid "Name"
 msgstr "Назва"
 
-#: templates/log_food.html:298
 msgid "e.g. Homemade granola"
 msgstr "напр. Домашня гранола"
 
-#: templates/log_food.html:301
 msgid "Brand"
 msgstr "Бренд"
 
-#: templates/log_food.html:305
 msgid "Per 100 g"
 msgstr "На 100 г"
 
-#: templates/log_food.html:315
 msgid "Barcode"
 msgstr "Штрихкод"
 
-#: templates/log_food.html:318
 msgid "Save to My foods"
 msgstr "Зберегти в «Мої продукти»"
 
-#: templates/login.html:3
 msgid "Sign In — Kolos"
 msgstr "Вхід — Kolos"
 
-#: templates/login.html:10
 msgid "630 left"
 msgstr "лишилось 630"
 
-#: templates/login.html:49
 msgid "Eat smarter."
 msgstr "Їж розумніше."
 
-#: templates/login.html:49
 msgid "Train better."
 msgstr "Тренуйся краще."
 
-#: templates/login.html:50
 msgid "Personal health monitoring for athletes and the trainers who guide them."
 msgstr "Персональний моніторинг здоров'я для атлетів і тренерів, які їх ведуть."
 
-#: templates/login.html:64
 msgid "Welcome back"
 msgstr "З поверненням"
 
-#: templates/login.html:65
 msgid "Sign in to continue."
 msgstr "Увійдіть, щоб продовжити."
 
-#: templates/login.html:70 templates/register.html:52
 msgid "Email"
 msgstr "Пошта"
 
-#: templates/login.html:72 templates/register.html:54
 msgid "you@university.edu"
 msgstr "you@university.edu"
 
-#: templates/login.html:75 templates/register.html:58
 msgid "Password"
 msgstr "Пароль"
 
-#: templates/login.html:79 templates/login.html:106
 msgid "Show password"
 msgstr "Показати пароль"
 
-#: templates/login.html:85 templates/register.html:168
 msgid "Sign in"
 msgstr "Увійти"
 
-#: templates/login.html:89
 msgid "No account?"
 msgstr "Немає акаунта?"
 
-#: templates/login.html:90
 msgid "Create one"
 msgstr "Створіть його"
 
-#: templates/login.html:106
 msgid "Hide password"
 msgstr "Сховати пароль"
 
-#: templates/profile.html:4
 msgid "Profile — Kolos"
 msgstr "Профіль — Kolos"
 
-#: templates/profile.html:29
 msgid "Daily targets"
 msgstr "Добові цілі"
 
-#: templates/profile.html:45
 #, python-format
 msgid "Adaptive target from your weekly check-in (calculated: %(n)s kcal)."
 msgstr "Адаптивна ціль із щотижневого чекіну (розрахована: %(n)s ккал)."
 
-#: templates/profile.html:45
 msgid "Review"
 msgstr "Переглянути"
 
-#: templates/profile.html:47
 #, python-format
 msgid "BMR %(bmr)s · TDEE %(tdee)s kcal · recalculated when you save."
 msgstr "BMR %(bmr)s · TDEE %(tdee)s ккал · перераховується під час збереження."
 
-#: templates/profile.html:54
 msgid "Details"
 msgstr "Дані"
 
-#: templates/profile.html:72
 msgid "Body & activity"
 msgstr "Тіло й активність"
 
-#: templates/profile.html:75
 msgid "Current weight"
 msgstr "Поточна вага"
 
-#: templates/profile.html:81
 msgid "Activity"
 msgstr "Активність"
 
-#: templates/profile.html:85 templates/register.html:123
 msgctxt "activity level"
 msgid "Light"
 msgstr "Легкий"
 
-#: templates/profile.html:92
 msgid "Water goal"
 msgstr "Ціль води"
 
-#: templates/profile.html:99
 #, python-format
 msgid "Leave water goal empty to use %(n)s ml (33 ml per kg)."
 msgstr "Залиште ціль води порожньою, щоб використовувати %(n)s мл (33 мл на кг)."
 
-#: templates/profile.html:103
 msgid "Goal"
 msgstr "Мета"
 
-#: templates/profile.html:106
 msgid "Lose"
 msgstr "Схуднути"
 
-#: templates/profile.html:106
 msgid "Maintain"
 msgstr "Підтримати"
 
-#: templates/profile.html:106
 msgid "Gain"
 msgstr "Набрати"
 
-#: templates/profile.html:122
 msgid "Calorie and macro targets adapt to this goal."
 msgstr "Цілі калорій і БЖВ підлаштовуються під цю мету."
 
-#: templates/profile.html:126
 msgid "Save changes"
 msgstr "Зберегти зміни"
 
-#: templates/profile.html:139
 #, python-format
 msgid "%(coach)s answers in this language too."
 msgstr "%(coach)s теж відповідатиме цією мовою."
 
-#: templates/register.html:3
 msgid "Register — Kolos"
 msgstr "Реєстрація — Kolos"
 
-#: templates/register.html:44 templates/register.html:226
 #, python-format
 msgid "Step %(n)s of %(total)s"
 msgstr "Крок %(n)s з %(total)s"
 
-#: templates/register.html:45 templates/register.html:49
 msgid "Create your account"
 msgstr "Створіть акаунт"
 
-#: templates/register.html:60
 msgid "At least 6 characters"
 msgstr "Щонайменше 6 символів"
 
-#: templates/register.html:63
 msgid "Confirm password"
 msgstr "Підтвердіть пароль"
 
-#: templates/register.html:65 templates/register.html:199
 msgid "Passwords do not match"
 msgstr "Паролі не збігаються"
 
-#: templates/register.html:70
 msgid "I am"
 msgstr "Я"
 
-#: templates/register.html:72
 msgid "Athlete"
 msgstr "Атлет"
 
-#: templates/register.html:72
 msgid "Track meals & workouts"
 msgstr "Записую їжу й тренування"
 
-#: templates/register.html:74
 msgid "Trainer"
 msgstr "Тренер"
 
-#: templates/register.html:74
 msgid "Guide your athletes"
 msgstr "Веду атлетів"
 
-#: templates/register.html:80
 msgid "Your trainer"
 msgstr "Ваш тренер"
 
-#: templates/register.html:82
 msgid "— None —"
 msgstr "— Немає —"
 
-#: templates/register.html:92
 msgid "About your body"
 msgstr "Про ваше тіло"
 
-#: templates/register.html:112
 msgid "Height, cm"
 msgstr "Зріст, см"
 
-#: templates/register.html:116
 msgid "Weight, kg"
 msgstr "Вага, кг"
 
-#: templates/register.html:121
 msgid "Activity level"
 msgstr "Рівень активності"
 
-#: templates/register.html:123
 msgid "Little or no exercise"
 msgstr "Мало або зовсім немає тренувань"
 
-#: templates/register.html:123
 msgid "1–3 days a week"
 msgstr "1–3 дні на тиждень"
 
-#: templates/register.html:123
 msgid "3–5 days a week"
 msgstr "3–5 днів на тиждень"
 
-#: templates/register.html:123
 msgid "6–7 days a week"
 msgstr "6–7 днів на тиждень"
 
-#: templates/register.html:132
 msgid "Your goal"
 msgstr "Ваша мета"
 
-#: templates/register.html:135
 msgid "Goal type"
 msgstr "Тип мети"
 
-#: templates/register.html:138
 msgid "Calorie deficit, high protein"
 msgstr "Дефіцит калорій, багато білка"
 
-#: templates/register.html:139
 msgid "Keep your current shape"
 msgstr "Зберегти поточну форму"
 
-#: templates/register.html:140
 msgid "Calorie surplus for growth"
 msgstr "Профіцит калорій для росту"
 
-#: templates/register.html:147
 msgid "Target weight, kg"
 msgstr "Цільова вага, кг"
 
-#: templates/register.html:152
 msgid "Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data."
 msgstr "Добові цілі калорій і БЖВ розраховуються з цих даних за формулою Міффліна–Сан Жеора."
 
-#: templates/register.html:161
 msgid "Continue"
 msgstr "Далі"
 
-#: templates/register.html:162
 msgid "Create account"
 msgstr "Створити акаунт"
 
-#: templates/register.html:167
 msgid "Already have an account?"
 msgstr "Уже маєте акаунт?"
 
-#: templates/trainer.html:5
 msgid "Trainer Dashboard — Kolos"
 msgstr "Кабінет тренера — Kolos"
 
-#: templates/trainer.html:12
 msgid "Athletes"
 msgstr "Атлети"
 
-#: templates/trainer.html:24 templates/trainer.html:25
 msgid "Search athletes"
 msgstr "Пошук атлетів"
 
-#: templates/trainer.html:40 templates/trainer_client.html:23
 msgid "No profile"
 msgstr "Немає профілю"
 
-#: templates/trainer.html:49
 #, python-format
 msgid "%(num)d workout"
 msgid_plural "%(num)d workouts"
@@ -2151,110 +1642,84 @@ msgstr[0] "%(num)d тренування"
 msgstr[1] "%(num)d тренування"
 msgstr[2] "%(num)d тренувань"
 
-#: templates/trainer.html:55
 msgid "No athletes match your search."
 msgstr "За вашим запитом атлетів не знайдено."
 
-#: templates/trainer.html:62
 msgid "No athletes yet"
 msgstr "Поки немає атлетів"
 
-#: templates/trainer.html:63
 msgid "Athletes can select you as their trainer during registration."
 msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
 
-#: templates/trainer_client.html:7
 msgid "Client View"
 msgstr "Картка клієнта"
 
-#: templates/trainer_client.html:46
 msgid "Logging streak"
 msgstr "Серія записів"
 
-#: templates/trainer_client.html:50
 msgid "Water today"
 msgstr "Вода сьогодні"
 
-#: templates/trainer_client.html:51
 #, python-format
 msgid "%(n)s ml"
 msgstr "%(n)s мл"
 
-#: templates/trainer_client.html:54
 msgid "Last weigh-in"
 msgstr "Останнє зважування"
 
-#: templates/trainer_client.html:56
 #, python-format
 msgid "%(n)s vs wk ago"
 msgstr "%(n)s до мин. тижня"
 
-#: templates/trainer_client.html:63
 msgid "Client sections"
 msgstr "Розділи клієнта"
 
-#: templates/trainer_client.html:65
 msgid "Food log"
 msgstr "Журнал їжі"
 
-#: templates/trainer_client.html:68
 msgid "Coaching"
 msgstr "Коучинг"
 
-#: templates/trainer_client.html:76
 msgid "Today's food log"
 msgstr "Журнал їжі за сьогодні"
 
-#: templates/trainer_client.html:91
 msgid "No meals logged today."
 msgstr "Сьогодні ще немає записів їжі."
 
-#: templates/trainer_client.html:96
 msgid "Key micronutrients"
 msgstr "Ключові мікронутрієнти"
 
-#: templates/trainer_client.html:108
 msgid "No data yet."
 msgstr "Поки немає даних."
 
-#: templates/trainer_client.html:117
 #, python-format
 msgid "Latest analysis by %(coach)s · seen by the athlete"
 msgstr "Останній аналіз від %(coach)s · атлет його бачить"
 
-#: templates/trainer_client.html:124
 msgid "Awaiting approval"
 msgstr "Чекають на схвалення"
 
-#: templates/trainer_client.html:132
 msgid "AI suggestion · edit before approving"
 msgstr "Пропозиція AI · відредагуйте перед схваленням"
 
-#: templates/trainer_client.html:132
 msgid "Athlete / system"
 msgstr "Атлет / система"
 
-#: templates/trainer_client.html:137
 msgid "Approve"
 msgstr "Схвалити"
 
-#: templates/trainer_client.html:147
 msgid "New recommendation"
 msgstr "Нова рекомендація"
 
-#: templates/trainer_client.html:150
 msgid "Recommendation"
 msgstr "Рекомендація"
 
-#: templates/trainer_client.html:152
 msgid "e.g. Increase protein at breakfast and add more leafy greens for iron."
 msgstr "напр. Додайте більше білка на сніданок і більше зелені для заліза."
 
-#: templates/trainer_client.html:155
 msgid "Appears on the athlete's Coach tab."
 msgstr "З'явиться на вкладці «Коуч» у атлета."
 
-#: templates/trainer_client.html:166
 msgid "Approved"
 msgstr "Схвалені"
 

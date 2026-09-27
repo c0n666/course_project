@@ -3,9 +3,10 @@
 Language choice, in order: the signed-in user's saved language, the `lang` cookie (set by the
 switcher, also before sign-in), then the browser's Accept-Language; English if nothing matches.
 
-Update the catalogue after changing strings:
-    pybabel extract -F babel.cfg -o messages.pot .
-    pybabel update -i messages.pot -d translations
+Update the catalogue after changing strings (these options keep the diffs small; messages.pot is a
+temporary template and is not committed):
+    pybabel extract -F babel.cfg -k lazy_gettext --no-location -o messages.pot .
+    pybabel update -w 100 -i messages.pot -d translations
     (translate the new entries in translations/uk/LC_MESSAGES/messages.po)
     pybabel compile -d translations
 """

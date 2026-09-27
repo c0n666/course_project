@@ -108,3 +108,80 @@ def test_every_string_is_translated():
     untranslated = [m.id for m in catalog if m.id and (not m.string or (isinstance(m.string, tuple) and not all(m.string)))]
     assert untranslated == []
     assert PO.with_suffix(".mo").exists()
+
+
+# --- bilingual catalogue ------------------------------------------------------------------
+
+def _catalogue_fixture(app):
+    """A Ukrainian OFF product with both names, an English-only one and a logged entry."""
+    from models import SOURCE_OFF
+
+    with app.app_context():
+        user = create_user("cat@user.test")
+        ua = Product(name="Carpathian yogurt", name_uk="Йогурт Карпатський", barcode="4820222760447",
+                     source=SOURCE_OFF, calories_per_100g=60)
+        us = Product(name="Nonfat Greek Yogurt", barcode="0894700010137", source=SOURCE_OFF, calories_per_100g=53)
+        db.session.add_all([ua, us])
+        db.session.flush()
+        breast = Product.query.filter_by(name="Chicken breast").one()
+        db.session.add(FoodLog(user_id=user.id, date=date.today(), meal_type="lunch", product_id=breast.id,
+                               portion_grams=150))
+        db.session.commit()
+        return breast.id
+
+
+def test_log_food_shows_names_in_the_interface_language(app, client):
+    _catalogue_fixture(app)
+    login(client, "cat@user.test")
+    _set_lang(client, "uk")
+    page = client.get("/log-food").get_data(as_text=True)
+    assert "Куряче філе" in page and "Chicken breast" not in page
+    _set_lang(client, "en")
+    page = client.get("/log-food").get_data(as_text=True)
+    assert "Chicken breast" in page
+
+
+def test_search_is_shared_and_names_follow_the_language(app, client):
+    _catalogue_fixture(app)
+    login(client, "cat@user.test")
+    search = lambda q: [p["label"] for p in client.get(f"/api/products/search?q={q}&remote=0").get_json()["results"]]
+    _set_lang(client, "uk")
+    assert search("yogurt") == ["Грецький йогурт", "Йогурт Карпатський", "Nonfat Greek Yogurt"]
+    assert search("йогурт") == ["Грецький йогурт", "Йогурт Карпатський"]  # the US one has no Ukrainian name
+    assert search("chicken") == ["Куряче філе"]
+    _set_lang(client, "en")
+    assert search("йогурт") == ["Greek yogurt", "Carpathian yogurt"]
+    assert search("yogurt") == ["Greek yogurt", "Carpathian yogurt", "Nonfat Greek Yogurt"]
+
+
+def test_coach_sees_product_names_in_the_athletes_language(app):
+    _catalogue_fixture(app)
+    with app.app_context():
+        user = User.query.filter_by(email="cat@user.test").one()
+        uk_tools = coach_agent.CoachTools(user.id, lang="uk")
+        assert '"product": "Куряче філе"' in uk_tools.run("get_food_log", {"days": 1})
+        assert "Йогурт Карпатський" in uk_tools.run("search_catalogue", {"query": "карпатський"})
+        en_tools = coach_agent.CoachTools(user.id, lang="en")
+        assert '"product": "Chicken breast"' in en_tools.run("get_food_log", {"days": 1})
+        assert "Carpathian yogurt" in en_tools.run("search_catalogue", {"query": "карпатський"})
+
+
+def test_migration_adds_the_ukrainian_name_column(app):
+    from sqlalchemy import text
+
+    from app import _migrate_profile_goals_schema
+
+    with app.app_context():
+        db.session.execute(text("PRAGMA foreign_keys=OFF"))
+        db.session.execute(text("DROP TABLE products"))
+        db.session.execute(text(
+            "CREATE TABLE products (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL, calories_per_100g NUMERIC,"
+            " proteins NUMERIC, fats NUMERIC, carbs NUMERIC, barcode VARCHAR(32), brand VARCHAR(255),"
+            " source VARCHAR(10), created_by_id INTEGER, search_terms VARCHAR(600))"))
+        db.session.execute(text(
+            "INSERT INTO products (name, calories_per_100g, proteins, fats, carbs, barcode, source) VALUES"
+            " ('Йогурт', 60, 3, 2, 5, '4820226161165', 'off')"))
+        db.session.commit()
+        _migrate_profile_goals_schema()
+        product = Product.query.one()
+        assert product.name_uk is None and product.name_in("uk") == "Йогурт"

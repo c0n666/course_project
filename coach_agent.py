@@ -230,10 +230,11 @@ def _num(value: Any, digits: int = 1) -> float | None:
     return round(float(value), digits) if value is not None else None
 
 
-def _product_nutrition(p: Product) -> dict[str, Any]:
+def _product_nutrition(p: Product, lang: str) -> dict[str, Any]:
+    name = p.name_in(lang)
     return {
         "product_id": p.id,
-        "name": p.name if not p.brand else f"{p.name} ({p.brand})",
+        "name": name if not p.brand else f"{name} ({p.brand})",
         "kcal_per_100g": _num(p.calories_per_100g, 0),
         "protein_per_100g": _num(p.proteins),
         "fat_per_100g": _num(p.fats),
@@ -244,9 +245,10 @@ def _product_nutrition(p: Product) -> dict[str, Any]:
 class CoachTools:
     """The coach's read-only tools, bound to one athlete; the model never chooses whose data it reads."""
 
-    def __init__(self, user_id: int, today: date | None = None):
+    def __init__(self, user_id: int, today: date | None = None, lang: str = DEFAULT_LANGUAGE):
         self.user_id = user_id
         self.today = today or date.today()
+        self.lang = lang  # product names and catalogue search follow the athlete's language
         self.handlers: dict[str, Callable[..., Any]] = {
             "get_profile_and_targets": self.get_profile_and_targets,
             "get_daily_totals": self.get_daily_totals,
@@ -358,7 +360,7 @@ class CoachTools:
                 "date": log.date.isoformat(),
                 "meal": log.meal_type,
                 "product_id": log.product_id,
-                "product": log.product.name,
+                "product": log.product.name_in(self.lang),
                 "grams": _num(log.portion_grams, 0),
                 "calories": round(log.calories),
                 "protein_g": round(log.proteins_g, 1),
@@ -395,8 +397,8 @@ class CoachTools:
         }
 
     def search_catalogue(self, query: str) -> dict[str, Any]:
-        products = food_db.search_products(query, self.user_id, limit=8, remote=False)
-        return {"results": [_product_nutrition(p) for p in products]}
+        products = food_db.search_products(query, self.user_id, limit=8, remote=False, lang=self.lang)
+        return {"results": [_product_nutrition(p, self.lang) for p in products]}
 
     def get_latest_analysis(self) -> dict[str, Any]:
         report = latest_coach_report(self.user_id)
@@ -483,7 +485,7 @@ def _as_id(value: Any) -> int | None:
         return None
 
 
-def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
+def _clean_report(raw: dict[str, Any], user_id: int, lang: str = DEFAULT_LANGUAGE) -> dict[str, Any]:
     """Validate the model's report: keep only catalogue products the athlete can see, recompute dish
     nutrition from the catalogue and drop anything malformed (free models don't always follow the schema)."""
     if not isinstance(raw, dict) or not _text(raw.get("summary")):
@@ -501,7 +503,7 @@ def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
         product = products.get(_as_id(item.get("product_id")))
         if product:
             grams = max(1.0, min(1000.0, _as_float(item.get("portion_grams"), 100) or 100))
-            foods.append({**_product_nutrition(product), "portion_grams": round(grams),
+            foods.append({**_product_nutrition(product, lang), "portion_grams": round(grams),
                           "kcal": round(float(product.calories_per_100g) * grams / 100),
                           "reason": _text(item.get("reason"))})
 
@@ -519,7 +521,7 @@ def _clean_report(raw: dict[str, Any], user_id: int) -> dict[str, Any]:
                 totals["protein_g"] += float(product.proteins or 0) * factor
                 totals["fat_g"] += float(product.fats or 0) * factor
                 totals["carbs_g"] += float(product.carbs or 0) * factor
-            name = product.name if product else _text(ing.get("name"))
+            name = product.name_in(lang) if product else _text(ing.get("name"))
             if name:
                 ingredients.append({"product_id": product.id if product else None, "name": name,
                                     "grams": round(grams)})
@@ -572,7 +574,7 @@ def generate_coach_report(user_id: int, days: int = 7, provider: Provider | None
         try:
             task = (f"Analyze my nutrition for the last {days} days (today is {(today or date.today()).isoformat()}) "
                     f"and tell me what to change: findings, concrete changes, foods and dishes to add.")
-            data = _clean_report(run_agent(provider, CoachTools(user_id, today), task, lang), user_id)
+            data = _clean_report(run_agent(provider, CoachTools(user_id, today, lang), task, lang), user_id, lang)
             engine = provider.engine
         except (ProviderError, CoachError) as exc:
             logger.warning("coach report failed, using the rule-based analysis: %s", exc)
@@ -636,7 +638,7 @@ def coach_chat(user_id: int, message: str, provider: Provider | None = None,
             raise ChatLimitError(_("You've reached today's limit of %(n)d messages. Try again tomorrow.",
                                    n=CHAT_DAILY_LIMIT))
     history = [{"role": m.role, "content": m.content} for m in chat_history(user_id, CHAT_HISTORY)]
-    answer = run_chat(provider, CoachTools(user_id), history, message, lang)
+    answer = run_chat(provider, CoachTools(user_id, lang=lang), history, message, lang)
     asked = CoachMessage(user_id=user_id, role="user", content=message)
     answered = CoachMessage(user_id=user_id, role="assistant", content=answer)
     db.session.add_all([asked, answered])

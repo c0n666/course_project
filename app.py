@@ -23,6 +23,7 @@ from sqlalchemy.pool import NullPool
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import (
+    SOURCE_OFF,
     SOURCE_QUICK,
     SOURCE_SEED,
     SOURCE_USER,
@@ -67,7 +68,7 @@ from i18n import (
     select_locale,
 )
 from llm_providers import ProviderError
-from seed_foods import GENERIC_FOODS, UK_SEARCH_NAMES
+from seed_foods import GENERIC_FOODS, UK_NAMES, UK_SEARCH_NAMES
 from nutrition import (
     auto_water_goal_ml,
     calculate_daily_targets,
@@ -246,12 +247,13 @@ def food_logs_for_day(user_id: int, day: date | None = None) -> list[FoodLog]:
 
 
 def product_payload(product: Product, favorite_ids=frozenset(), portion: float | None = None) -> dict:
-    """JSON-friendly product for the Log Food picker (values per 100 g)."""
+    """JSON-friendly product for the Log Food picker (values per 100 g), named in the interface language."""
+    lang = current_language()
     return {
         "id": product.id,
-        "name": product.name,
+        "name": product.name_in(lang),
         "brand": product.brand,
-        "label": product.display_name,
+        "label": product.label_in(lang),
         "kcal": float(product.calories_per_100g),
         "p": float(product.proteins),
         "f": float(product.fats),
@@ -544,6 +546,10 @@ def _migrate_profile_goals_schema() -> None:
     user_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(users)")).fetchall()}
     if "language" not in user_cols:
         db.session.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR(5)"))
+
+    product_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(products)")).fetchall()}
+    if "name_uk" not in product_cols:
+        db.session.execute(text("ALTER TABLE products ADD COLUMN name_uk VARCHAR(255)"))
 
     tables = {
         row[0]
@@ -1028,12 +1034,11 @@ def register_routes(app: Flask) -> None:
     def _log_food_context(selected_date: date, preselect_id: int | None = None,
                           preselect_grams: float | None = None) -> dict:
         uid = current_user.id
+        lang = current_language()
         # Shared catalogue + the athlete's own foods; quick-add entries are not browsable.
-        products = (
-            Product.visible_to(uid)
-            .filter(Product.source != SOURCE_QUICK)
-            .order_by(Product.name)
-            .all()
+        products = sorted(
+            Product.visible_to(uid).filter(Product.source != SOURCE_QUICK).all(),
+            key=lambda p: p.name_in(lang).casefold(),
         )
         favorite_ids = favorite_ids_for(uid)
         recent = recent_products_for(uid)
@@ -1044,7 +1049,7 @@ def register_routes(app: Flask) -> None:
             preselected = None
         # Instant client-side search covers the built-in and personal catalogue;
         # cached Open Food Facts items are found through /api/products/search.
-        local_catalogue = [p for p in products if p.source != "off" or p.id in favorite_ids]
+        local_catalogue = [p for p in products if p.source != SOURCE_OFF or p.id in favorite_ids]
         return {
             "products": products,
             "today": date.today(),
@@ -1099,7 +1104,7 @@ def register_routes(app: Flask) -> None:
             db.session.add(entry)
             try:
                 db_commit_with_retry()
-                flash(_("Logged %(name)s (%(grams)s g).", name=product.name, grams=portion_val), "success")
+                flash(_("Logged %(name)s (%(grams)s g).", name=product.local_name, grams=portion_val), "success")
             except OperationalError:
                 flash(_("Could not save the entry. Please try again."), "error")
             return redirect(url_for("log_food", date=selected_date.isoformat()))
@@ -1122,7 +1127,7 @@ def register_routes(app: Flask) -> None:
     def api_product_search():
         query = request.args.get("q", "").strip()[:80]
         remote = request.args.get("remote", "1") != "0"
-        results = food_db.search_products(query, current_user.id, limit=25, remote=remote)
+        results = food_db.search_products(query, current_user.id, limit=25, remote=remote, lang=current_language())
         favorite_ids = favorite_ids_for(current_user.id)
         return jsonify(results=[product_payload(p, favorite_ids) for p in results])
 
@@ -1785,6 +1790,8 @@ def _seed_products_and_links() -> None:
             product.proteins = data["proteins"]
             product.fats = data["fats"]
             product.carbs = data["carbs"]
+        product.name_uk = UK_NAMES.get(name)
+        product.refresh_search_terms(UK_SEARCH_NAMES.get(name))
 
         for nut_name, amount in data["micronutrients"].items():
             micro = nutrient_map[nut_name]
@@ -1820,8 +1827,9 @@ def _seed_generic_foods() -> None:
         )
         added += 1
     db.session.flush()
-    # Search terms (with Ukrainian names) for every built-in product, incl. PRODUCT_SEED ones.
+    # Ukrainian names and search terms for every built-in product, incl. PRODUCT_SEED ones.
     for product in Product.query.filter(Product.created_by_id.is_(None), Product.source == SOURCE_SEED):
+        product.name_uk = UK_NAMES.get(product.name)
         product.refresh_search_terms(UK_SEARCH_NAMES.get(product.name))
     db.session.commit()
     if added:

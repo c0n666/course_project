@@ -80,7 +80,7 @@
         <div class="{{ ui.list_row }}">
           <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ ui.meal_dots.get(log.meal_type, 'bg-slate-400') }}" aria-hidden="true"></span>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-medium">{{ log.product.name }}</p>
+            <p class="truncate text-[15px] font-medium">{{ log.product.local_name }}</p>
             <p class="text-[13px] text-fg-muted"><span>{{ _(log.meal_type|capitalize) }}</span> · {{ _('%(n)s g', n=log.portion_grams) }}</p>
           </div>
           <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">{{ _('kcal') }}</span></p>

@@ -46,7 +46,7 @@
 {% macro food_row(log, next_url, show_meal=false) -%}
 <div class="swipe-row">
   <form method="post" action="{{ url_for('delete_food_log', entry_id=log.id) }}" id="del-{{ log.id }}" class="swipe-actions"
-        data-confirm="{{ _('Delete “%(name)s” from %(meal)s?', name=log.product.name, meal=_(log.meal_type|capitalize)|lower) }}" data-confirm-action="{{ _('Delete entry') }}">
+        data-confirm="{{ _('Delete “%(name)s” from %(meal)s?', name=log.product.local_name, meal=_(log.meal_type|capitalize)|lower) }}" data-confirm-action="{{ _('Delete entry') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ next_url }}">
     <button type="submit" data-no-confirm tabindex="-1" class="w-[88px] bg-red-500 text-white text-[15px] font-semibold">{{ _('Delete') }}</button>
@@ -54,11 +54,11 @@
   <div class="swipe-content {{ list_row }} pr-2 sm:pr-3">
     {% if show_meal %}<span class="h-2.5 w-2.5 shrink-0 rounded-full {{ meal_dots.get(log.meal_type, 'bg-slate-400') }}" aria-hidden="true"></span>{% endif %}
     <div class="min-w-0 flex-1">
-      <p class="truncate text-[15px] font-medium">{{ log.product.name }}</p>
+      <p class="truncate text-[15px] font-medium">{{ log.product.local_name }}</p>
       <p class="text-[13px] text-fg-muted tabular-nums">{% if show_meal %}<span>{{ _(log.meal_type|capitalize) }}</span> · {% endif %}{{ _('%(n)s g', n=log.portion_grams) }}</p>
     </div>
     <p class="shrink-0 text-[15px] font-semibold tabular-nums">{{ "%.0f"|format(log.calories) }} <span class="text-xs font-medium text-fg-muted">{{ _('kcal') }}</span></p>
-    <button type="submit" form="del-{{ log.id }}" title="{{ _('Delete') }}" aria-label="Delete {{ log.product.name }}" class="pointer-only {{ btn_icon_danger }}">
+    <button type="submit" form="del-{{ log.id }}" title="{{ _('Delete') }}" aria-label="{{ _('Delete %(name)s', name=log.product.local_name) }}" class="pointer-only {{ btn_icon_danger }}">
       <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ trash_path }}"/></svg>
     </button>
   </div>

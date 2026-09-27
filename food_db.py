@@ -5,11 +5,15 @@ stable local foreign key, work offline afterwards and do not spend OFF's rate li
 (read: 15 req/min, search: 10 req/min per IP). Network failures never raise — callers get
 None / [] and the app keeps working with the local catalogue.
 
-Market rules: products sold in Ukraine are searched first; European results are added only when
-Ukraine gives very few. Every word of the query must appear in the name or brand. Russian and
-Belarusian products are never returned or cached. Duplicates are collapsed: same barcode, same
-name + brand without pack size ("2L", "500 г"), or same brand with the same nutrition per 100 g
-(the 0.5 L and 2 L bottle log identically).
+One search for both interface languages; only the shown name follows the language
+(Product.name_in). Products sold in Ukraine (Ukraine market tag or a 482 barcode, incl. imported
+ones) come first; worldwide products with an English name from Europe and English-speaking
+markets are added only when Ukraine gives very few. A query matches English and Ukrainian names.
+
+Every word of the query must appear in the name or brand. Russian and Belarusian products are
+never returned or cached. Duplicates are collapsed: same barcode, same name + brand without pack
+size ("2L", "500 г"), or same brand with the same nutrition per 100 g (the 0.5 L and 2 L bottle
+log identically).
 """
 from __future__ import annotations
 
@@ -25,20 +29,21 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from i18n import current_language
 from models import SOURCE_OFF, SOURCE_QUICK, Product, db
 
 logger = logging.getLogger(__name__)
 
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
-OFF_FIELDS = "code,product_name,product_name_uk,brands,nutriments,countries_tags"
+OFF_FIELDS = "code,lang,product_name,product_name_uk,product_name_en,brands,nutriments,countries_tags"
 # OFF asks every client to identify itself: AppName/Version (contact).
 USER_AGENT = os.environ.get("OFF_USER_AGENT", "").strip() or "Kolos/1.0 (course project)"
 TIMEOUT_SECONDS = 8
 
 MIN_REMOTE_QUERY = 3        # characters before we ask OFF
 LOCAL_ENOUGH = 8            # skip OFF when the local catalogue already has this many matches
-UA_ENOUGH = 5               # skip the European OFF search when Ukraine already gave this many distinct items
+UA_ENOUGH = 5               # skip the worldwide search when products sold in Ukraine gave this many
 REMOTE_LIMIT = 10           # at most this many Open Food Facts items per search
 SEARCH_CACHE_TTL = 600      # seconds
 _search_cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
@@ -51,6 +56,9 @@ BLOCKED_GS1_PREFIXES = tuple(str(n) for n in range(460, 470)) + ("481",)
 UKRAINE_GS1_PREFIX = "482"  # many Ukrainian products in OFF have no country tag at all
 _RU_ONLY_LETTERS = set("ыэёъЫЭЁЪ")
 _UA_ONLY_LETTERS = set("іїєґІЇЄҐ")
+# OFF search matches the query against these languages' name fields (the default is "en" only,
+# and many Ukrainian labels were entered as product_name_en).
+SEARCH_LANGS = "uk,en"
 _LUCENE_SPECIAL = re.compile(r'[\\+\-!():^\[\]"{}~*?|&/]')
 _PACK_SIZE = re.compile(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|kg|g|oz|мл|л|кг|г)\b", re.IGNORECASE)
 # Markets Ukrainian shops import from; worldwide results outside them are mostly noise
@@ -61,6 +69,7 @@ NEARBY_MARKETS = {UKRAINE_TAG} | {f"en:{c}" for c in (
     "slovenia spain sweden united-kingdom switzerland norway iceland moldova georgia turkey serbia "
     "montenegro bosnia-and-herzegovina north-macedonia albania european-union"
 ).split()}
+ENGLISH_MARKETS = NEARBY_MARKETS | {f"en:{c}" for c in "united-states canada australia new-zealand".split()}
 
 
 # --------------------------------------------------------------------------- rules
@@ -127,12 +136,12 @@ def nutrition_key(item: dict[str, Any]) -> tuple | None:
 
 
 def matches_all_terms(item: dict[str, Any], terms: list[str]) -> bool:
-    hay = " ".join(_words(f"{item.get('name')} {item.get('brand') or ''}"))
+    hay = " ".join(_words(f"{item.get('name')} {item.get('name_uk') or ''} {item.get('brand') or ''}"))
     return all(t in hay for t in terms)
 
 
-def in_nearby_market(item: dict[str, Any]) -> bool:
-    return item.get("ukraine") or bool(set(item.get("countries") or []) & NEARBY_MARKETS)
+def in_english_market(item: dict[str, Any]) -> bool:
+    return item.get("ukraine") or bool(set(item.get("countries") or []) & ENGLISH_MARKETS)
 
 
 def collapse_duplicates(items: list[Any], as_dict=lambda x: x) -> list[Any]:
@@ -150,8 +159,8 @@ def collapse_duplicates(items: list[Any], as_dict=lambda x: x) -> list[Any]:
     return out
 
 
-def _product_dict(p: Product) -> dict[str, Any]:
-    return {"barcode": p.barcode, "name": p.name, "brand": p.brand,
+def _product_dict(p: Product, lang: str = "en") -> dict[str, Any]:
+    return {"barcode": p.barcode, "name": p.name_in(lang), "brand": p.brand,
             "calories_per_100g": p.calories_per_100g, "proteins": p.proteins, "fats": p.fats, "carbs": p.carbs}
 
 
@@ -175,11 +184,53 @@ def _clean(text: Any) -> str:
     return re.sub(r"\s+", " ", html.unescape(str(text or ""))).strip()
 
 
+def _letters(text: str) -> list[str]:
+    return [ch for ch in text if ch.isalpha()]
+
+
+def latin_only(text: str) -> bool:
+    return readable(text) and not any(unicodedata.name(ch, "").startswith("CYRILLIC") for ch in _letters(text))
+
+
+def plain_latin(text: str) -> bool:
+    """Latin letters without diacritics: brand names, not Polish/German/French labels."""
+    return bool(_letters(text)) and all("a" <= ch.lower() <= "z" for ch in _letters(text))
+
+
+def ukrainian_name(raw: dict[str, Any], ukraine: bool) -> str | None:
+    """The label a Ukrainian shopper sees: Ukrainian Cyrillic, or a plain-Latin brand name if sold in Ukraine."""
+    for key in ("product_name_uk", "product_name", "product_name_en"):
+        name = _clean(raw.get(key))
+        if not name or not readable(name) or looks_russian(name):
+            continue
+        if not latin_only(name) or (ukraine and plain_latin(name)):
+            return name
+    return None
+
+
+def english_name(raw: dict[str, Any]) -> str | None:
+    """product_name_en in Latin script (it often holds a Cyrillic label), else an English main name."""
+    name = _clean(raw.get("product_name_en"))
+    if name and latin_only(name):
+        return name
+    name = _clean(raw.get("product_name"))
+    return name if raw.get("lang") == "en" and name and latin_only(name) else None
+
+
 def parse_off_product(raw: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Map an OFF product/hit to our fields; None when name or calories are missing."""
+    """Map an OFF product/hit to our fields; None when name or calories are missing.
+
+    `name` is the English name when there is one, else the Ukrainian or original label;
+    `name_uk` is set only when the Ukrainian label differs from `name`.
+    """
     if not raw:
         return None
-    name = _clean(raw.get("product_name_uk")) or _clean(raw.get("product_name"))
+    countries = raw.get("countries_tags") or []
+    barcode = normalize_barcode(str(raw.get("code") or ""))
+    ukraine = UKRAINE_TAG in countries or gs1_prefix(barcode) == UKRAINE_GS1_PREFIX
+    name_en = english_name(raw)
+    name_uk = ukrainian_name(raw, ukraine)
+    name = name_en or name_uk or _clean(raw.get("product_name"))
     if name and not readable(name):
         return None  # Hebrew, Chinese, Greek… labels are no use to Ukrainian users
     nutr = raw.get("nutriments") or {}
@@ -199,19 +250,22 @@ def parse_off_product(raw: dict[str, Any] | None) -> dict[str, Any] | None:
         v = _number(nutr.get(key))
         return round(min(v, 100.0), 2) if v is not None else 0.0
 
-    countries = raw.get("countries_tags") or []
-    barcode = normalize_barcode(str(raw.get("code") or ""))
-    return {
+    item = {
         "barcode": barcode,
         "name": name[:255],
+        "name_uk": name_uk[:255] if name_uk and name_uk != name else None,
         "brand": brand[:255] if brand else None,
         "calories_per_100g": round(kcal, 1),
         "proteins": macro("proteins_100g"),
         "fats": macro("fat_100g"),
         "carbs": macro("carbohydrates_100g"),
         "countries": countries,
-        "ukraine": UKRAINE_TAG in countries or gs1_prefix(barcode) == UKRAINE_GS1_PREFIX,
+        "ukraine": ukraine,
     }
+    # Worth listing in search: a Ukrainian-market product a Ukrainian shopper can read, or a
+    # product with an English name from a nearby / English-speaking market.
+    item["searchable"] = (ukraine and name_uk is not None) or (name_en is not None and in_english_market(item))
+    return item
 
 
 # --------------------------------------------------------------------------- network
@@ -244,7 +298,8 @@ def fetch_barcode(code: str) -> dict[str, Any] | None:
 
 
 def _search_hits(lucene_query: str, size: int) -> list[dict[str, Any]] | None:
-    params = urllib.parse.urlencode({"q": lucene_query, "page_size": size, "fields": OFF_FIELDS})
+    params = urllib.parse.urlencode({"q": lucene_query, "langs": SEARCH_LANGS, "page_size": size,
+                                     "fields": OFF_FIELDS})
     body = _get_json(f"{OFF_SEARCH_URL}?{params}")
     if body is None:
         return None
@@ -252,7 +307,7 @@ def _search_hits(lucene_query: str, size: int) -> list[dict[str, Any]] | None:
 
 
 def search_remote(query: str, limit: int = REMOTE_LIMIT) -> list[dict[str, Any]]:
-    """Ukraine first, then nearby (European) markets; all query words required; no RU/BY; deduped."""
+    """Sold in Ukraine first, then worldwide English-named items; all query words required; no RU/BY; deduped."""
     term = re.sub(r"\s+", " ", _LUCENE_SPECIAL.sub(" ", query)).strip().lower()
     terms = _words(term)
     if not terms:
@@ -261,19 +316,23 @@ def search_remote(query: str, limit: int = REMOTE_LIMIT) -> list[dict[str, Any]]
     if cached and time.monotonic() - cached[0] < SEARCH_CACHE_TTL:
         return cached[1][:limit]
 
-    size = 40  # fetch more than we show: filtering and de-duplication drop a lot
-    relevant = lambda item: not is_blocked(item) and matches_all_terms(item, terms)
-    ukraine = _search_hits(f'{term} countries_tags:"{UKRAINE_TAG}"', size)
-    ukraine_ok = collapse_duplicates([i for i in ukraine or [] if relevant(i)])
-    world = None
-    if ukraine is None or len(ukraine_ok) < UA_ENOUGH:
-        world = _search_hits(term, size)
-    if ukraine is None and world is None:
+    searches = [
+        # Many Ukrainian products have no country tag, only a 482 barcode.
+        f'{term} (countries_tags:"{UKRAINE_TAG}" OR code:{UKRAINE_GS1_PREFIX}*)',
+        term,  # worldwide, only when Ukraine gives very few
+    ]
+    relevant, answered = [], False
+    for lucene in searches:
+        hits = _search_hits(lucene, 40)  # more than we show: filtering and de-duplication drop a lot
+        answered |= hits is not None
+        relevant += [i for i in hits or [] if i["searchable"] and not is_blocked(i) and matches_all_terms(i, terms)]
+        if len(collapse_duplicates(relevant)) >= UA_ENOUGH:
+            break
+    if not answered:
         return []  # do not cache failures
 
-    nearby = [i for i in world or [] if relevant(i) and in_nearby_market(i)]
-    # Ukrainian-market items first, then European items that are also sold in Ukraine, then the rest.
-    results = collapse_duplicates(ukraine_ok + sorted(nearby, key=lambda p: not p["ukraine"]))[:REMOTE_LIMIT]
+    relevant.sort(key=lambda i: not i["ukraine"])  # stable: sold in Ukraine first, then OFF's ranking
+    results = collapse_duplicates(relevant)[:REMOTE_LIMIT]
 
     if len(_search_cache) >= _SEARCH_CACHE_MAX:
         _search_cache.pop(next(iter(_search_cache)))
@@ -291,7 +350,7 @@ def upsert_off_product(data: dict[str, Any]) -> Product:
         db.session.add(product)
     elif product.source != SOURCE_OFF:
         return product  # never overwrite catalogue or user foods that share a barcode
-    for field in ("name", "brand", "calories_per_100g", "proteins", "fats", "carbs"):
+    for field in ("name", "name_uk", "brand", "calories_per_100g", "proteins", "fats", "carbs"):
         setattr(product, field, data[field])
     product.refresh_search_terms()
     return product
@@ -315,11 +374,14 @@ def find_by_barcode(code: str, user_id: int, remote: bool = True) -> Product | N
     return product
 
 
-def search_products(query: str, user_id: int, limit: int = 20, remote: bool = True) -> list[Product]:
+def search_products(query: str, user_id: int, limit: int = 20, remote: bool = True,
+                    lang: str | None = None) -> list[Product]:
     """Local matches (shared + own, excluding quick-add entries) first, then cached OFF results.
 
-    Every word must match (so "coca cola" finds "Coca-Cola"); duplicates are collapsed.
+    The same products in both languages; `lang` (default: the interface language) only orders and
+    de-duplicates by the name shown. Every word must match (so "coca cola" finds "Coca-Cola").
     """
+    lang = lang or current_language()
     words = _words(query)  # Python lower() folds Cyrillic too
     if not words:
         return []
@@ -328,8 +390,10 @@ def search_products(query: str, user_id: int, limit: int = 20, remote: bool = Tr
     for word in words:
         like = "%" + word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         local_query = local_query.filter(Product.search_terms.like(like, escape="\\"))
-    candidates = local_query.order_by(db.func.length(Product.name), Product.name).limit(limit * 3).all()
-    local = collapse_duplicates([p for p in candidates if not product_is_blocked(p)], _product_dict)[:limit]
+    shown_name = db.func.coalesce(Product.name_uk, Product.name) if lang == "uk" else Product.name
+    candidates = local_query.order_by(db.func.length(shown_name), shown_name).limit(limit * 3).all()
+    as_dict = lambda p: _product_dict(p, lang)
+    local = collapse_duplicates([p for p in candidates if not product_is_blocked(p)], as_dict)[:limit]
     if not remote or len(local) >= LOCAL_ENOUGH or len(q) < MIN_REMOTE_QUERY:
         return local
 
@@ -343,4 +407,4 @@ def search_products(query: str, user_id: int, limit: int = 20, remote: bool = Tr
         if product.is_visible_to(user_id):
             merged.append(product)
     db.session.commit()
-    return collapse_duplicates(merged, _product_dict)[:limit]
+    return collapse_duplicates(merged, as_dict)[:limit]

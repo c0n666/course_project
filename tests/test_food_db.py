@@ -23,9 +23,10 @@ def _json_resp(payload):
     return _Resp(json.dumps(payload).encode("utf-8"))
 
 
-def _off_product(code="3017620422003", name="Nutella", kcal=539, **extra):
+def _off_product(code="3017620422003", name="Nutella", kcal=539, lang="en", **extra):
     nutr = {"energy-kcal_100g": kcal, "proteins_100g": 6.3, "fat_100g": 30.9, "carbohydrates_100g": 57.5}
-    return {"code": code, "product_name": name, "brands": "Nutella, Ferrero", "nutriments": nutr, **extra}
+    return {"code": code, "lang": lang, "product_name": name, "brands": "Nutella, Ferrero", "nutriments": nutr,
+            **extra}
 
 
 @pytest.fixture(autouse=True)
@@ -58,21 +59,45 @@ def test_normalize_barcode():
 def test_parse_off_product_maps_fields_and_brand():
     parsed = food_db.parse_off_product(_off_product())
     assert parsed == {
-        "barcode": "3017620422003", "name": "Nutella", "brand": "Nutella",
+        "barcode": "3017620422003", "name": "Nutella", "name_uk": None, "brand": "Nutella",
         "calories_per_100g": 539.0, "proteins": 6.3, "fats": 30.9, "carbs": 57.5,
         "countries": [], "ukraine": False,
+        "searchable": False,  # no market: found by barcode only
     }
     # search hits return brands as a list
     assert food_db.parse_off_product(_off_product(brands=["Chobani"]))["brand"] == "Chobani"
 
 
-def test_parse_prefers_ukrainian_name_and_unescapes_html():
+def test_parse_keeps_english_and_ukrainian_names_and_unescapes_html():
     raw = _off_product(name="Yogurt", product_name_uk="Йогурт &quot;Карпатський&quot;",
                        brands=["ТОВ &quot;Галичина&quot;"], countries_tags=["en:ukraine"])
     parsed = food_db.parse_off_product(raw)
-    assert parsed["name"] == 'Йогурт "Карпатський"'
+    assert parsed["name"] == "Yogurt"
+    assert parsed["name_uk"] == 'Йогурт "Карпатський"'
     assert parsed["brand"] == 'ТОВ "Галичина"'
     assert parsed["ukraine"] is True
+    assert parsed["searchable"]
+
+
+def test_parse_decides_names_and_searchability_by_script_and_market():
+    parse = lambda **kw: food_db.parse_off_product(_off_product(**kw))
+    # A Ukrainian label entered as product_name_en is not an English name.
+    ua = parse(code="4820226161165", name="Йогурт", product_name_en="Йогурт", lang="en")
+    assert (ua["name"], ua["name_uk"], ua["searchable"]) == ("Йогурт", None, True)
+    # Imported brand sold in Ukraine: the plain-Latin label serves both languages.
+    cola = parse(code="5449000000439", name="Coca Cola Original taste", countries_tags=["en:ukraine"])
+    assert cola["searchable"] and cola["name_uk"] is None
+    # Polish label: neither English nor a name a Ukrainian shopper reads ...
+    pl = parse(code="5900000000001", name="Mleko łaciate", lang="pl", countries_tags=["en:ukraine", "en:poland"])
+    assert not pl["searchable"]
+    # ... unless an English name exists.
+    assert parse(code="5900000000001", name="Mleko łaciate", lang="pl", product_name_en="Milk",
+                 countries_tags=["en:poland"])["searchable"]
+    # English product from an English-speaking market.
+    assert parse(code="0894700010137", name="Greek Yogurt", countries_tags=["en:united-states"])["searchable"]
+    # Far markets and Cyrillic labels from outside Ukraine are left out.
+    assert not parse(code="8801234567890", name="Yogurt", countries_tags=["en:south-korea"])["searchable"]
+    assert not parse(code="4870003213136", name="Йогурт", lang="kk", countries_tags=["en:kazakhstan"])["searchable"]
 
 
 def test_unreadable_scripts_are_skipped_in_names_and_brands():
@@ -166,7 +191,8 @@ def test_search_merges_remote_hits_and_caches(app, monkeypatch):
     def fake_urlopen(req, timeout=None):
         calls.append(req.full_url)
         return _json_resp({"hits": [
-            _off_product(code="0894700010137", name="Nonfat Greek Yogurt", kcal=52.9, brands=["Chobani"]),
+            _off_product(code="0894700010137", name="Nonfat Greek Yogurt", kcal=52.9, brands=["Chobani"],
+                         countries_tags=["en:united-states"]),
             _off_product(code="", name="No barcode item"),  # dropped: cannot be cached by barcode
         ]})
 
@@ -178,7 +204,7 @@ def test_search_merges_remote_hits_and_caches(app, monkeypatch):
         food_db.search_products("Chobani", user.id)  # same query, cached (case-insensitive)
         # the product is now local, so an offline search still finds it
         assert Product.query.filter_by(barcode="0894700010137").one().source == SOURCE_OFF
-    assert len(calls) == 2  # Ukraine + worldwide on the first search, nothing on the cached one
+    assert len(calls) == 2  # sold in Ukraine + worldwide on the first search, nothing on the cached one
 
 
 def test_search_network_failure_returns_local_only(app, monkeypatch):
@@ -231,43 +257,66 @@ def test_seed_generic_foods_is_idempotent(app):
 
 # --- market rules in search --------------------------------------------------------
 
-def _hits_by_query(monkeypatch, ukraine_hits, world_hits):
-    queries = []
+def _fake_search(monkeypatch, ukraine_hits, world_hits=()):
+    """Serve OFF searches (Ukraine-market query vs worldwide); returns the (q, langs) pairs asked."""
+    asked = []
 
     def fake_urlopen(req, timeout=None):
         from urllib.parse import parse_qs, urlparse
-        q = parse_qs(urlparse(req.full_url).query)["q"][0]
-        queries.append(q)
-        return _json_resp({"hits": ukraine_hits if "en:ukraine" in q else world_hits})
+        params = parse_qs(urlparse(req.full_url).query)
+        q = params["q"][0]
+        asked.append((q, params["langs"][0]))
+        return _json_resp({"hits": list(ukraine_hits if "en:ukraine" in q else world_hits)})
 
     monkeypatch.setattr(food_db.urllib.request, "urlopen", fake_urlopen)
-    return queries
+    return asked
 
 
-def test_search_remote_ukraine_first_then_europe_without_ru_noise_or_duplicates(monkeypatch):
-    ua = [_off_product(code="4820222760447", name="Carpathian yogurt", brands=["Galychyna"],
-                       countries_tags=["en:ukraine"])]
-    world = [
-        _off_product(code="4602248009492", name="Yogurt", brands=["Yarmarka"], countries_tags=["en:poland"]),  # RU prefix
-        _off_product(code="4820000000017", name="Yogurt Сырок", brands=["X"], countries_tags=["en:poland"]),     # Russian text
-        _off_product(code="0000231312345", name="Yogurt", brands=["Dolche"], countries_tags=["en:poland"], kcal=60),
-        _off_product(code="231312345", name="yogurt", brands=["dolche"], countries_tags=["en:poland"], kcal=60),  # same item
-        _off_product(code="5202234141398", name="Greek Yogurt", brands=["Kri Kri"], countries_tags=["en:greece", "en:ukraine"]),
-        _off_product(code="5202234141399", name="Greek Yogurt 500 g", brands=["Kri Kri"], countries_tags=["en:greece"]),
-        _off_product(code="0894700010137", name="Nonfat Greek Yogurt", brands=["Chobani"],
-                     countries_tags=["en:united-states"]),                                                       # far market
-        _off_product(code="5900000000001", name="Strawberry drink", brands=["Tymbark"], countries_tags=["en:poland"]),  # no term
-    ]
-    queries = _hits_by_query(monkeypatch, ua, world)
+UA_QUERY = '{} (countries_tags:"en:ukraine" OR code:482*)'
+UA_YOGURTS = [
+    _off_product(code="4820222760447", name="Йогурт Карпатський", product_name_en="Carpathian yogurt",
+                 brands=["Galychyna"], countries_tags=["en:ukraine"]),
+    _off_product(code="4820226161165", name="Йогурт", brands=["Danone"]),                   # 482, no tags, no English name
+    _off_product(code="5202234141398", name="Greek Yogurt", brands=["Kri Kri"], countries_tags=["en:greece", "en:ukraine"]),
+]
+WORLD_YOGURTS = [
+    _off_product(code="4602248009492", name="Yogurt", brands=["Yarmarka"], countries_tags=["en:poland"]),  # RU prefix
+    _off_product(code="4820000000017", name="Yogurt Сырок", brands=["X"], countries_tags=["en:poland"]),     # Russian text
+    _off_product(code="0000231312345", name="Yogurt", brands=["Dolche"], countries_tags=["en:poland"], kcal=60),
+    _off_product(code="231312345", name="yogurt", brands=["dolche"], countries_tags=["en:poland"], kcal=60),  # same item
+    _off_product(code="5202234141399", name="Greek Yogurt 500 g", brands=["Kri Kri"], countries_tags=["en:greece"]),
+    _off_product(code="0894700010137", name="Nonfat Greek Yogurt", brands=["Chobani"], countries_tags=["en:united-states"]),
+    _off_product(code="8801234567890", name="Yogurt", brands=["Seoul Milk"], countries_tags=["en:south-korea"]),  # far
+    _off_product(code="5900000000001", name="Strawberry drink", brands=["Tymbark"], countries_tags=["en:poland"]),  # no term
+]
+
+
+def test_search_remote_ukraine_first_then_worldwide_without_ru_noise_or_duplicates(monkeypatch):
+    asked = _fake_search(monkeypatch, UA_YOGURTS, WORLD_YOGURTS)
     names = [p["name"] for p in food_db.search_remote("yogurt")]
-    assert queries == ['yogurt countries_tags:"en:ukraine"', "yogurt"]
-    assert names == ["Carpathian yogurt", "Greek Yogurt", "Yogurt"]
+    assert asked == [(UA_QUERY.format("yogurt"), "uk,en"), ("yogurt", "uk,en")]
+    assert names == ["Carpathian yogurt", "Greek Yogurt", "Yogurt", "Nonfat Greek Yogurt"]
+
+
+def test_search_remote_matches_ukrainian_names_too(monkeypatch):
+    _fake_search(monkeypatch, UA_YOGURTS, WORLD_YOGURTS)
+    # Many Ukrainian products have no country tag: the 482 barcode counts as the Ukrainian market.
+    assert [(p["name_uk"] or p["name"], p["brand"]) for p in food_db.search_remote("йогурт")] == [
+        ("Йогурт Карпатський", "Galychyna"), ("Йогурт", "Danone")]
+
+
+def test_search_remote_skips_worldwide_when_ukraine_has_enough(monkeypatch):
+    kefirs = [_off_product(code=f"48200000000{i:02d}", name=f"Кефір {i}", kcal=40 + i, countries_tags=["en:ukraine"])
+              for i in range(food_db.UA_ENOUGH)]
+    asked = _fake_search(monkeypatch, kefirs)
+    assert len(food_db.search_remote("кефір")) == food_db.UA_ENOUGH
+    assert len(asked) == 1
 
 
 def test_search_remote_strips_query_syntax(monkeypatch):
-    queries = _hits_by_query(monkeypatch, [], [])
+    asked = _fake_search(monkeypatch, [])
     food_db.search_remote('yogurt:"(x')
-    assert queries[0] == 'yogurt x countries_tags:"en:ukraine"'
+    assert asked[0][0] == UA_QUERY.format("yogurt x")
 
 
 def test_search_remote_collapses_same_brand_same_nutrition(monkeypatch):
@@ -280,30 +329,27 @@ def test_search_remote_collapses_same_brand_same_nutrition(monkeypatch):
                      countries_tags=["en:ukraine"]),
         _off_product(code="4823063116046", name="Pepsi Zero Mango", brands=["Pepsi-Cola"], kcal=0.5,
                      countries_tags=["en:ukraine"]),
-        _off_product(code="5449000091376", name="Coca cola café caramel", brands=["Coca-Cola"], kcal=3,
-                     countries_tags=["en:ukraine"]),
     ]
-    queries = _hits_by_query(monkeypatch, colas, [])
-    names = [p["name"] for p in food_db.search_remote("coca cola")]
-    assert names == ["Coca Cola Original taste", "Coca-Cola plus Coffee", "Coca cola café caramel"]
-    assert len(queries) == 2  # only 3 distinct Ukrainian items (< UA_ENOUGH): Europe was asked too
+    _fake_search(monkeypatch, colas)
+    assert [p["name"] for p in food_db.search_remote("coca cola")] == ["Coca Cola Original taste",
+                                                                       "Coca-Cola plus Coffee"]
 
 
-def test_ukrainian_barcode_counts_as_ukrainian_market_without_country_tags(monkeypatch):
-    world = [
-        _off_product(code="4820226161165", name="Йогурт", brands=["Danone"]),          # 482, no tags
-        _off_product(code="5065458922361", name="Йогурт", brands=["Noname"]),          # UK prefix, no tags
-    ]
-    _hits_by_query(monkeypatch, [], world)
-    assert [p["brand"] for p in food_db.search_remote("йогурт")] == ["Danone"]
-
-
-def test_search_remote_skips_world_when_ukraine_has_enough(monkeypatch):
-    ua = [_off_product(code=f"48200000000{i:02d}", name=f"Кефір {i}", kcal=40 + i, countries_tags=["en:ukraine"])
-          for i in range(food_db.UA_ENOUGH)]
-    queries = _hits_by_query(monkeypatch, ua, [])
-    assert len(food_db.search_remote("кефір")) == food_db.UA_ENOUGH
-    assert len(queries) == 1
+def test_search_products_is_shared_between_languages(app, monkeypatch):
+    asked = _fake_search(monkeypatch, UA_YOGURTS, WORLD_YOGURTS)
+    with app.app_context():
+        user = create_user("lang@user.test")
+        uk = food_db.search_products("yogurt", user.id, lang="uk")
+        en = food_db.search_products("yogurt", user.id, lang="en")
+        assert {p.id for p in uk} == {p.id for p in en}
+        assert "Йогурт Карпатський" in [p.name_in("uk") for p in uk]
+        assert "Carpathian yogurt" in [p.name_in("en") for p in en]
+        # Cached products are found by either name, offline too.
+        assert "Nonfat Greek Yogurt" in [p.name for p in food_db.search_products("yogurt", user.id, remote=False,
+                                                                                lang="uk")]
+        assert "Carpathian yogurt" in [p.name for p in food_db.search_products("карпатський", user.id, remote=False,
+                                                                              lang="en")]
+    assert len(asked) == 2  # the second language reused the cached OFF search
 
 
 def test_local_search_is_case_insensitive_for_cyrillic_and_knows_ukrainian_names(app, monkeypatch):
@@ -318,6 +364,11 @@ def test_local_search_is_case_insensitive_for_cyrillic_and_knows_ukrainian_names
         assert [p.name for p in food_db.search_products("йогурт галичина", user.id, remote=False)] == ["Йогурт Галичина"]
         assert "Buckwheat, cooked" in [p.name for p in food_db.search_products("Гречка", user.id, remote=False)]
         assert "Borscht" in [p.name for p in food_db.search_products("борщ", user.id, remote=False)]
+        # Ukrainian display names; synonyms and English names find them too.
+        uk = lambda q: [p.name_in("uk") for p in food_db.search_products(q, user.id, remote=False, lang="uk")]
+        assert uk("гречана каша") == ["Гречка, варена"]
+        assert "Куряче філе" in uk("курка")
+        assert "Гречка, варена" in uk("buckwheat")
         # LIKE wildcards in user input are literal ("_" would otherwise match any character)
         assert food_db.search_products("_", user.id, remote=False) == []
     assert calls == []
