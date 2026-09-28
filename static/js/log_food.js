@@ -1,5 +1,5 @@
 /* Log Food screen: product picker (recent / favorites / my foods / search incl. Open Food Facts),
-   portion stepper with live macros, barcode scanner. Posts the unchanged form contract:
+   portion stepper with live macros, barcode scanner, food photo recognition. Posts the unchanged form contract:
    product_id, meal_type, portion_grams, date. */
 (function () {
   'use strict';
@@ -29,12 +29,26 @@
   const meta = (p) => App.t('{kcal} kcal · P {p} · F {f} · C {c}', { kcal: Math.round(p.kcal), p: fmt(p.p), f: fmt(p.f), c: fmt(p.c) })
     + ' · ' + (p.portion ? App.t('last {g} g', { g: Math.round(p.portion) }) : App.t('per 100 g'));
 
+  /* Nutri-Score chip (.grade-* in app.css); a dashed outline marks a model prediction. */
+  function paintGrade(el, p) {
+    el.hidden = !p.grade;
+    if (!p.grade) return;
+    const predicted = p.grade_src === 'model';
+    el.className = `grade-chip grade-${p.grade}${predicted ? ' grade-model' : ''}`;
+    el.textContent = p.grade;
+    el.setAttribute('role', 'img');
+    const label = App.t(predicted ? 'Nutri-Score {g} (predicted by Kolos)' : 'Nutri-Score {g}', { g: p.grade.toUpperCase() });
+    el.setAttribute('aria-label', label);
+    el.title = label;
+  }
+
   /* ---------------------------------------------------------------- rendering */
   function row(p) {
     const el = tpl.content.firstElementChild.cloneNode(true);
     el.dataset.id = p.id;
     el.querySelector('[data-name]').textContent = p.label;
     el.querySelector('[data-meta]').textContent = meta(p);
+    paintGrade(el.querySelector('[data-grade]'), p);
     const pick = el.querySelector('[data-pick]');
     pick.setAttribute('aria-checked', String(selected && selected.id === p.id));
     if (selected && selected.id === p.id) {
@@ -83,9 +97,11 @@
     hiddenId.value = selected ? selected.id : '';
     selectedCard.hidden = !selected;
     if (selected) {
+      paintGrade(document.getElementById('selectedGrade'), selected);
       document.getElementById('selectedName').textContent = selected.label;
       document.getElementById('selectedMeta').textContent =
-        `${Math.round(selected.kcal)} kcal · P ${fmt(selected.p)} · F ${fmt(selected.f)} · C ${fmt(selected.c)} / 100 g`;
+        App.t('{kcal} kcal · P {p} · F {f} · C {c}', { kcal: Math.round(selected.kcal), p: fmt(selected.p), f: fmt(selected.f), c: fmt(selected.c) })
+        + ' · ' + App.t('per 100 g');
     }
     updatePreview();
   }
@@ -355,6 +371,104 @@
     App.closeSheet('scanSheet', true);
     document.getElementById('c-barcode').value = lastCode || '';
     App.openSheet('createSheet');
+  });
+
+  /* ---------------------------------------------------------------- food photo */
+  const photoInput = document.getElementById('photoInput');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoStatus = document.getElementById('photoStatus');
+  const photoResults = document.getElementById('photoResults');
+  const photoList = document.getElementById('photoList');
+  const PHOTO_EDGE = 640;  // the model needs far less; keeps uploads small on mobile data
+
+  /* Downscale on the device and re-encode as JPEG (this also drops EXIF location data). */
+  async function shrink(file) {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const k = Math.min(1, PHOTO_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * k);
+    canvas.height = Math.round(bitmap.height * k);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (bitmap.close) bitmap.close();
+    return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error())), 'image/jpeg', 0.85));
+  }
+
+  function candidateRow(c) {
+    const item = document.createElement('div');
+    item.setAttribute('role', 'listitem');
+    const pct = Math.round(c.confidence * 100);
+    const btn = document.createElement(c.product ? 'button' : 'div');
+    btn.className = 'flex w-full items-center gap-3 px-4 min-h-[60px] py-2 text-left' + (c.product ? ' press' : '');
+    if (c.product) btn.type = 'button';
+    const grade = document.createElement('span');
+    const text = document.createElement('span');
+    text.className = 'min-w-0 flex-1';
+    const name = document.createElement('span');
+    name.className = 'block truncate text-[15px] font-medium';
+    name.textContent = c.product ? c.product.label : c.label;
+    const sub = document.createElement('span');
+    sub.className = 'block text-[13px] text-fg-muted';
+    sub.textContent = c.product ? meta(c.product) : App.t('Not in the food list yet. Try search.');
+    text.append(name, sub);
+    const conf = document.createElement('span');
+    conf.className = 'flex w-16 shrink-0 flex-col items-end gap-1';
+    conf.innerHTML = '<span class="text-[13px] font-semibold tabular-nums"></span>'
+      + '<span class="h-1.5 w-full overflow-hidden rounded-full bg-surface-2"><span class="block h-full rounded-full bg-violet-500"></span></span>';
+    conf.firstChild.textContent = `${pct}%`;
+    conf.lastChild.firstChild.style.width = `${pct}%`;
+    conf.setAttribute('aria-label', App.t('Confidence {n}%', { n: pct }));
+    if (c.product) paintGrade(grade, c.product); else grade.hidden = true;
+    btn.append(grade, text, conf);
+    if (c.product) {
+      btn.addEventListener('click', () => {
+        App.closeSheet('photoSheet');
+        select(c.product);
+        App.toast(App.t('Selected: {name}', { name: c.product.label }), 'success');
+      });
+    }
+    item.appendChild(btn);
+    return item;
+  }
+
+  async function recognise(file) {
+    photoResults.hidden = true;
+    if (photoPreview.src) URL.revokeObjectURL(photoPreview.src);
+    photoPreview.src = URL.createObjectURL(file);
+    photoPreview.hidden = false;
+    photoStatus.textContent = App.t('Recognising…');
+    try {
+      const body = new FormData();
+      body.append('photo', await shrink(file), 'photo.jpg');
+      const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      const res = await fetch(data.urls.photo, {
+        method: 'POST', body, credentials: 'same-origin',
+        headers: { 'X-CSRFToken': token, Accept: 'application/json' },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || App.t('Could not recognise this photo.'));
+      const candidates = (json.candidates || []).map(c => ({ ...c, product: c.product && remember(c.product) }));
+      if (!candidates.length) { photoStatus.textContent = App.t('No food found on this photo. Try another angle.'); return; }
+      photoStatus.textContent = '';
+      photoList.replaceChildren(...candidates.map(candidateRow));
+      photoResults.hidden = false;
+    } catch (err) {
+      photoStatus.textContent = navigator.onLine
+        ? (err.message || App.t('Could not recognise this photo.'))
+        : App.t('You are offline — try again when connected.');
+    }
+  }
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files && photoInput.files[0];
+    if (file) recognise(file);
+    photoInput.value = '';  // choosing the same photo again still fires change
+  });
+  document.getElementById('photoSheet').addEventListener('sheet:closed', () => {
+    if (photoPreview.src) URL.revokeObjectURL(photoPreview.src);
+    photoPreview.removeAttribute('src');
+    photoPreview.hidden = true;
+    photoResults.hidden = true;
+    photoStatus.textContent = '';
   });
 
   /* ---------------------------------------------------------------- boot */

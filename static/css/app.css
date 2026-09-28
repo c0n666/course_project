@@ -344,3 +344,18 @@ html.dark .toast--info    .toast-icon { color: #60A5FA; }
   .press:active, button:not(:disabled):active { transform: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 }
+
+/* ---------- Nutri-Score grade chip (A–E, official palette; D/E darkened for text contrast) ---------- */
+.grade-chip {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 1.375rem; height: 1.375rem; border-radius: .4rem;
+  font-size: .75rem; font-weight: 800; line-height: 1; text-transform: uppercase;
+}
+.grade-a { background: #038141; color: #fff; }
+.grade-b { background: #85BB2F; color: #172405; }
+.grade-c { background: #FECB02; color: #3A2E00; }
+.grade-d { background: #EE8100; color: #2B1600; }
+.grade-e { background: #D3380E; color: #fff; }
+.grade-unrated { background: rgb(var(--line)); color: rgb(var(--fg-muted)); }
+/* Predicted by the Kolos model rather than published by Open Food Facts */
+.grade-model { outline: 1.5px dashed rgb(var(--fg-muted)); outline-offset: 1.5px; }

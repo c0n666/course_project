@@ -476,30 +476,51 @@
       </section>
     </div>
 
-    {% if weight_meta %}
-    <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="weight-heading">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-        <div>
-          <h2 id="weight-heading" class="{{ ui.h2 }}">{{ _('Weight forecast') }}</h2>
-          <p class="text-[13px] text-fg-muted mt-0.5">
-            {{ _('Non-linear model (TDEE adaptation −24 kcal/kg) · 7700 kcal ≈ 1 kg') }} ·
-            {{ _('balance <strong class="text-fg">%(balance)s</strong> kcal/day (intake %(intake)s, expenditure %(spent)s)',
-                 balance=weight_meta.avg_balance_kcal, intake=weight_meta.avg_intake_kcal, spent=weight_meta.avg_expenditure_kcal)|safe }}
-          </p>
+    {% set dq = diet_quality %}
+    <section class="{{ ui.card }} p-5 sm:p-7" aria-labelledby="quality-heading">
+      <h2 id="quality-heading" class="{{ ui.h2 }}">{{ _('Diet quality') }}</h2>
+      <p class="text-[13px] text-fg-muted mt-0.5 mb-5">{{ _('Nutri-Score of what you ate · last 7 days') }}</p>
+      {% if dq.total_kcal %}
+      {% set grade_labels = {'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D', 'e': 'E', 'unrated': _('Not rated')} %}
+      {% if dq.rated_pct %}
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="rounded-2xl bg-emerald-500/10 px-4 py-3">
+          <p class="text-[28px] leading-tight font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{{ _('%(n)s%%', n=dq.good_pct) }}</p>
+          <p class="text-[13px] font-medium text-fg-muted">{{ _('of rated calories from A–B foods') }}</p>
         </div>
-        {% if active_goal and active_goal.target_weight %}
-        <span class="self-start shrink-0 {{ ui.badge }} bg-primary/10 text-primary">{{ _('Target: %(n)s kg', n=active_goal.target_weight) }}</span>
-        {% endif %}
+        <div class="rounded-2xl bg-orange-500/10 px-4 py-3">
+          <p class="text-[28px] leading-tight font-bold tabular-nums text-orange-700 dark:text-orange-300">{{ _('%(n)s%%', n=dq.poor_pct) }}</p>
+          <p class="text-[13px] font-medium text-fg-muted">{{ _('from D–E foods') }}</p>
+        </div>
       </div>
-      <div class="relative h-72">
-        <canvas id="weightChart" aria-label="{{ _('Weight forecast chart') }}" role="img"></canvas>
+      {% else %}
+      <p class="mb-5 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-fg-muted">{{ _('None of this week’s foods has a grade yet. Foods from Open Food Facts usually come with one.') }}</p>
+      {% endif %}
+      {# Share of the week's calories by grade: one bar plus a labelled legend (not color alone) #}
+      <div class="flex h-3 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+        {% for k in ['a', 'b', 'c', 'd', 'e', 'unrated'] if dq.share[k] %}
+        <span class="grade-{{ k }} h-full" style="width: {{ dq.share[k] }}%"></span>
+        {% endfor %}
       </div>
-      <p class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-fg-muted">
-        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-fg" aria-hidden="true"></span> {{ _('Your weigh-ins') if weight_meta.actual_source == 'weigh_ins' else _('Estimated actual weight (from logs)') }}</span>
-        <span class="inline-flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-violet-500" aria-hidden="true"></span> {{ _('System forecast (30 days)') }}</span>
+      <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[13px] font-medium text-fg-muted" aria-label="{{ _('Share of calories by Nutri-Score') }}">
+        {% for k in ['a', 'b', 'c', 'd', 'e', 'unrated'] %}
+        <li class="inline-flex items-center gap-1.5">
+          {% if k == 'unrated' %}<span class="grade-chip grade-unrated" aria-hidden="true">?</span>{% else %}{{ ui.grade_chip(k) }}{% endif %}
+          <span class="tabular-nums"><span class="sr-only">{{ grade_labels[k] }}: </span>{{ _('%(n)s%%', n=dq.share[k]) }}</span>{% if k == 'unrated' %}<span>{{ _('not rated') }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="relative h-56 mt-5">
+        <canvas id="qualityChart" aria-label="{{ _('Calories by Nutri-Score per day') }}" role="img"></canvas>
+      </div>
+      <p class="mt-4 text-xs text-fg-muted">
+        {{ _('Grades come from Open Food Facts; %(n)s%% of your calories have one.', n=dq.rated_pct) }}
+        {% if dq.model_ready %}{{ _('Grades with a dashed outline are predicted by the Kolos model.') }}{% else %}{{ _('The Kolos model will rate the other foods once it is trained.') }}{% endif %}
       </p>
+      {% else %}
+      <div class="rounded-2xl bg-surface-2 px-6 py-8 text-center text-sm text-fg-muted">{{ _('Log food to see how healthy your week was.') }}</div>
+      {% endif %}
     </section>
-    {% endif %}
 
     {% if profile %}
     <section aria-labelledby="profile-heading">
@@ -686,7 +707,7 @@
 <script>
   const macrosData = {{ chart_macros_json|safe }};
   const caloriesData = {{ chart_calories_json|safe }};
-  const weightData = {{ chart_weight_json|safe }};
+  const qualityData = {{ diet_quality|tojson }};
   const calorieTarget = {{ targets.calories if targets else 'null' }};
 
   /* Charts live in the Insights view — built the first time it is shown,
@@ -771,62 +792,39 @@
       },
     }));
 
-    const weightCanvas = document.getElementById('weightChart');
-    if (weightCanvas && weightData.labels && weightData.labels.length) {
-      const datasets = [
-        {
-          label: weightData.meta.actual_source === 'weigh_ins' ? {{ _('Weigh-in')|tojson }} : {{ _('Estimated actual weight')|tojson }},
-          data: weightData.actual,
-          borderColor: T.fg,
-          backgroundColor: 'transparent',
-          borderWidth: 2.5,
-          tension: 0.3,
-          pointRadius: 3,
-          pointBackgroundColor: T.fg,
-          spanGaps: weightData.meta.actual_source === 'weigh_ins',  // connect weigh-ins across skipped days
+    const qualityCanvas = document.getElementById('qualityChart');
+    if (qualityCanvas) {
+      // Nutri-Score palette, kept in sync with .grade-* in app.css
+      const G = { a: '#038141', b: '#85BB2F', c: '#FECB02', d: '#EE8100', e: '#D3380E', unrated: T.line };
+      const names = { a: 'A', b: 'B', c: 'C', d: 'D', e: 'E', unrated: {{ _('Not rated')|tojson }} };
+      charts.push(new Chart(qualityCanvas, {
+        type: 'bar',
+        data: {
+          labels: qualityData.labels,
+          datasets: Object.keys(G).map(k => ({
+            label: names[k],
+            data: qualityData.series[k],
+            backgroundColor: G[k],
+            borderRadius: 4,
+            borderSkipped: false,
+            borderColor: T.surface,
+            borderWidth: { top: 1.5 },
+            maxBarThickness: 28,
+          })),
         },
-        {
-          label: {{ _('System forecast')|tojson }},
-          data: weightData.forecast,
-          borderColor: C.ai,
-          backgroundColor: 'transparent',
-          borderWidth: 2.5,
-          borderDash: [8, 5],
-          tension: 0.45,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          cubicInterpolationMode: 'monotone',
-          spanGaps: false,
-        },
-      ];
-      if (weightData.target_weight) {
-        datasets.push({
-          label: {{ _('Target weight')|tojson }},
-          data: weightData.labels.map(() => weightData.target_weight),
-          borderColor: T.primary,
-          borderWidth: 1.5,
-          borderDash: [3, 4],
-          pointRadius: 0,
-          fill: false,
-        });
-      }
-      charts.push(new Chart(weightCanvas, {
-        type: 'line',
-        data: { labels: weightData.labels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
           scales: {
-            y: { title: { display: true, text: {{ _('Weight (kg)')|tojson }} }, grid: { color: T.line }, border: { display: false } },
-            x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: false, font: { size: 11 } } },
+            y: { stacked: true, beginAtZero: true, grid: { color: T.line }, border: { display: false } },
           },
           plugins: {
             legend: { display: false },
             tooltip: {
-              callbacks: {
-                label: (ctx) => ctx.parsed.y == null ? null : `${ctx.dataset.label}: ${ctx.parsed.y} {{ _('kg') }}`,
-              },
+              filter: (item) => item.parsed.y > 0,
+              callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} {{ _('kcal') }}` },
             },
           },
         },
