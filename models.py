@@ -110,6 +110,9 @@ class Product(db.Model):
     # Lower-cased "name name_uk brand aliases" for search: SQLite's LOWER()/LIKE only fold ASCII,
     # so Cyrillic queries ("йогурт" vs "Йогурт") must match a Python-lowered copy.
     search_terms: Mapped[str | None] = mapped_column(db.String(600), nullable=True)
+    # Nutri-Score grade "a".."e": from Open Food Facts ("off") or predicted by our model ("model").
+    nutri_grade: Mapped[str | None] = mapped_column(db.String(1), nullable=True)
+    nutri_source: Mapped[str | None] = mapped_column(db.String(8), nullable=True)
 
     food_logs: Mapped[list["FoodLog"]] = relationship(back_populates="product")
     micronutrient_links: Mapped[list["ProductMicronutrient"]] = relationship(

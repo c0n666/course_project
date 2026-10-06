@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-27 15:50+0300\n"
+"POT-Creation-Date: 2026-09-27 16:34+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -300,6 +300,15 @@ msgstr "Продукти з росії та білорусі не підтрим
 msgid "Product not found."
 msgstr "Продукт не знайдено."
 
+msgid "Photo recognition is still being trained. Search or scan the barcode for now."
+msgstr "Розпізнавання фото ще навчається. Поки що скористайтеся пошуком або штрихкодом."
+
+msgid "Choose a JPEG, PNG or WebP photo."
+msgstr "Оберіть фото у форматі JPEG, PNG або WebP."
+
+msgid "The photo is too large (8 MB at most)."
+msgstr "Фото завелике (щонайбільше 8 МБ)."
+
 msgid "Give the food a name."
 msgstr "Дайте продукту назву."
 
@@ -580,6 +589,34 @@ msgstr "Камера недоступна. Введіть номер штрих�
 msgid "A barcode has 8 to 14 digits."
 msgstr "Штрихкод має від 8 до 14 цифр."
 
+#, python-brace-format
+msgid "Nutri-Score {g}"
+msgstr "Nutri-Score {g}"
+
+#, python-brace-format
+msgid "Nutri-Score {g} (predicted by Kolos)"
+msgstr "Nutri-Score {g} (прогноз Kolos)"
+
+msgid "Not in the food list yet. Try search."
+msgstr "Цього ще немає у списку продуктів. Спробуйте пошук."
+
+#, python-brace-format
+msgid "Confidence {n}%"
+msgstr "Впевненість {n}%"
+
+#, python-brace-format
+msgid "Selected: {name}"
+msgstr "Обрано: {name}"
+
+msgid "Recognising…"
+msgstr "Розпізнаємо…"
+
+msgid "Could not recognise this photo."
+msgstr "Не вдалося розпізнати це фото."
+
+msgid "No food found on this photo. Try another angle."
+msgstr "На фото не знайдено їжі. Спробуйте інший ракурс."
+
 #, python-format
 msgid "Grade %(grade)s"
 msgstr "Оцінка %(grade)s"
@@ -631,6 +668,14 @@ msgstr "Ідеї страв"
 #, python-format
 msgid "P %(p)s · F %(f)s · C %(c)s g"
 msgstr "Б %(p)s · Ж %(f)s · В %(c)s г"
+
+#, python-format
+msgid "Nutri-Score %(g)s (predicted by Kolos)"
+msgstr "Nutri-Score %(g)s (прогноз Kolos)"
+
+#, python-format
+msgid "Nutri-Score %(g)s"
+msgstr "Nutri-Score %(g)s"
 
 #, python-format
 msgid "Delete “%(name)s” from %(meal)s?"
@@ -709,8 +754,8 @@ msgstr "Акаунт"
 msgid "Kolos · personal nutrition & training"
 msgstr "Kolos · персональне харчування й тренування"
 
-msgid "Profile & goals"
-msgstr "Профіль і цілі"
+msgid "Profile & settings"
+msgstr "Профіль і налаштування"
 
 msgid "Log food"
 msgstr "Записати їжу"
@@ -1118,35 +1163,49 @@ msgstr "Споживання за день · останні 7 днів"
 msgid "Calorie trend chart"
 msgstr "Графік динаміки калорій"
 
-msgid "Weight forecast"
-msgstr "Прогноз ваги"
+msgid "Diet quality"
+msgstr "Якість раціону"
 
-msgid "Non-linear model (TDEE adaptation −24 kcal/kg) · 7700 kcal ≈ 1 kg"
-msgstr "Нелінійна модель (адаптація TDEE −24 ккал/кг) · 7700 ккал ≈ 1 кг"
+msgid "Nutri-Score of what you ate · last 7 days"
+msgstr "Nutri-Score з'їденого · останні 7 днів"
 
-#, python-format
-msgid ""
-"balance <strong class=\"text-fg\">%(balance)s</strong> kcal/day (intake %(intake)s, expenditure "
-"%(spent)s)"
-msgstr ""
-"баланс <strong class=\"text-fg\">%(balance)s</strong> ккал/день (споживання %(intake)s, витрати "
-"%(spent)s)"
+msgid "Not rated"
+msgstr "Без оцінки"
 
 #, python-format
-msgid "Target: %(n)s kg"
-msgstr "Ціль: %(n)s кг"
+msgid "%(n)s%%"
+msgstr "%(n)s%%"
 
-msgid "Weight forecast chart"
-msgstr "Графік прогнозу ваги"
+msgid "of rated calories from A–B foods"
+msgstr "оцінених калорій — з продуктів A–B"
 
-msgid "Your weigh-ins"
-msgstr "Ваші зважування"
+msgid "from D–E foods"
+msgstr "з продуктів D–E"
 
-msgid "Estimated actual weight (from logs)"
-msgstr "Оцінка фактичної ваги (за записами)"
+msgid "None of this week’s foods has a grade yet. Foods from Open Food Facts usually come with one."
+msgstr "Жоден продукт цього тижня ще не має оцінки. Продукти з Open Food Facts зазвичай її мають."
 
-msgid "System forecast (30 days)"
-msgstr "Прогноз системи (30 днів)"
+msgid "Share of calories by Nutri-Score"
+msgstr "Частка калорій за Nutri-Score"
+
+msgid "not rated"
+msgstr "без оцінки"
+
+msgid "Calories by Nutri-Score per day"
+msgstr "Калорії за Nutri-Score по днях"
+
+#, python-format
+msgid "Grades come from Open Food Facts; %(n)s%% of your calories have one."
+msgstr "Оцінки беруться з Open Food Facts; оцінку мають %(n)s%% ваших калорій."
+
+msgid "Grades with a dashed outline are predicted by the Kolos model."
+msgstr "Оцінки з пунктирною рамкою передбачила модель Kolos."
+
+msgid "The Kolos model will rate the other foods once it is trained."
+msgstr "Решту продуктів оцінить модель Kolos, щойно її буде навчено."
+
+msgid "Log food to see how healthy your week was."
+msgstr "Записуйте їжу, щоб побачити, наскільки корисним був ваш тиждень."
 
 msgid "Body"
 msgstr "Тіло"
@@ -1257,18 +1316,6 @@ msgstr "Запишіть їжу, щоб побачити БЖВ"
 msgid "Calories (kcal)"
 msgstr "Калорії (ккал)"
 
-msgid "Weigh-in"
-msgstr "Зважування"
-
-msgid "Estimated actual weight"
-msgstr "Оцінка фактичної ваги"
-
-msgid "System forecast"
-msgstr "Прогноз системи"
-
-msgid "Target weight"
-msgstr "Цільова вага"
-
 msgid "Choose day"
 msgstr "Вибір дня"
 
@@ -1286,6 +1333,12 @@ msgstr "Наступний тиждень"
 
 msgid "Log Food — Kolos"
 msgstr "Запис їжі — Kolos"
+
+msgid "Food photo"
+msgstr "Фото страви"
+
+msgid "Soon"
+msgstr "Скоро"
 
 msgid "Quick add"
 msgstr "Швидке додавання"
@@ -1370,6 +1423,26 @@ msgstr[2] "%(num)d записів"
 
 msgid "Copy"
 msgstr "Скопіювати"
+
+msgid "Kolos is still learning dishes"
+msgstr "Kolos ще вчиться розпізнавати страви"
+
+msgid "Our own model will recognise food from a photo soon. Until then, search or scan the barcode."
+msgstr ""
+"Незабаром наша власна модель розпізнаватиме їжу за фото. А поки що скористайтеся пошуком або "
+"штрихкодом."
+
+msgid "Take or choose a photo"
+msgstr "Зробіть або оберіть фото"
+
+msgid "One dish, from above, in good light"
+msgstr "Одна страва, згори, при доброму світлі"
+
+msgid "Best matches"
+msgstr "Найкращі збіги"
+
+msgid "Check the match and the portion before saving."
+msgstr "Перед збереженням перевірте страву та порцію."
 
 msgid "Not in the database yet"
 msgstr "Цього продукту ще немає в базі"
@@ -1518,6 +1591,9 @@ msgstr "Підтримати"
 
 msgid "Gain"
 msgstr "Набрати"
+
+msgid "Target weight"
+msgstr "Цільова вага"
 
 msgid "Calorie and macro targets adapt to this goal."
 msgstr "Цілі калорій і БЖВ підлаштовуються під цю мету."
@@ -1722,26 +1798,4 @@ msgstr "З'явиться на вкладці «Коуч» у атлета."
 
 msgid "Approved"
 msgstr "Схвалені"
-
-#~ msgid ""
-#~ "class=\"tab-link press relative flex-1 flex flex-col"
-#~ " items-center justify-center gap-0.5 h-full text-[10px]"
-#~ " font-medium\""
-#~ msgstr ""
-
-#~ msgid ""
-#~ "class=\"group flex items-center gap-3 rounded-xl "
-#~ "px-3 min-h-[44px] text-sm font-medium text-slate-400"
-#~ " hover:bg-white/5 hover:text-white aria-[current=page]:bg-"
-#~ "white/10 aria-[current=page]:text-white\""
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Add 25–35 g of protein per meal (chicken, "
-#~ "fish, eggs, cottage cheese, yogurt) — protein is "
-#~ "below 85% of your target."
-#~ msgstr "Додавайте 25–35 г білка на прийом (курка, риба, яйця, сир, йогурт) — білок нижче 85% від цілі."
-
-#~ msgid "Step 1 of 3"
-#~ msgstr "Крок 1 з 3"
 

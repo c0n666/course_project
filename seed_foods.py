@@ -2,7 +2,8 @@
 
 Values are per 100 g (kcal, protein g, fat g, carbs g), rounded, based on USDA FoodData Central
 reference values; "cooked" items are as eaten. Branded products come from Open Food Facts instead.
-Names already present in app.PRODUCT_SEED (with micronutrient data) are skipped when seeding.
+Names already present in app.PRODUCT_SEED are skipped when seeding. Micronutrients for all built-in
+foods come from USDA FoodData Central (usda_micros.py, built by tools/build_usda_micros.py).
 """
 
 GENERIC_FOODS: list[tuple[str, float, float, float, float]] = [
@@ -170,10 +171,7 @@ GENERIC_FOODS: list[tuple[str, float, float, float, float]] = [
     # --- Dishes ---
     ("Cheese pizza", 266, 11.4, 10.4, 33.0),
     ("Hamburger", 254, 12.9, 11.0, 25.0),
-    ("Borscht", 50, 1.5, 2.2, 6.0),
-    ("Varenyky with potato", 148, 4.3, 3.5, 25.0),
     ("Chicken soup", 36, 2.5, 1.2, 3.7),
-    ("Caesar salad", 190, 6.6, 16.0, 6.0),
 
     # --- Drinks ---
     ("Orange juice", 45, 0.7, 0.2, 10.4),
@@ -182,12 +180,14 @@ GENERIC_FOODS: list[tuple[str, float, float, float, float]] = [
     ("Beer", 43, 0.5, 0, 3.6),
     ("Red wine", 85, 0.1, 0, 2.6),
     ("Coffee, black", 1, 0.1, 0, 0),
-    ("Latte, 2% milk", 40, 2.7, 1.5, 4.0),
     ("Tea, unsweetened", 1, 0, 0, 0.3),
-    ("Oat milk", 46, 1.0, 1.5, 6.7),
     ("Almond milk, unsweetened", 15, 0.6, 1.1, 0.6),
     ("Soy milk", 54, 3.3, 1.8, 6.3),
 ]
+
+# Built-in foods dropped from the catalogue (no USDA reference data). init-db removes them from existing
+# databases unless someone has already logged them.
+RETIRED_FOODS = ("Borscht", "Varenyky with potato", "Caesar salad", "Latte, 2% milk", "Oat milk")
 
 # Ukrainian display names (Product.name_uk), shown when the interface is in Ukrainian.
 # Includes app.PRODUCT_SEED items.
@@ -353,10 +353,7 @@ UK_NAMES: dict[str, str] = {
     # Dishes
     "Cheese pizza": "Піца із сиром",
     "Hamburger": "Гамбургер",
-    "Borscht": "Борщ",
-    "Varenyky with potato": "Вареники з картоплею",
     "Chicken soup": "Курячий суп",
-    "Caesar salad": "Салат «Цезар»",
     # Drinks
     "Orange juice": "Апельсиновий сік",
     "Apple juice": "Яблучний сік",
@@ -364,9 +361,7 @@ UK_NAMES: dict[str, str] = {
     "Beer": "Пиво",
     "Red wine": "Червоне вино",
     "Coffee, black": "Чорна кава",
-    "Latte, 2% milk": "Лате, молоко 2%",
     "Tea, unsweetened": "Чай без цукру",
-    "Oat milk": "Вівсяне молоко",
     "Almond milk, unsweetened": "Мигдальне молоко без цукру",
     "Soy milk": "Соєве молоко",
 }
@@ -535,10 +530,7 @@ UK_SEARCH_NAMES: dict[str, str] = {
     # Dishes
     "Cheese pizza": "піца",
     "Hamburger": "гамбургер бургер",
-    "Borscht": "борщ",
-    "Varenyky with potato": "вареники з картоплею",
     "Chicken soup": "курячий суп бульйон",
-    "Caesar salad": "салат цезар",
     # Drinks
     "Orange juice": "апельсиновий сік",
     "Apple juice": "яблучний сік",
@@ -546,9 +538,7 @@ UK_SEARCH_NAMES: dict[str, str] = {
     "Beer": "пиво",
     "Red wine": "червоне вино",
     "Coffee, black": "кава чорна",
-    "Latte, 2% milk": "лате кава з молоком",
     "Tea, unsweetened": "чай",
-    "Oat milk": "вівсяне молоко",
     "Almond milk, unsweetened": "мигдальне молоко",
     "Soy milk": "соєве молоко",
 }

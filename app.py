@@ -68,13 +68,22 @@ from i18n import (
     select_locale,
 )
 from llm_providers import ProviderError
-from seed_foods import GENERIC_FOODS, UK_NAMES, UK_SEARCH_NAMES
+from ml_inference import (
+    GRADES,
+    PHOTO_MAX_BYTES,
+    PHOTO_TYPES,
+    photo_model_ready,
+    product_grade,
+    recognize_photo,
+    score_model_ready,
+)
+from seed_foods import GENERIC_FOODS, RETIRED_FOODS, UK_NAMES, UK_SEARCH_NAMES
+from usda_micros import USDA_MICROS
 from nutrition import (
     auto_water_goal_ml,
     calculate_daily_targets,
     goal_progress,
     logging_streak,
-    predict_weight_trend,
     water_goal_ml,
     water_total_ml,
     weekly_checkin,
@@ -173,6 +182,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.add_template_filter(coach_markup, "coach_markup")
     app.add_template_filter(format_local_date, "ldate")
+    app.add_template_global(product_grade)
 
     @app.context_processor
     def _brand():
@@ -249,6 +259,7 @@ def food_logs_for_day(user_id: int, day: date | None = None) -> list[FoodLog]:
 def product_payload(product: Product, favorite_ids=frozenset(), portion: float | None = None) -> dict:
     """JSON-friendly product for the Log Food picker (values per 100 g), named in the interface language."""
     lang = current_language()
+    grade, grade_source = product_grade(product)
     return {
         "id": product.id,
         "name": product.name_in(lang),
@@ -259,6 +270,8 @@ def product_payload(product: Product, favorite_ids=frozenset(), portion: float |
         "f": float(product.fats),
         "c": float(product.carbs),
         "source": product.source,
+        "grade": grade,
+        "grade_src": grade_source,
         "terms": product.search_terms or product.name.lower(),
         "favorite": product.id in favorite_ids,
         "portion": portion,
@@ -429,6 +442,39 @@ def calorie_trend_7_days(user_id: int, end_day: date | None = None) -> dict:
     return {"labels": labels, "values": values}
 
 
+def diet_quality_7_days(user_id: int, end_day: date | None = None) -> dict:
+    """Calories per Nutri-Score grade (A–E, plus unrated foods) for each of the last 7 days."""
+    end_day = end_day or date.today()
+    start = end_day - timedelta(days=6)
+    keys = [*GRADES, "unrated"]
+    series = {k: [0.0] * 7 for k in keys}
+    grades: dict[int, str] = {}
+    logs = (
+        FoodLog.query.filter(FoodLog.user_id == user_id, FoodLog.date.between(start, end_day))
+        .options(joinedload(FoodLog.product))
+        .all()
+    )
+    for log in logs:
+        if log.product_id not in grades:
+            grades[log.product_id] = product_grade(log.product)[0] or "unrated"
+        series[grades[log.product_id]][(log.date - start).days] += log.calories
+
+    totals = {k: sum(v) for k, v in series.items()}
+    total = sum(totals.values())
+    rated = total - totals["unrated"]
+    pct = lambda part, whole: round(100 * part / whole) if whole else 0  # noqa: E731
+    return {
+        "labels": [format_local_date(start + timedelta(days=i), "chart") for i in range(7)],
+        "series": {k: [round(v) for v in values] for k, values in series.items()},
+        "share": {k: pct(totals[k], total) for k in keys},
+        "total_kcal": round(total),
+        "rated_pct": pct(rated, total),
+        "good_pct": pct(totals["a"] + totals["b"], rated),   # of rated calories
+        "poor_pct": pct(totals["d"] + totals["e"], rated),
+        "model_ready": score_model_ready(),
+    }
+
+
 def pending_recommendations_for_user(user_id: int) -> list[Recommendation]:
     return (
         Recommendation.query.join(Report)
@@ -550,6 +596,9 @@ def _migrate_profile_goals_schema() -> None:
     product_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(products)")).fetchall()}
     if "name_uk" not in product_cols:
         db.session.execute(text("ALTER TABLE products ADD COLUMN name_uk VARCHAR(255)"))
+    if "nutri_grade" not in product_cols:
+        db.session.execute(text("ALTER TABLE products ADD COLUMN nutri_grade VARCHAR(1)"))
+        db.session.execute(text("ALTER TABLE products ADD COLUMN nutri_source VARCHAR(8)"))
 
     tables = {
         row[0]
@@ -747,11 +796,7 @@ def register_routes(app: Flask) -> None:
         active_goal = get_active_goal(current_user.id)
         recommendations = pending_recommendations_for_user(current_user.id)
         trend = calorie_trend_7_days(current_user.id, today)
-        weight_trend = (
-            predict_weight_trend(current_user.id, days_forecast=30)
-            if profile_complete(profile)
-            else {"labels": [], "actual": [], "forecast": [], "target_weight": None, "meta": {}}
-        )
+        diet_quality = diet_quality_7_days(current_user.id, today)
 
         calories_in = summary["calories"]
         targets = (
@@ -797,8 +842,7 @@ def register_routes(app: Flask) -> None:
             date_nav=date_nav_context("dashboard", selected_date),
             chart_macros_json=json.dumps(chart_macros),
             chart_calories_json=json.dumps(trend),
-            chart_weight_json=json.dumps(weight_trend),
-            weight_meta=weight_trend.get("meta", {}),
+            diet_quality=diet_quality,
             copy_from_meals=meal_counts_for_day(current_user.id, selected_date - timedelta(days=1)),
             water=water_state(current_user.id, selected_date, profile),
             streak=logging_streak(current_user.id, today),
@@ -1063,6 +1107,7 @@ def register_routes(app: Flask) -> None:
             "preselected": product_payload(preselected, favorite_ids, preselect_grams) if preselected else None,
             "copy_from_date": selected_date - timedelta(days=1),
             "copy_from_meals": meal_counts_for_day(uid, selected_date - timedelta(days=1)),
+            "photo_ready": photo_model_ready(),
         }
 
     @app.route("/log-food", methods=["GET", "POST"])
@@ -1142,6 +1187,27 @@ def register_routes(app: Flask) -> None:
         if not product:
             return jsonify(error=_("Product not found.")), 404
         return jsonify(product=product_payload(product, favorite_ids_for(current_user.id)))
+
+    @app.route("/api/food/photo", methods=["POST"])
+    @login_required
+    def api_food_photo():
+        """Recognise a dish on a photo (multipart field `photo`) and match it to catalogue foods."""
+        if not photo_model_ready():
+            return jsonify(error=_("Photo recognition is still being trained. Search or scan the barcode for now."),
+                           ready=False), 503
+        photo = request.files.get("photo")
+        if photo is None or photo.mimetype not in PHOTO_TYPES:
+            return jsonify(error=_("Choose a JPEG, PNG or WebP photo.")), 400
+        image = photo.read(PHOTO_MAX_BYTES + 1)
+        if len(image) > PHOTO_MAX_BYTES:
+            return jsonify(error=_("The photo is too large (8 MB at most).")), 413
+        favorite_ids = favorite_ids_for(current_user.id)
+        candidates = []
+        for hit in recognize_photo(image):
+            matches = food_db.search_products(hit["label"], current_user.id, limit=1, remote=False,
+                                              lang=current_language())
+            candidates.append({**hit, "product": product_payload(matches[0], favorite_ids) if matches else None})
+        return jsonify(candidates=candidates)
 
     @app.route("/favorites/<int:product_id>/toggle", methods=["POST"])
     @login_required
@@ -1662,96 +1728,37 @@ MICRONUTRIENT_CATALOG = [
     ("Omega-3", "g"),
 ]
 
+# Macros per 100 g; micronutrients come from USDA FoodData Central (usda_micros.py) like every built-in food.
 PRODUCT_SEED = {
     "Chicken breast": {
         "calories_per_100g": 165,
         "proteins": 31,
         "fats": 3.6,
         "carbs": 0,
-        "micronutrients": {
-            "Potassium": 256,
-            "Sodium": 74,
-            "Magnesium": 28,
-            "Calcium": 15,
-            "Zinc": 1.0,
-            "Iron": 1.0,
-            "Vitamin C": 0,
-            "Vitamin D": 4,
-            "Vitamin B12": 0.3,
-            "Omega-3": 0.03,
-        },
     },
     "Brown rice": {
         "calories_per_100g": 111,
         "proteins": 2.6,
         "fats": 0.9,
         "carbs": 23,
-        "micronutrients": {
-            "Potassium": 86,
-            "Sodium": 5,
-            "Magnesium": 43,
-            "Calcium": 10,
-            "Zinc": 1.2,
-            "Iron": 0.6,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0.01,
-        },
     },
     "Greek yogurt": {
         "calories_per_100g": 97,
         "proteins": 9,
         "fats": 5,
         "carbs": 3.6,
-        "micronutrients": {
-            "Potassium": 141,
-            "Sodium": 36,
-            "Magnesium": 11,
-            "Calcium": 110,
-            "Zinc": 0.5,
-            "Iron": 0.1,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0.5,
-            "Omega-3": 0,
-        },
     },
     "Banana": {
         "calories_per_100g": 89,
         "proteins": 1.1,
         "fats": 0.3,
         "carbs": 23,
-        "micronutrients": {
-            "Potassium": 358,
-            "Sodium": 1,
-            "Magnesium": 27,
-            "Calcium": 5,
-            "Zinc": 0.2,
-            "Iron": 0.3,
-            "Vitamin C": 8.7,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0,
-        },
     },
     "Oatmeal": {
         "calories_per_100g": 68,
         "proteins": 2.4,
         "fats": 1.4,
         "carbs": 12,
-        "micronutrients": {
-            "Potassium": 61,
-            "Sodium": 2,
-            "Magnesium": 177,
-            "Calcium": 54,
-            "Zinc": 2.6,
-            "Iron": 4.7,
-            "Vitamin C": 0,
-            "Vitamin D": 0,
-            "Vitamin B12": 0,
-            "Omega-3": 0.11,
-        },
     },
 }
 
@@ -1793,30 +1800,48 @@ def _seed_products_and_links() -> None:
         product.name_uk = UK_NAMES.get(name)
         product.refresh_search_terms(UK_SEARCH_NAMES.get(name))
 
-        for nut_name, amount in data["micronutrients"].items():
-            micro = nutrient_map[nut_name]
-            link = ProductMicronutrient.query.filter_by(
-                product_id=product.id, micronutrient_id=micro.id
-            ).first()
-            if link:
-                link.amount_per_100g = amount
-            else:
-                db.session.add(
-                    ProductMicronutrient(
-                        product_id=product.id,
-                        micronutrient_id=micro.id,
-                        amount_per_100g=amount,
-                    )
-                )
-
+    db.session.flush()
+    _sync_usda_micronutrients(nutrient_map)
     db.session.commit()
     if created_products:
         print("Seeded sample products.")
-    print("Synced product micronutrient links.")
+
+
+def _sync_usda_micronutrients(nutrient_map: dict[str, Micronutrient] | None = None) -> None:
+    """Set the micronutrients of built-in foods from USDA FoodData Central (idempotent; caller commits)."""
+    nutrient_map = nutrient_map or {m.name: m for m in Micronutrient.query.all()}
+    products = Product.query.filter(
+        Product.created_by_id.is_(None), Product.source == SOURCE_SEED, Product.name.in_(USDA_MICROS)
+    ).all()
+    existing = {
+        (link.product_id, link.micronutrient_id): link
+        for link in ProductMicronutrient.query.filter(ProductMicronutrient.product_id.in_([p.id for p in products]))
+    }
+    for product in products:
+        for nut_name, amount in USDA_MICROS[product.name][2].items():
+            micro = nutrient_map[nut_name]
+            link = existing.get((product.id, micro.id))
+            if link:
+                link.amount_per_100g = amount
+            else:
+                db.session.add(ProductMicronutrient(product_id=product.id, micronutrient_id=micro.id,
+                                                    amount_per_100g=amount))
+
+
+def _retire_builtin_foods() -> None:
+    """Delete built-in foods dropped from the catalogue; ones already in someone's log stay."""
+    for product in Product.query.filter(
+        Product.created_by_id.is_(None), Product.source == SOURCE_SEED, Product.name.in_(RETIRED_FOODS)
+    ):
+        if FoodLog.query.filter_by(product_id=product.id).first() is None:
+            FavoriteProduct.query.filter_by(product_id=product.id).delete()
+            db.session.delete(product)  # micronutrient links go with it (delete-orphan)
+    db.session.flush()
 
 
 def _seed_generic_foods() -> None:
     """Add the built-in generic food catalogue (idempotent, keyed by name)."""
+    _retire_builtin_foods()
     existing = {name for (name,) in db.session.query(Product.name).filter(Product.created_by_id.is_(None))}
     added = 0
     for name, kcal, protein, fat, carbs in GENERIC_FOODS:
@@ -1831,6 +1856,7 @@ def _seed_generic_foods() -> None:
     for product in Product.query.filter(Product.created_by_id.is_(None), Product.source == SOURCE_SEED):
         product.name_uk = UK_NAMES.get(product.name)
         product.refresh_search_terms(UK_SEARCH_NAMES.get(product.name))
+    _sync_usda_micronutrients()
     db.session.commit()
     if added:
         print(f"Seeded {added} generic foods.")

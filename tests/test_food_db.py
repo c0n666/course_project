@@ -60,7 +60,7 @@ def test_parse_off_product_maps_fields_and_brand():
     parsed = food_db.parse_off_product(_off_product())
     assert parsed == {
         "barcode": "3017620422003", "name": "Nutella", "name_uk": None, "brand": "Nutella",
-        "calories_per_100g": 539.0, "proteins": 6.3, "fats": 30.9, "carbs": 57.5,
+        "calories_per_100g": 539.0, "proteins": 6.3, "fats": 30.9, "carbs": 57.5, "nutri_grade": None,
         "countries": [], "ukraine": False,
         "searchable": False,  # no market: found by barcode only
     }
@@ -363,7 +363,7 @@ def test_local_search_is_case_insensitive_for_cyrillic_and_knows_ukrainian_names
         db.session.commit()
         assert [p.name for p in food_db.search_products("йогурт галичина", user.id, remote=False)] == ["Йогурт Галичина"]
         assert "Buckwheat, cooked" in [p.name for p in food_db.search_products("Гречка", user.id, remote=False)]
-        assert "Borscht" in [p.name for p in food_db.search_products("борщ", user.id, remote=False)]
+        assert "Beetroot, boiled" in [p.name for p in food_db.search_products("буряк", user.id, remote=False)]
         # Ukrainian display names; synonyms and English names find them too.
         uk = lambda q: [p.name_in("uk") for p in food_db.search_products(q, user.id, remote=False, lang="uk")]
         assert uk("гречана каша") == ["Гречка, варена"]
@@ -382,3 +382,47 @@ def test_barcode_api_rejects_russian_barcodes(app, client, monkeypatch):
     resp = client.get("/api/products/barcode/4602248009492")
     assert resp.status_code == 422 and "Russia" in resp.get_json()["error"]
     assert calls == []
+
+
+def test_builtin_foods_get_usda_micronutrients(app):
+    from app import _seed_generic_foods
+    from models import Micronutrient, ProductMicronutrient
+    from usda_micros import USDA_MICROS
+
+    with app.app_context():
+        _seed_generic_foods()
+        _seed_generic_foods()  # idempotent: no duplicate links
+
+        def micros(name):
+            product = Product.query.filter_by(name=name).one()
+            return {link.micronutrient.name: link.amount_per_100g
+                    for link in ProductMicronutrient.query.filter_by(product_id=product.id)}
+
+        salmon = micros("Salmon, baked")
+        assert salmon == USDA_MICROS["Salmon, baked"][2]
+        assert salmon["Vitamin D"] > 400 and salmon["Omega-3"] > 2
+        assert micros("Oatmeal")["Magnesium"] == USDA_MICROS["Oatmeal"][2]["Magnesium"]  # PRODUCT_SEED too
+        assert ProductMicronutrient.query.count() == sum(len(m) for _, _, m in USDA_MICROS.values())
+        assert {m.name for m in Micronutrient.query} >= {k for _, _, m in USDA_MICROS.values() for k in m}
+
+
+def test_retired_builtin_foods_are_removed_unless_logged(app):
+    from app import _seed_generic_foods
+    from seed_foods import RETIRED_FOODS
+
+    with app.app_context():
+        user = create_user("r@user.test")
+        kept = Product(name="Borscht", calories_per_100g=50, source="seed")
+        gone = Product(name="Oat milk", calories_per_100g=46, source="seed")
+        mine = Product(name="Caesar salad", calories_per_100g=190, source=SOURCE_USER, created_by_id=user.id)
+        db.session.add_all([kept, gone, mine])
+        db.session.flush()
+        db.session.add(FoodLog(user_id=user.id, meal_type="lunch", product_id=kept.id, portion_grams=300))
+        db.session.commit()
+
+        _seed_generic_foods()
+        names = {p.name for p in Product.query}
+        assert "Borscht" in names            # someone logged it
+        assert "Oat milk" not in names       # unused built-in: removed
+        assert "Caesar salad" in names       # a user's own food is never touched
+        assert not set(RETIRED_FOODS) & {n for n, *_ in GENERIC_FOODS}
