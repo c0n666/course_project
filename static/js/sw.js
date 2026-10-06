@@ -2,7 +2,7 @@
    Pages: network-first, fall back to the last saved copy, then to the offline screen.
    Static files and CDN scripts: stale-while-revalidate.
    POST requests are never touched. Saved pages are wiped on sign-out. */
-const VERSION = 'v5';  // bump to refresh cached app files on installed PWAs
+const VERSION = 'v6';  // bump to refresh cached app files on installed PWAs
 const STATIC_CACHE = `static-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
 const CDN_CACHE = `cdn-${VERSION}`;
@@ -18,6 +18,7 @@ const PRECACHE = [
 ];
 const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdn.jsdelivr.net'];
 const NO_CACHE_PAGES = ['/login', '/register', '/logout'];
+const NO_CACHE_PREFIXES = ['/password/', '/email/', '/join/'];  // one-time links and tokens
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -50,7 +51,8 @@ async function networkFirstPage(request) {
   const url = new URL(request.url);
   try {
     const res = await fetch(request);
-    const cacheable = res.ok && !res.redirected && res.type === 'basic' && !NO_CACHE_PAGES.includes(url.pathname);
+    const cacheable = res.ok && !res.redirected && res.type === 'basic' && !NO_CACHE_PAGES.includes(url.pathname)
+      && !NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p));
     if (cacheable) {
       // Skip pages that carry one-off flash toasts so they are not replayed offline.
       const text = await res.clone().text();

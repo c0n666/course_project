@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from werkzeug.security import generate_password_hash
@@ -62,12 +62,13 @@ def client(app):
     return app.test_client()
 
 
-def create_user(email, role="user", trainer=None, password="secret123"):
+def create_user(email, role="user", trainer=None, password="secret123", verified=True):
     user = User(
         email=email,
         password_hash=generate_password_hash(password),
         role=role,
         trainer_id=trainer.id if trainer else None,
+        email_verified_at=datetime.utcnow() if verified else None,
     )
     db.session.add(user)
     db.session.flush()

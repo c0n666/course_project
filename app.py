@@ -12,9 +12,10 @@ from functools import wraps
 import click
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
-from flask_babel import Babel, format_date, lazy_gettext, ngettext
+from flask_babel import Babel, force_locale, format_date, get_locale, lazy_gettext, ngettext
 from flask_babel import gettext as _
 from flask_wtf.csrf import CSRFError, CSRFProtect
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from markupsafe import Markup, escape
 from sqlalchemy import event, func
 from sqlalchemy.exc import OperationalError
@@ -48,6 +49,7 @@ from models import (
     db,
 )
 import food_db
+import mailer
 from coach_agent import (
     APP_NAME,
     CHAT_MAX_CHARS,
@@ -521,7 +523,8 @@ def get_trainer_client(trainer_id: int, client_id: int) -> User | None:
 def _safe_next(target: str | None) -> str | None:
     """Only same-site paths: blocks open redirects through ?next=."""
     if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
-        return target
+        # /logout as `next` would sign the user out right after signing in.
+        return None if target.split("?", 1)[0] == "/logout" else target
     return None
 
 
@@ -564,12 +567,12 @@ MAX_FAILURES = 5
 FAILURE_WINDOW_SECONDS = 60
 
 
-def _rate_limited(key: tuple) -> bool:
-    """True after MAX_FAILURES failures for `key` within the window (per process, in memory)."""
+def _rate_limited(key: tuple, limit: int = MAX_FAILURES) -> bool:
+    """True after `limit` recorded attempts for `key` within the window (per process, in memory)."""
     now = time.monotonic()
     recent = [t for t in _FAILED_ATTEMPTS.get(key, []) if now - t < FAILURE_WINDOW_SECONDS]
     _FAILED_ATTEMPTS[key] = recent
-    return len(recent) >= MAX_FAILURES
+    return len(recent) >= limit
 
 
 def _record_failure(key: tuple) -> None:
@@ -577,6 +580,77 @@ def _record_failure(key: tuple) -> None:
 
 
 MIN_PASSWORD_LENGTH = 8
+MAIL_LIMIT = 3  # emails per address (reset) or per user (confirmation) per minute
+
+RESET_TOKEN_MAX_AGE = 60 * 60          # 1 hour
+CONFIRM_TOKEN_MAX_AGE = 3 * 24 * 3600  # 3 days
+
+
+def _serializer(salt: str) -> URLSafeTimedSerializer:
+    from flask import current_app
+
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=salt)
+
+
+def make_reset_token(user: User) -> str:
+    # The end of the password hash makes the link single-use: it stops matching once the password changes.
+    return _serializer("password-reset").dumps({"uid": user.id, "h": user.password_hash[-16:]})
+
+
+def user_from_reset_token(token: str) -> User | None:
+    try:
+        data = _serializer("password-reset").loads(token, max_age=RESET_TOKEN_MAX_AGE)
+    except BadSignature:  # also expired
+        return None
+    user = db.session.get(User, data.get("uid"))
+    return user if user and user.password_hash[-16:] == data.get("h") else None
+
+
+def make_confirm_token(user: User) -> str:
+    return _serializer("email-confirm").dumps({"uid": user.id, "e": user.email})
+
+
+def user_from_confirm_token(token: str) -> User | None:
+    try:
+        data = _serializer("email-confirm").loads(token, max_age=CONFIRM_TOKEN_MAX_AGE)
+    except BadSignature:
+        return None
+    user = db.session.get(User, data.get("uid"))
+    return user if user and user.email == data.get("e") else None
+
+
+def _mail_locale(user: User) -> str:
+    return user.language or str(get_locale() or DEFAULT_LANGUAGE)
+
+
+def send_password_reset(user: User) -> bool:
+    url = url_for("reset_password", token=make_reset_token(user), _external=True)
+    with force_locale(_mail_locale(user)):
+        return mailer.send_action_mail(
+            user.email,
+            _("Reset your Kolos password"),
+            _("We received a request to reset the password for %(email)s.", email=user.email),
+            _("Choose a new password"),
+            url,
+            _("The link works for 1 hour and only once. If you did not ask for it, ignore this email: your password stays the same."),
+        )
+
+
+def send_email_confirmation(user: User) -> bool:
+    url = url_for("confirm_email", token=make_confirm_token(user), _external=True)
+    with force_locale(_mail_locale(user)):
+        return mailer.send_action_mail(
+            user.email,
+            _("Confirm your email"),
+            _("Confirm %(email)s to finish setting up your Kolos account.", email=user.email),
+            _("Confirm email"),
+            url,
+            _("The link works for 3 days. If you did not create an account, ignore this email."),
+        )
+
+
+def account_home() -> str:
+    return url_for("trainer_dashboard" if current_user.role == "trainer" else "profile_page")
 
 
 def target_weight_error(goal_type: str, current: float | None, target: float | None) -> str | None:
@@ -670,6 +744,10 @@ def _migrate_profile_goals_schema() -> None:
         db.session.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR(5)"))
     if "consented_at" not in user_cols:
         db.session.execute(text("ALTER TABLE users ADD COLUMN consented_at DATETIME"))
+    if "email_verified_at" not in user_cols:
+        # Accounts made before email confirmation existed are treated as confirmed.
+        db.session.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
+        db.session.execute(text("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP"))
 
     product_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(products)")).fetchall()}
     if "name_uk" not in product_cols:
@@ -841,7 +919,8 @@ def register_routes(app: Flask) -> None:
 
                     db.session.commit()
                     login_user(user, remember=True)
-                    flash(_("Welcome to Kolos!"), "success")
+                    send_email_confirmation(user)
+                    flash(_("Welcome to Kolos! We sent a confirmation link to %(email)s.", email=user.email), "success")
                     return redirect(next_url or url_for("index"))
                 except Exception:
                     db.session.rollback()
@@ -906,11 +985,81 @@ def register_routes(app: Flask) -> None:
                 current_user.password_hash = generate_password_hash(new)
                 db.session.commit()
                 flash(_("Password changed."), "success")
-                return redirect(url_for("trainer_dashboard" if current_user.role == "trainer" else "profile_page"))
-        back = url_for("trainer_dashboard" if current_user.role == "trainer" else "profile_page")
+                return redirect(account_home())
         return render_template(
-            "password.html", errors=errors, back_url=back, min_password=MIN_PASSWORD_LENGTH
+            "password.html", errors=errors, back_url=account_home(), min_password=MIN_PASSWORD_LENGTH
         ), (400 if errors else 200)
+
+    @app.route("/password/forgot", methods=["GET", "POST"])
+    def forgot_password():
+        email = request.values.get("email", "").strip().lower()
+        sent = False
+        error = None
+        if request.method == "POST":
+            if "@" not in email or len(email) > 255:
+                error = _("Enter a valid email address.")
+            elif _rate_limited(("reset", email), MAIL_LIMIT):
+                error = _("Too many attempts. Please wait a minute and try again.")
+            else:
+                _record_failure(("reset", email))
+                user = User.query.filter_by(email=email).first()
+                # Same answer whether or not the account exists (no account discovery).
+                if user is not None and not send_password_reset(user):
+                    error = _("Could not send the email. Please try again later.")
+                else:
+                    sent = True
+        return render_template(
+            "password_forgot.html", email=email, sent=sent, error=error
+        ), (400 if error else 200)
+
+    @app.route("/password/reset/<token>", methods=["GET", "POST"])
+    def reset_password(token: str):
+        user = user_from_reset_token(token)
+        if user is None:
+            return render_template("password_reset.html", invalid=True, errors={}), 400
+        errors: dict[str, str] = {}
+        if request.method == "POST":
+            new = request.form.get("new_password", "")
+            if len(new) < MIN_PASSWORD_LENGTH:
+                errors["new_password"] = _("Password must be at least %(n)s characters.", n=MIN_PASSWORD_LENGTH)
+            else:
+                user.password_hash = generate_password_hash(new)
+                if user.email_verified_at is None:
+                    user.email_verified_at = datetime.utcnow()  # the link proved the address
+                db.session.commit()
+                login_user(user, remember=True)
+                flash(_("Password changed."), "success")
+                return redirect(url_for("index"))
+        return render_template(
+            "password_reset.html", invalid=False, errors=errors, email=user.email,
+            min_password=MIN_PASSWORD_LENGTH,
+        ), (400 if errors else 200)
+
+    @app.route("/email/confirm/<token>")
+    def confirm_email(token: str):
+        user = user_from_confirm_token(token)
+        if user is None:
+            flash(_("This confirmation link is invalid or has expired."), "error")
+        else:
+            if user.email_verified_at is None:
+                user.email_verified_at = datetime.utcnow()
+                db.session.commit()
+            flash(_("Email confirmed. Thank you!"), "success")
+        return redirect(account_home() if current_user.is_authenticated else url_for("login"))
+
+    @app.route("/email/confirm/resend", methods=["POST"])
+    @login_required
+    def resend_confirmation():
+        if current_user.email_verified_at is None:
+            if _rate_limited(("confirm", current_user.id), MAIL_LIMIT):
+                flash(_("Too many attempts. Please wait a minute and try again."), "error")
+            else:
+                _record_failure(("confirm", current_user.id))
+                if send_email_confirmation(current_user):
+                    flash(_("We sent a new link to %(email)s.", email=current_user.email), "success")
+                else:
+                    flash(_("Could not send the email. Please try again later."), "error")
+        return redirect(account_home())
 
     @app.route("/logout")
     @login_required
@@ -1665,6 +1814,9 @@ def register_routes(app: Flask) -> None:
     @login_required
     @role_required("trainer")
     def trainer_invite_create():
+        if current_user.email_verified_at is None:
+            flash(_("Confirm your email first to invite athletes."), "error")
+            return redirect(url_for("trainer_dashboard"))
         create_invite(current_user)
         return redirect(url_for("trainer_dashboard", _anchor="invite"))
 
@@ -1903,6 +2055,7 @@ def register_routes(app: Flask) -> None:
                 email="trainer@demo.local",
                 password_hash=generate_password_hash("trainer123"),
                 role="trainer",
+                email_verified_at=datetime.utcnow(),
             )
             db.session.add(trainer)
             db.session.flush()
@@ -1912,6 +2065,7 @@ def register_routes(app: Flask) -> None:
                 email="athlete@demo.local",
                 password_hash=generate_password_hash("athlete123"),
                 role="user",
+                email_verified_at=datetime.utcnow(),
                 trainer_id=trainer.id,
             )
             db.session.add(athlete)

@@ -81,7 +81,11 @@
                  {% if error %}aria-invalid="true" aria-describedby="loginError"{% endif %}>
         </div>
         <div>
-          <label for="password" class="{{ ui.label }}">{{ _('Password') }}</label>
+          <div class="flex items-baseline justify-between gap-3">
+            <label for="password" class="{{ ui.label }}">{{ _('Password') }}</label>
+            <a href="{{ url_for('forgot_password', email=email) if email else url_for('forgot_password') }}"
+               class="mb-1.5 text-[13px] font-semibold text-primary hover:text-primary-strong">{{ _('Forgot password?') }}</a>
+          </div>
           <div class="relative">
             <input type="password" id="password" name="password" required autocomplete="current-password" enterkeyhint="go"
                    class="{{ ui.input }} pr-12" {% if email %}autofocus{% endif %}
@@ -92,7 +96,6 @@
             </button>
           </div>
           {% if error %}<p id="loginError" role="alert" class="mt-1.5 text-[13px] font-medium text-red-600 dark:text-red-400">{{ error }}</p>{% endif %}
-          <p class="{{ ui.hint }}">{{ _('Forgot your password? Ask the administrator for a temporary one.') }}</p>
         </div>
         <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">{{ _('Sign in') }}</button>
       </form>

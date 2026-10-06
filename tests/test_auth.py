@@ -175,3 +175,10 @@ def test_migration_adds_consent_column(app):
         _migrate_profile_goals_schema()
         cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(users)"))}
         assert "consented_at" in cols
+
+
+def test_sign_in_never_returns_to_logout(app, client):
+    with app.app_context():
+        create_user("a@a.test")
+    resp = client.post("/login", data={"email": "a@a.test", "password": "secret123", "next": "/logout"})
+    assert resp.headers["Location"].endswith("/")

@@ -12,6 +12,8 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
 
     <div class="space-y-6">
+      {{ ui.confirm_email_banner(current_user) }}
+
       {# ---------- Identity ---------- #}
       <section class="{{ ui.card }} p-5 flex items-center gap-4">
         <span class="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 text-2xl font-semibold uppercase text-white">{{ current_user.email[:1] }}</span>

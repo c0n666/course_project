@@ -123,3 +123,21 @@
   {% endfor %}
 </form>
 {%- endmacro %}
+
+
+{# "Confirm your email" card with a resend button; renders nothing once the email is confirmed. #}
+{% macro confirm_email_banner(user) -%}
+{% if user.email_verified_at is none %}
+<section class="flex gap-3 rounded-2xl bg-amber-500/10 p-4 ring-1 ring-amber-500/25" aria-labelledby="confirm-email-title">
+  <svg class="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+  <div class="min-w-0 flex-1">
+    <p id="confirm-email-title" class="text-[15px] font-semibold">{{ _('Confirm your email') }}</p>
+    <p class="mt-0.5 text-[13px] text-fg-muted">{{ _('We sent a link to %(email)s. Open it to confirm the address; you will need it to reset your password.', email=user.email) }}</p>
+    <form method="post" action="{{ url_for('resend_confirmation') }}" class="mt-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="text-[13px] font-semibold text-primary hover:text-primary-strong">{{ _('Send the link again') }}</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+{%- endmacro %}

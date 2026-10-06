@@ -17,6 +17,8 @@
     {% endfor %}
   </div>
 
+  {% if current_user.email_verified_at is none %}<div class="mb-6">{{ ui.confirm_email_banner(current_user) }}</div>{% endif %}
+
   {# ---------- Invite ---------- #}
   <section id="invite" class="mb-6" aria-labelledby="invite-heading">
     <h2 id="invite-heading" class="{{ ui.section_title }}">{{ _('Invite an athlete') }}</h2>
@@ -41,10 +43,14 @@
       </form>
       {% else %}
       <p class="text-[15px] text-fg-muted">{{ _('Create a one-time code and QR. The athlete enters or scans it in their profile.') }}</p>
+      {% if current_user.email_verified_at is none %}
+      <p class="mt-3 text-[13px] font-medium text-amber-700 dark:text-amber-300">{{ _('Confirm your email first to invite athletes.') }}</p>
+      {% else %}
       <form method="post" action="{{ url_for('trainer_invite_create') }}" class="mt-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="{{ ui.btn_primary }} w-full">{{ _('Create invite code') }}</button>
       </form>
+      {% endif %}
       {% endif %}
     </div>
   </section>

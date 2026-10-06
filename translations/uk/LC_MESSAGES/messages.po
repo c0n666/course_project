@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-06 12:54+0300\n"
+"POT-Creation-Date: 2026-10-06 13:31+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -140,6 +140,36 @@ msgstr "Увійдіть, щоб продовжити."
 msgid "You do not have permission to access this page."
 msgstr "У вас немає доступу до цієї сторінки."
 
+msgid "Reset your Kolos password"
+msgstr "Відновлення пароля Kolos"
+
+#, python-format
+msgid "We received a request to reset the password for %(email)s."
+msgstr "Ми отримали запит на відновлення пароля для %(email)s."
+
+msgid "Choose a new password"
+msgstr "Обрати новий пароль"
+
+msgid ""
+"The link works for 1 hour and only once. If you did not ask for it, ignore this email: your "
+"password stays the same."
+msgstr ""
+"Посилання діє 1 годину й лише один раз. Якщо ви цього не запитували, просто проігноруйте лист: "
+"ваш пароль не зміниться."
+
+msgid "Confirm your email"
+msgstr "Підтвердіть пошту"
+
+#, python-format
+msgid "Confirm %(email)s to finish setting up your Kolos account."
+msgstr "Підтвердіть адресу %(email)s, щоб завершити налаштування акаунта Kolos."
+
+msgid "Confirm email"
+msgstr "Підтвердити пошту"
+
+msgid "The link works for 3 days. If you did not create an account, ignore this email."
+msgstr "Посилання діє 3 дні. Якщо ви не створювали акаунт, просто проігноруйте цей лист."
+
 msgid "To lose weight, the target must be below your current weight."
 msgstr "Щоб схуднути, цільова вага має бути меншою за поточну."
 
@@ -195,8 +225,9 @@ msgstr "Виберіть тип цілі."
 msgid "Target weight must be between 30 and 300 kg."
 msgstr "Цільова вага має бути від 30 до 300 кг."
 
-msgid "Welcome to Kolos!"
-msgstr "Ласкаво просимо до Kolos!"
+#, python-format
+msgid "Welcome to Kolos! We sent a confirmation link to %(email)s."
+msgstr "Ласкаво просимо до Kolos! Ми надіслали посилання для підтвердження на %(email)s."
 
 msgid "Registration failed. Please try again."
 msgstr "Не вдалося зареєструватися. Спробуйте ще раз."
@@ -206,6 +237,19 @@ msgstr "Поточний пароль неправильний."
 
 msgid "Password changed."
 msgstr "Пароль змінено."
+
+msgid "Could not send the email. Please try again later."
+msgstr "Не вдалося надіслати лист. Спробуйте пізніше."
+
+msgid "This confirmation link is invalid or has expired."
+msgstr "Посилання для підтвердження недійсне або прострочене."
+
+msgid "Email confirmed. Thank you!"
+msgstr "Пошту підтверджено. Дякуємо!"
+
+#, python-format
+msgid "We sent a new link to %(email)s."
+msgstr "Ми надіслали нове посилання на %(email)s."
 
 msgid "You have been signed out."
 msgstr "Ви вийшли з акаунта."
@@ -430,6 +474,9 @@ msgstr "Тренування записано."
 
 msgid "Could not save the workout. Please try again."
 msgstr "Не вдалося зберегти тренування. Спробуйте ще раз."
+
+msgid "Confirm your email first to invite athletes."
+msgstr "Щоб запрошувати спортсменів, спершу підтвердіть пошту."
 
 msgid "Client not found or not assigned to you."
 msgstr "Клієнта не знайдено або він не закріплений за вами."
@@ -759,6 +806,17 @@ msgstr "Темна"
 
 msgid "Language"
 msgstr "Мова"
+
+#, python-format
+msgid ""
+"We sent a link to %(email)s. Open it to confirm the address; you will need it to reset your "
+"password."
+msgstr ""
+"Ми надіслали посилання на %(email)s. Відкрийте його, щоб підтвердити адресу: вона знадобиться для"
+" відновлення пароля."
+
+msgid "Send the link again"
+msgstr "Надіслати посилання ще раз"
 
 msgid "Kolos — nutrition & training"
 msgstr "Kolos — харчування й тренування"
@@ -1579,11 +1637,11 @@ msgstr "Пошта"
 msgid "Password"
 msgstr "Пароль"
 
+msgid "Forgot password?"
+msgstr "Забули пароль?"
+
 msgid "Show password"
 msgstr "Показати пароль"
-
-msgid "Forgot your password? Ask the administrator for a temporary one."
-msgstr "Забули пароль? Попросіть адміністратора про тимчасовий."
 
 msgid "Sign in"
 msgstr "Увійти"
@@ -1613,8 +1671,47 @@ msgstr "Щонайменше %(n)s символів"
 msgid "Save"
 msgstr "Зберегти"
 
-msgid "Forgot your password? Ask the administrator for a temporary one and change it here."
-msgstr "Забули пароль? Попросіть адміністратора про тимчасовий і змініть його тут."
+msgid "Forgot your current password?"
+msgstr "Забули поточний пароль?"
+
+msgid "Reset it by email"
+msgstr "Відновіть його через пошту"
+
+msgid "Reset password"
+msgstr "Відновлення пароля"
+
+msgid "Check your email"
+msgstr "Перевірте пошту"
+
+#, python-format
+msgid "If an account exists for %(email)s, we sent a link to choose a new password. It works for 1 hour."
+msgstr ""
+"Якщо акаунт для %(email)s існує, ми надіслали посилання, щоб обрати новий пароль. Воно діє 1 "
+"годину."
+
+msgid "No email? Check the spam folder or try again in a minute."
+msgstr "Листа немає? Перевірте папку «Спам» або спробуйте ще раз за хвилину."
+
+msgid "Back to sign in"
+msgstr "Повернутися до входу"
+
+msgid "Enter the email you signed up with. We will send you a link to choose a new password."
+msgstr "Введіть пошту, з якою ви реєструвалися. Ми надішлемо посилання, щоб обрати новий пароль."
+
+msgid "Send link"
+msgstr "Надіслати посилання"
+
+msgid "Link expired"
+msgstr "Посилання недійсне"
+
+msgid "This link is invalid, has expired or was already used. Request a new one."
+msgstr "Посилання недійсне, прострочене або вже використане. Запросіть нове."
+
+msgid "Request a new link"
+msgstr "Запросити нове посилання"
+
+msgid "Save and sign in"
+msgstr "Зберегти й увійти"
 
 msgid "Profile — Kolos"
 msgstr "Профіль — Kolos"
@@ -1976,4 +2073,13 @@ msgstr "Видалити спортсмена"
 
 #~ msgid "Passwords do not match"
 #~ msgstr "Паролі не збігаються"
+
+#~ msgid "Welcome to Kolos!"
+#~ msgstr "Ласкаво просимо до Kolos!"
+
+#~ msgid "Forgot your password? Ask the administrator for a temporary one."
+#~ msgstr "Забули пароль? Попросіть адміністратора про тимчасовий."
+
+#~ msgid "Forgot your password? Ask the administrator for a temporary one and change it here."
+#~ msgstr "Забули пароль? Попросіть адміністратора про тимчасовий і змініть його тут."
 

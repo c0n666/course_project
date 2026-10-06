@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     language: Mapped[str | None] = mapped_column(db.String(5), nullable=True)  # "en" | "uk"; None = browser default
     consented_at: Mapped[datetime | None] = mapped_column(db.DateTime)  # health-data consent at sign-up
+    email_verified_at: Mapped[datetime | None] = mapped_column(db.DateTime)  # set by the confirmation link
 
     trainer: Mapped["User | None"] = relationship(
         "User",
