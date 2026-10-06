@@ -1,5 +1,6 @@
 import json
-from datetime import date, datetime
+import secrets
+from datetime import date, datetime, timedelta
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -20,6 +21,8 @@ class User(UserMixin, db.Model):
     role: Mapped[str] = mapped_column(db.String(20), nullable=False, default="user")
     trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     language: Mapped[str | None] = mapped_column(db.String(5), nullable=True)  # "en" | "uk"; None = browser default
+    consented_at: Mapped[datetime | None] = mapped_column(db.DateTime)  # health-data consent at sign-up
+    email_verified_at: Mapped[datetime | None] = mapped_column(db.DateTime)  # set by the confirmation link
 
     trainer: Mapped["User | None"] = relationship(
         "User",
@@ -326,3 +329,36 @@ class CoachMessage(db.Model):
     role: Mapped[str] = mapped_column(db.String(10), nullable=False)  # "user" | "assistant"
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+INVITE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L: easy to read aloud
+INVITE_LENGTH = 8
+INVITE_TTL = timedelta(hours=24)
+
+
+class TrainerInvite(db.Model):
+    """One-time code a trainer hands to an athlete (typed in, or scanned as a QR)."""
+
+    __tablename__ = "trainer_invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trainer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(db.String(INVITE_LENGTH), nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(db.DateTime)
+    used_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+    trainer = relationship("User", foreign_keys=[trainer_id])
+
+    def is_active(self) -> bool:
+        return self.used_at is None and self.expires_at > datetime.utcnow()
+
+    @property
+    def display_code(self) -> str:
+        half = INVITE_LENGTH // 2
+        return f"{self.code[:half]}-{self.code[half:]}"
+
+    @staticmethod
+    def new_code() -> str:
+        return "".join(secrets.choice(INVITE_ALPHABET) for _ in range(INVITE_LENGTH))

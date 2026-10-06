@@ -64,30 +64,45 @@
       <h1 class="mt-8 lg:mt-0 text-[28px] font-bold tracking-tight text-center lg:text-left">{{ _('Welcome back') }}</h1>
       <p class="mt-1 text-[15px] text-fg-muted text-center lg:text-left">{{ _('Sign in to continue.') }}</p>
 
+      {% if joining %}
+      <div class="mt-6 flex gap-3 rounded-2xl bg-primary/10 p-4 text-sm text-fg" role="status">
+        <svg class="w-5 h-5 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
+        <p>{{ _('Sign in or create an account to connect to your trainer.') }}</p>
+      </div>
+      {% endif %}
+
       <form method="post" action="{{ url_for('login') }}" class="mt-8 space-y-5">
+        <input type="hidden" name="next" value="{{ next_url }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
           <label for="email" class="{{ ui.label }}">{{ _('Email') }}</label>
-          <input type="email" id="email" name="email" required autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="next"
-                 class="{{ ui.input }}" placeholder="{{ _('you@university.edu') }}">
+          <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="next"
+                 class="{{ ui.input }}" placeholder="name@example.com" {% if not email %}autofocus{% endif %}
+                 {% if error %}aria-invalid="true" aria-describedby="loginError"{% endif %}>
         </div>
         <div>
-          <label for="password" class="{{ ui.label }}">{{ _('Password') }}</label>
+          <div class="flex items-baseline justify-between gap-3">
+            <label for="password" class="{{ ui.label }}">{{ _('Password') }}</label>
+            <a href="{{ url_for('forgot_password', email=email) if email else url_for('forgot_password') }}"
+               class="mb-1.5 text-[13px] font-semibold text-primary hover:text-primary-strong">{{ _('Forgot password?') }}</a>
+          </div>
           <div class="relative">
             <input type="password" id="password" name="password" required autocomplete="current-password" enterkeyhint="go"
-                   class="{{ ui.input }} pr-12">
+                   class="{{ ui.input }} pr-12" {% if email %}autofocus{% endif %}
+                   {% if error %}aria-invalid="true" aria-describedby="loginError"{% endif %}>
             <button type="button" id="togglePassword" aria-label="{{ _('Show password') }}" aria-pressed="false"
                     class="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-11 h-10 rounded-lg text-fg-subtle hover:text-fg">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
             </button>
           </div>
+          {% if error %}<p id="loginError" role="alert" class="mt-1.5 text-[13px] font-medium text-red-600 dark:text-red-400">{{ error }}</p>{% endif %}
         </div>
         <button type="submit" class="{{ ui.btn_primary }} w-full !h-14 !text-[17px] !rounded-2xl">{{ _('Sign in') }}</button>
       </form>
 
       <p class="mt-8 text-center text-[15px] text-fg-muted">
         {{ _('No account?') }}
-        <a href="{{ url_for('register') }}" class="font-semibold text-primary hover:text-primary-strong">{{ _('Create one') }}</a>
+        <a href="{{ url_for('register', next=next_url) if next_url else url_for('register') }}" class="font-semibold text-primary hover:text-primary-strong">{{ _('Create one') }}</a>
       </p>
     </div>
   </div>

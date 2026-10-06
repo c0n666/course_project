@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from werkzeug.security import generate_password_hash
@@ -31,6 +31,14 @@ def _make_app(tmp_path, **overrides):
     return app
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    import app as app_module
+
+    app_module._FAILED_ATTEMPTS.clear()
+    yield
+
+
 @pytest.fixture
 def app(tmp_path):
     app = _make_app(tmp_path)
@@ -54,12 +62,13 @@ def client(app):
     return app.test_client()
 
 
-def create_user(email, role="user", trainer=None, password="secret123"):
+def create_user(email, role="user", trainer=None, password="secret123", verified=True):
     user = User(
         email=email,
         password_hash=generate_password_hash(password),
         role=role,
         trainer_id=trainer.id if trainer else None,
+        email_verified_at=datetime.utcnow() if verified else None,
     )
     db.session.add(user)
     db.session.flush()

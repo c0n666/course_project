@@ -68,15 +68,14 @@ def test_athlete_cannot_open_trainer_pages(app, client):
     assert client.get(f"/trainer/client/{client_id}").status_code == 302
 
 
-def test_register_rejects_non_trainer_as_trainer(app, client):
+def test_register_ignores_a_submitted_trainer_id(app, client):
     with app.app_context():
-        other = create_user("other@user.test")
-        other_id = other.id
-    resp = client.post("/register", data=_register_form("x@y.test", trainer_id=str(other_id)))
-    assert resp.status_code == 200
+        trainer_id = create_user("t@trainer.test", role="trainer").id
+    resp = client.post("/register", data=_register_form("x@y.test", trainer_id=str(trainer_id)))
+    assert resp.status_code == 302
     with app.app_context():
         from models import User
-        assert User.query.filter_by(email="x@y.test").first() is None
+        assert User.query.filter_by(email="x@y.test").first().trainer_id is None
 
 
 # --- smoke flow ---------------------------------------------------------------
@@ -94,7 +93,7 @@ def _register_form(email, **extra):
         "activity_level": "light",
         "goal_type": "maintenance",
         "target_weight": "60",
-        "trainer_id": "",
+        "consent": "1",
     }
     data.update(extra)
     return data
@@ -103,10 +102,7 @@ def _register_form(email, **extra):
 def test_smoke_register_login_log_food_dashboard(app, client):
     assert client.get("/register").status_code == 200
     resp = client.post("/register", data=_register_form("new@user.test"))
-    assert resp.status_code == 302 and resp.headers["Location"].endswith("/login")
-
-    resp = login(client, "new@user.test")
-    assert resp.status_code == 302
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/")  # signed in right away
 
     with app.app_context():
         product_id = Product.query.first().id

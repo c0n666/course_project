@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-27 16:34+0300\n"
+"POT-Creation-Date: 2026-10-06 13:31+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -140,35 +140,81 @@ msgstr "Увійдіть, щоб продовжити."
 msgid "You do not have permission to access this page."
 msgstr "У вас немає доступу до цієї сторінки."
 
+msgid "Reset your Kolos password"
+msgstr "Відновлення пароля Kolos"
+
+#, python-format
+msgid "We received a request to reset the password for %(email)s."
+msgstr "Ми отримали запит на відновлення пароля для %(email)s."
+
+msgid "Choose a new password"
+msgstr "Обрати новий пароль"
+
+msgid ""
+"The link works for 1 hour and only once. If you did not ask for it, ignore this email: your "
+"password stays the same."
+msgstr ""
+"Посилання діє 1 годину й лише один раз. Якщо ви цього не запитували, просто проігноруйте лист: "
+"ваш пароль не зміниться."
+
+msgid "Confirm your email"
+msgstr "Підтвердіть пошту"
+
+#, python-format
+msgid "Confirm %(email)s to finish setting up your Kolos account."
+msgstr "Підтвердіть адресу %(email)s, щоб завершити налаштування акаунта Kolos."
+
+msgid "Confirm email"
+msgstr "Підтвердити пошту"
+
+msgid "The link works for 3 days. If you did not create an account, ignore this email."
+msgstr "Посилання діє 3 дні. Якщо ви не створювали акаунт, просто проігноруйте цей лист."
+
+msgid "To lose weight, the target must be below your current weight."
+msgstr "Щоб схуднути, цільова вага має бути меншою за поточну."
+
+msgid "To gain muscle, the target must be above your current weight."
+msgstr "Щоб набрати м’язову масу, цільова вага має бути більшою за поточну."
+
+msgid "Too many attempts. Please wait a minute and try again."
+msgstr "Забагато спроб. Зачекайте хвилину й спробуйте знову."
+
 msgid "Welcome back!"
 msgstr "З поверненням!"
 
 msgid "Invalid email or password."
 msgstr "Неправильна пошта або пароль."
 
-msgid "Email and password are required."
-msgstr "Потрібні пошта й пароль."
+msgid "Choose whether you are an athlete or a trainer."
+msgstr "Оберіть, хто ви: спортсмен чи тренер."
+
+msgid "Enter your email."
+msgstr "Введіть пошту."
 
 msgid "Enter a valid email address."
 msgstr "Введіть правильну адресу пошти."
 
-msgid "Password must be at least 6 characters."
-msgstr "Пароль має містити щонайменше 6 символів."
-
-msgid "Passwords do not match."
-msgstr "Паролі не збігаються."
-
 msgid "An account with this email already exists."
 msgstr "Акаунт із такою поштою вже існує."
 
-msgid "Invalid role selected."
-msgstr "Вибрано недійсну роль."
+#, python-format
+msgid "Password must be at least %(n)s characters."
+msgstr "Пароль має містити щонайменше %(n)s символів."
 
-msgid "Enter valid height, weight, and target weight."
-msgstr "Введіть правильні зріст, вагу й цільову вагу."
+msgid "Please agree to the processing of your data."
+msgstr "Підтвердьте згоду на обробку ваших даних."
 
 msgid "Select a valid gender."
 msgstr "Виберіть стать."
+
+msgid "Enter a valid birth date."
+msgstr "Введіть правильну дату народження."
+
+msgid "Height must be between 100 and 250 cm."
+msgstr "Зріст має бути від 100 до 250 см."
+
+msgid "Weight must be between 30 and 300 kg."
+msgstr "Вага має бути від 30 до 300 кг."
 
 msgid "Select a valid activity level."
 msgstr "Виберіть рівень активності."
@@ -176,17 +222,34 @@ msgstr "Виберіть рівень активності."
 msgid "Select a valid goal type."
 msgstr "Виберіть тип цілі."
 
-msgid "Enter a valid birth date."
-msgstr "Введіть правильну дату народження."
+msgid "Target weight must be between 30 and 300 kg."
+msgstr "Цільова вага має бути від 30 до 300 кг."
 
-msgid "The selected trainer was not found."
-msgstr "Вибраного тренера не знайдено."
-
-msgid "Account created. Please sign in."
-msgstr "Акаунт створено. Увійдіть."
+#, python-format
+msgid "Welcome to Kolos! We sent a confirmation link to %(email)s."
+msgstr "Ласкаво просимо до Kolos! Ми надіслали посилання для підтвердження на %(email)s."
 
 msgid "Registration failed. Please try again."
 msgstr "Не вдалося зареєструватися. Спробуйте ще раз."
+
+msgid "The current password is incorrect."
+msgstr "Поточний пароль неправильний."
+
+msgid "Password changed."
+msgstr "Пароль змінено."
+
+msgid "Could not send the email. Please try again later."
+msgstr "Не вдалося надіслати лист. Спробуйте пізніше."
+
+msgid "This confirmation link is invalid or has expired."
+msgstr "Посилання для підтвердження недійсне або прострочене."
+
+msgid "Email confirmed. Thank you!"
+msgstr "Пошту підтверджено. Дякуємо!"
+
+#, python-format
+msgid "We sent a new link to %(email)s."
+msgstr "Ми надіслали нове посилання на %(email)s."
 
 msgid "You have been signed out."
 msgstr "Ви вийшли з акаунта."
@@ -412,8 +475,31 @@ msgstr "Тренування записано."
 msgid "Could not save the workout. Please try again."
 msgstr "Не вдалося зберегти тренування. Спробуйте ще раз."
 
+msgid "Confirm your email first to invite athletes."
+msgstr "Щоб запрошувати спортсменів, спершу підтвердіть пошту."
+
 msgid "Client not found or not assigned to you."
 msgstr "Клієнта не знайдено або він не закріплений за вами."
+
+#, python-format
+msgid "%(email)s was removed from your athletes."
+msgstr "%(email)s видалено зі списку ваших спортсменів."
+
+msgid "Only athletes can connect to a trainer."
+msgstr "Підключатися до тренера можуть лише спортсмени."
+
+msgid "You already have a trainer. Disconnect first to join another."
+msgstr "У вас уже є тренер. Спершу відключіться, щоб приєднатися до іншого."
+
+msgid "This code is invalid or has expired. Ask your trainer for a new one."
+msgstr "Код недійсний або прострочений. Попросіть тренера створити новий."
+
+#, python-format
+msgid "Connected to trainer %(email)s."
+msgstr "Ви підключені до тренера %(email)s."
+
+msgid "You disconnected from your trainer."
+msgstr "Ви відключилися від тренера."
 
 msgid "Recommendation message cannot be empty."
 msgstr "Рекомендація не може бути порожньою."
@@ -480,6 +566,21 @@ msgstr "Чоловік"
 
 msgid "Female"
 msgstr "Жінка"
+
+msgid "Copied"
+msgstr "Скопійовано"
+
+msgid "Camera needs a secure (HTTPS) connection. Type the code instead."
+msgstr "Для камери потрібне захищене (HTTPS) з’єднання. Введіть код вручну."
+
+msgid "Camera access was denied. Type the code instead."
+msgstr "Доступ до камери заборонено. Введіть код вручну."
+
+msgid "Camera is not available. Type the code instead."
+msgstr "Камера недоступна. Введіть код вручну."
+
+msgid "Point the camera at your trainer’s QR code."
+msgstr "Наведіть камеру на QR-код тренера."
 
 msgid "You're offline. Reconnect to save your changes."
 msgstr "Ви офлайн. Підключіться до мережі, щоб зберегти зміни."
@@ -705,6 +806,17 @@ msgstr "Темна"
 
 msgid "Language"
 msgstr "Мова"
+
+#, python-format
+msgid ""
+"We sent a link to %(email)s. Open it to confirm the address; you will need it to reset your "
+"password."
+msgstr ""
+"Ми надіслали посилання на %(email)s. Відкрийте його, щоб підтвердити адресу: вона знадобиться для"
+" відновлення пароля."
+
+msgid "Send the link again"
+msgstr "Надіслати посилання ще раз"
 
 msgid "Kolos — nutrition & training"
 msgstr "Kolos — харчування й тренування"
@@ -1516,14 +1628,17 @@ msgstr "З поверненням"
 msgid "Sign in to continue."
 msgstr "Увійдіть, щоб продовжити."
 
+msgid "Sign in or create an account to connect to your trainer."
+msgstr "Увійдіть або створіть акаунт, щоб підключитися до тренера."
+
 msgid "Email"
 msgstr "Пошта"
 
-msgid "you@university.edu"
-msgstr "you@university.edu"
-
 msgid "Password"
 msgstr "Пароль"
+
+msgid "Forgot password?"
+msgstr "Забули пароль?"
 
 msgid "Show password"
 msgstr "Показати пароль"
@@ -1540,8 +1655,94 @@ msgstr "Створіть його"
 msgid "Hide password"
 msgstr "Сховати пароль"
 
+msgid "Change password"
+msgstr "Змінити пароль"
+
+msgid "Current password"
+msgstr "Поточний пароль"
+
+msgid "New password"
+msgstr "Новий пароль"
+
+#, python-format
+msgid "At least %(n)s characters"
+msgstr "Щонайменше %(n)s символів"
+
+msgid "Save"
+msgstr "Зберегти"
+
+msgid "Forgot your current password?"
+msgstr "Забули поточний пароль?"
+
+msgid "Reset it by email"
+msgstr "Відновіть його через пошту"
+
+msgid "Reset password"
+msgstr "Відновлення пароля"
+
+msgid "Check your email"
+msgstr "Перевірте пошту"
+
+#, python-format
+msgid "If an account exists for %(email)s, we sent a link to choose a new password. It works for 1 hour."
+msgstr ""
+"Якщо акаунт для %(email)s існує, ми надіслали посилання, щоб обрати новий пароль. Воно діє 1 "
+"годину."
+
+msgid "No email? Check the spam folder or try again in a minute."
+msgstr "Листа немає? Перевірте папку «Спам» або спробуйте ще раз за хвилину."
+
+msgid "Back to sign in"
+msgstr "Повернутися до входу"
+
+msgid "Enter the email you signed up with. We will send you a link to choose a new password."
+msgstr "Введіть пошту, з якою ви реєструвалися. Ми надішлемо посилання, щоб обрати новий пароль."
+
+msgid "Send link"
+msgstr "Надіслати посилання"
+
+msgid "Link expired"
+msgstr "Посилання недійсне"
+
+msgid "This link is invalid, has expired or was already used. Request a new one."
+msgstr "Посилання недійсне, прострочене або вже використане. Запросіть нове."
+
+msgid "Request a new link"
+msgstr "Запросити нове посилання"
+
+msgid "Save and sign in"
+msgstr "Зберегти й увійти"
+
 msgid "Profile — Kolos"
 msgstr "Профіль — Kolos"
+
+msgid "My trainer"
+msgstr "Мій тренер"
+
+msgid "Your trainer can see your meals, workouts and progress."
+msgstr "Тренер бачить ваші страви, тренування та прогрес."
+
+msgid "Disconnect from your trainer? They will no longer see your data."
+msgstr "Відключитися від тренера? Він більше не бачитиме ваших даних."
+
+msgid "Disconnect"
+msgstr "Відключитися"
+
+#, python-format
+msgid "Connect to trainer %(email)s?"
+msgstr "Підключитися до тренера %(email)s?"
+
+msgid "Ask your trainer for a code or QR, then enter or scan it here."
+msgstr "Попросіть у тренера код або QR, потім введіть чи скануйте його тут."
+
+msgid "Trainer code"
+msgstr "Код тренера"
+
+msgid "Connect"
+msgstr "Підключити"
+
+msgid "Scan QR code"
+msgstr "Сканувати QR-код"
 
 msgid "Daily targets"
 msgstr "Добові цілі"
@@ -1615,14 +1816,8 @@ msgstr "Крок %(n)s з %(total)s"
 msgid "Create your account"
 msgstr "Створіть акаунт"
 
-msgid "At least 6 characters"
-msgstr "Щонайменше 6 символів"
-
-msgid "Confirm password"
-msgstr "Підтвердіть пароль"
-
-msgid "Passwords do not match"
-msgstr "Паролі не збігаються"
+msgid "After sign-up you will connect to your trainer."
+msgstr "Після реєстрації ви підключитеся до тренера."
 
 msgid "I am"
 msgstr "Я"
@@ -1639,11 +1834,15 @@ msgstr "Тренер"
 msgid "Guide your athletes"
 msgstr "Веду атлетів"
 
-msgid "Your trainer"
-msgstr "Ваш тренер"
+msgid "You can connect a trainer later in the Me section."
+msgstr "Тренера можна підключити пізніше в розділі «Я»."
 
-msgid "— None —"
-msgstr "— Немає —"
+msgid ""
+"I agree that Kolos stores my body, nutrition and training data to calculate my targets. A trainer"
+" sees it only after I connect with their code, and I can disconnect at any time."
+msgstr ""
+"Я погоджуюся, що Kolos зберігає мої дані про тіло, харчування й тренування для розрахунку цілей. "
+"Тренер бачить їх лише після того, як я підключуся за його кодом, і я можу відключитися будь-коли."
 
 msgid "About your body"
 msgstr "Про ваше тіло"
@@ -1687,6 +1886,9 @@ msgstr "Профіцит калорій для росту"
 msgid "Target weight, kg"
 msgstr "Цільова вага, кг"
 
+msgid "Your daily target"
+msgstr "Ваша денна норма"
+
 msgid "Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data."
 msgstr "Добові цілі калорій і БЖВ розраховуються з цих даних за формулою Міффліна–Сан Жеора."
 
@@ -1704,6 +1906,37 @@ msgstr "Кабінет тренера — Kolos"
 
 msgid "Athletes"
 msgstr "Атлети"
+
+msgid "Invite an athlete"
+msgstr "Запросити спортсмена"
+
+msgid "QR code to connect to you"
+msgstr "QR-код для підключення до вас"
+
+msgid "Code"
+msgstr "Код"
+
+#, python-format
+msgid "Valid until %(time)s, one use."
+msgstr "Діє до %(time)s, одноразовий."
+
+msgid "Copy code"
+msgstr "Копіювати код"
+
+msgid "Copy link"
+msgstr "Копіювати посилання"
+
+msgid "Link"
+msgstr "Посилання"
+
+msgid "New code"
+msgstr "Новий код"
+
+msgid "Create a one-time code and QR. The athlete enters or scans it in their profile."
+msgstr "Створіть одноразовий код і QR. Спортсмен вводить або скануює його у своєму профілі."
+
+msgid "Create invite code"
+msgstr "Створити код запрошення"
 
 msgid "Search athletes"
 msgstr "Пошук атлетів"
@@ -1724,8 +1957,8 @@ msgstr "За вашим запитом атлетів не знайдено."
 msgid "No athletes yet"
 msgstr "Поки немає атлетів"
 
-msgid "Athletes can select you as their trainer during registration."
-msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
+msgid "Create a code above and give it to your athlete."
+msgstr "Створіть код вище й передайте його спортсмену."
 
 msgid "Client View"
 msgstr "Картка клієнта"
@@ -1798,4 +2031,55 @@ msgstr "З'явиться на вкладці «Коуч» у атлета."
 
 msgid "Approved"
 msgstr "Схвалені"
+
+msgid "Remove this athlete from your list? They can reconnect with a new code."
+msgstr "Видалити спортсмена зі списку? Він зможе підключитися знову з новим кодом."
+
+msgid "Remove athlete"
+msgstr "Видалити спортсмена"
+
+#~ msgid "The selected trainer was not found."
+#~ msgstr "Вибраного тренера не знайдено."
+
+#~ msgid "Your trainer"
+#~ msgstr "Ваш тренер"
+
+#~ msgid "— None —"
+#~ msgstr "— Немає —"
+
+#~ msgid "Athletes can select you as their trainer during registration."
+#~ msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
+
+#~ msgid "Email and password are required."
+#~ msgstr "Потрібні пошта й пароль."
+
+#~ msgid "Passwords do not match."
+#~ msgstr "Паролі не збігаються."
+
+#~ msgid "Invalid role selected."
+#~ msgstr "Вибрано недійсну роль."
+
+#~ msgid "Enter valid height, weight, and target weight."
+#~ msgstr "Введіть правильні зріст, вагу й цільову вагу."
+
+#~ msgid "Account created. Please sign in."
+#~ msgstr "Акаунт створено. Увійдіть."
+
+#~ msgid "you@university.edu"
+#~ msgstr "you@university.edu"
+
+#~ msgid "Confirm password"
+#~ msgstr "Підтвердіть пароль"
+
+#~ msgid "Passwords do not match"
+#~ msgstr "Паролі не збігаються"
+
+#~ msgid "Welcome to Kolos!"
+#~ msgstr "Ласкаво просимо до Kolos!"
+
+#~ msgid "Forgot your password? Ask the administrator for a temporary one."
+#~ msgstr "Забули пароль? Попросіть адміністратора про тимчасовий."
+
+#~ msgid "Forgot your password? Ask the administrator for a temporary one and change it here."
+#~ msgstr "Забули пароль? Попросіть адміністратора про тимчасовий і змініть його тут."
 
