@@ -27,6 +27,9 @@ from models import (
     SOURCE_QUICK,
     SOURCE_SEED,
     SOURCE_USER,
+    INVITE_ALPHABET,
+    INVITE_LENGTH,
+    INVITE_TTL,
     CoachMessage,
     FavoriteProduct,
     FoodLog,
@@ -37,6 +40,7 @@ from models import (
     Profile,
     Recommendation,
     Report,
+    TrainerInvite,
     User,
     WaterLog,
     WeightLog,
@@ -514,6 +518,63 @@ def get_trainer_client(trainer_id: int, client_id: int) -> User | None:
     ).first()
 
 
+def _safe_next(target: str | None) -> str | None:
+    """Only same-site paths: blocks open redirects through ?next=."""
+    if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return None
+
+
+def normalize_invite_code(raw: str | None) -> str:
+    """Canonical invite code from what the athlete typed or a scanned QR (code or /join/<code> URL)."""
+    text = (raw or "").strip()
+    if "/join/" in text:
+        text = text.split("/join/", 1)[1].split("?", 1)[0].split("#", 1)[0]
+    code = re.sub(r"[^A-Za-z0-9]", "", text).upper()
+    if len(code) != INVITE_LENGTH or any(ch not in INVITE_ALPHABET for ch in code):
+        return ""
+    return code
+
+
+def get_active_invite(trainer_id: int) -> TrainerInvite | None:
+    invite = (
+        TrainerInvite.query.filter_by(trainer_id=trainer_id, used_at=None)
+        .order_by(TrainerInvite.id.desc())
+        .first()
+    )
+    return invite if invite and invite.is_active() else None
+
+
+def create_invite(trainer: User) -> TrainerInvite:
+    """Issue a fresh code; the trainer's previous unused codes stop working."""
+    now = datetime.utcnow()
+    for old in TrainerInvite.query.filter_by(trainer_id=trainer.id, used_at=None).all():
+        old.used_at = now
+    code = TrainerInvite.new_code()
+    while TrainerInvite.query.filter_by(code=code).first():
+        code = TrainerInvite.new_code()
+    invite = TrainerInvite(trainer_id=trainer.id, code=code, expires_at=now + INVITE_TTL)
+    db.session.add(invite)
+    db.session.commit()
+    return invite
+
+
+_LINK_ATTEMPTS: dict[int, list[float]] = {}
+LINK_MAX_FAILURES = 5
+LINK_WINDOW_SECONDS = 60
+
+
+def _link_rate_limited(user_id: int) -> bool:
+    now = time.monotonic()
+    recent = [t for t in _LINK_ATTEMPTS.get(user_id, []) if now - t < LINK_WINDOW_SECONDS]
+    _LINK_ATTEMPTS[user_id] = recent
+    return len(recent) >= LINK_MAX_FAILURES
+
+
+def _record_link_failure(user_id: int) -> None:
+    _LINK_ATTEMPTS.setdefault(user_id, []).append(time.monotonic())
+
+
 def get_active_goal(user_id: int) -> Goal | None:
     return Goal.query.filter_by(user_id=user_id, status="active").first()
 
@@ -608,6 +669,8 @@ def _migrate_profile_goals_schema() -> None:
     }
     if "goals" not in tables:
         Goal.__table__.create(db.engine, checkfirst=True)
+    if "trainer_invites" not in tables:
+        TrainerInvite.__table__.create(db.engine, checkfirst=True)
 
     db.session.commit()
 
@@ -654,25 +717,22 @@ def register_routes(app: Flask) -> None:
             if user and check_password_hash(user.password_hash, password):
                 login_user(user)
                 flash(_("Welcome back!"), "success")
-                return redirect(url_for("index"))
+                return redirect(_safe_next(request.form.get("next")) or url_for("index"))
 
             flash(_("Invalid email or password."), "error")
 
-        return render_template("login.html")
+        return render_template("login.html", next_url=_safe_next(request.values.get("next")) or "")
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
         if current_user.is_authenticated:
             return redirect(url_for("index"))
 
-        trainers = User.query.filter_by(role="trainer").order_by(User.email).all()
-
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
             confirm = request.form.get("confirm_password", "")
             role = request.form.get("role", "user")
-            trainer_id = request.form.get("trainer_id")
 
             errors = []
             if not email or not password:
@@ -711,13 +771,6 @@ def register_routes(app: Flask) -> None:
                 if birth_date is None or not (date(1900, 1, 1) <= birth_date < date.today()):
                     errors.append(_("Enter a valid birth date."))
 
-                if trainer_id:
-                    trainer = (
-                        db.session.get(User, int(trainer_id)) if trainer_id.isdigit() else None
-                    )
-                    if not trainer or trainer.role != "trainer":
-                        errors.append(_("The selected trainer was not found."))
-
             if errors:
                 for msg in errors:
                     flash(msg, "error")
@@ -728,9 +781,6 @@ def register_routes(app: Flask) -> None:
                         password_hash=generate_password_hash(password),
                         role=role,
                     )
-                    if role == "user" and trainer_id:
-                        user.trainer_id = trainer.id
-
                     db.session.add(user)
                     db.session.flush()
 
@@ -764,7 +814,7 @@ def register_routes(app: Flask) -> None:
                     db.session.rollback()
                     flash(_("Registration failed. Please try again."), "error")
 
-        return render_template("register.html", trainers=trainers)
+        return render_template("register.html")
 
     @app.route("/logout")
     @login_required
@@ -1066,6 +1116,10 @@ def register_routes(app: Flask) -> None:
             else None
         )
 
+        invite_code = normalize_invite_code(request.args.get("code"))
+        invite = TrainerInvite.query.filter_by(code=invite_code).first() if invite_code else None
+        invite_trainer = invite.trainer if invite and invite.is_active() else None
+
         return render_template(
             "profile.html",
             profile=profile,
@@ -1073,6 +1127,9 @@ def register_routes(app: Flask) -> None:
             active_goal=active_goal,
             targets=targets,
             goal_progress=progress,
+            trainer=current_user.trainer,
+            invite_code=invite_code,
+            invite_trainer=invite_trainer,
         )
 
     def _log_food_context(selected_date: date, preselect_id: int | None = None,
@@ -1500,7 +1557,90 @@ def register_routes(app: Flask) -> None:
             clients=client_stats,
             client_count=len(client_stats),
             today=today,
+            invite=get_active_invite(current_user.id),
         )
+
+    @app.route("/trainer/invite", methods=["POST"])
+    @login_required
+    @role_required("trainer")
+    def trainer_invite_create():
+        create_invite(current_user)
+        return redirect(url_for("trainer_dashboard", _anchor="invite"))
+
+    @app.route("/trainer/invite/qr.svg")
+    @login_required
+    @role_required("trainer")
+    def trainer_invite_qr():
+        import io
+
+        import segno
+
+        invite = get_active_invite(current_user.id)
+        if invite is None:
+            return ("", 404)
+        buf = io.BytesIO()
+        segno.make(url_for("join", code=invite.code, _external=True), error="m").save(
+            buf, kind="svg", scale=8, border=2, dark="#111111", light="#ffffff", xmldecl=False
+        )
+        return app.response_class(
+            buf.getvalue(), mimetype="image/svg+xml", headers={"Cache-Control": "no-store"}
+        )
+
+    @app.route("/trainer/client/<int:client_id>/unlink", methods=["POST"])
+    @login_required
+    @role_required("trainer")
+    def trainer_unlink_client(client_id: int):
+        client = get_trainer_client(current_user.id, client_id)
+        if client is None:
+            flash(_("Client not found or not assigned to you."), "error")
+            return redirect(url_for("trainer_dashboard"))
+        client.trainer_id = None
+        db.session.commit()
+        flash(_("%(email)s was removed from your athletes.", email=client.email), "success")
+        return redirect(url_for("trainer_dashboard"))
+
+    @app.route("/join/<code>")
+    def join(code: str):
+        """Target of the trainer's QR: sign in if needed, then confirm on the profile page."""
+        if not current_user.is_authenticated:
+            return redirect(url_for("login", next=url_for("join", code=code)))
+        if current_user.role != "user":
+            flash(_("Only athletes can connect to a trainer."), "error")
+            return redirect(url_for("index"))
+        return redirect(url_for("profile_page", code=normalize_invite_code(code)))
+
+    @app.route("/profile/trainer/link", methods=["POST"])
+    @login_required
+    @role_required("user")
+    def profile_trainer_link():
+        if current_user.trainer_id:
+            flash(_("You already have a trainer. Disconnect first to join another."), "error")
+            return redirect(url_for("profile_page"))
+        if _link_rate_limited(current_user.id):
+            flash(_("Too many attempts. Please wait a minute and try again."), "error")
+            return redirect(url_for("profile_page"))
+        code = normalize_invite_code(request.form.get("code"))
+        invite = TrainerInvite.query.filter_by(code=code).first() if code else None
+        if invite is None or not invite.is_active() or invite.trainer.role != "trainer":
+            _record_link_failure(current_user.id)
+            flash(_("This code is invalid or has expired. Ask your trainer for a new one."), "error")
+            return redirect(url_for("profile_page"))
+        current_user.trainer_id = invite.trainer_id
+        invite.used_at = datetime.utcnow()
+        invite.used_by_id = current_user.id
+        db.session.commit()
+        flash(_("Connected to trainer %(email)s.", email=invite.trainer.email), "success")
+        return redirect(url_for("profile_page"))
+
+    @app.route("/profile/trainer/unlink", methods=["POST"])
+    @login_required
+    @role_required("user")
+    def profile_trainer_unlink():
+        if current_user.trainer_id:
+            current_user.trainer_id = None
+            db.session.commit()
+            flash(_("You disconnected from your trainer."), "success")
+        return redirect(url_for("profile_page"))
 
     @app.route("/trainer/client/<int:client_id>")
     @login_required

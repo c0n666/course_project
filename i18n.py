@@ -42,6 +42,11 @@ DYNAMIC_LABELS = [
 
 # Strings used by static/js/*.js (English source; {name} placeholders are filled in by App.t).
 JS_STRINGS = [
+    N_("Copied"),
+    N_("Camera needs a secure (HTTPS) connection. Type the code instead."),
+    N_("Camera access was denied. Type the code instead."),
+    N_("Camera is not available. Type the code instead."),
+    N_("Point the camera at your trainer’s QR code."),
     N_("You're offline. Reconnect to save your changes."),
     N_("You're offline. Reconnect to talk to the coach."),
     N_("Offline — showing saved data"),

@@ -76,15 +76,7 @@
           </div>
         </fieldset>
 
-        <div id="trainer-select" data-has-trainers="{{ '1' if trainers else '0' }}" {% if not trainers %}hidden{% endif %}>
-          <label for="r-trainer" class="{{ ui.label }}">{{ _('Your trainer') }} <span class="font-normal text-fg-muted">{{ _('(optional)') }}</span></label>
-          <select name="trainer_id" id="r-trainer" class="{{ ui.input }}">
-            <option value="">{{ _('— None —') }}</option>
-            {% for t in trainers %}
-            <option value="{{ t.id }}">{{ t.email }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        <p id="trainer-hint" class="{{ ui.hint }}">{{ _('You can connect a trainer later in the Me section.') }}</p>
       </div>
     </div>
 
@@ -175,7 +167,7 @@
 <script>
   (function () {
     const form = document.getElementById('regForm');
-    const trainerSelect = document.getElementById('trainer-select');
+    const trainerHint = document.getElementById('trainer-hint');
     const steps = Array.from(document.querySelectorAll('.reg-step'));
     const segs = Array.from(document.querySelectorAll('.step-seg'));
     const metricFields = document.querySelectorAll('.metric-field');
@@ -242,7 +234,7 @@
 
     form.addEventListener('change', (e) => {
       if (e.target.name !== 'role') return;
-      trainerSelect.hidden = isTrainer() || trainerSelect.dataset.hasTrainers !== '1';
+      trainerHint.hidden = isTrainer();
       setMetricRequired(!isTrainer());
       showStep(isTrainer() ? 1 : current, false);
     });

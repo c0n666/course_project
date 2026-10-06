@@ -68,15 +68,14 @@ def test_athlete_cannot_open_trainer_pages(app, client):
     assert client.get(f"/trainer/client/{client_id}").status_code == 302
 
 
-def test_register_rejects_non_trainer_as_trainer(app, client):
+def test_register_ignores_a_submitted_trainer_id(app, client):
     with app.app_context():
-        other = create_user("other@user.test")
-        other_id = other.id
-    resp = client.post("/register", data=_register_form("x@y.test", trainer_id=str(other_id)))
-    assert resp.status_code == 200
+        trainer_id = create_user("t@trainer.test", role="trainer").id
+    resp = client.post("/register", data=_register_form("x@y.test", trainer_id=str(trainer_id)))
+    assert resp.status_code == 302
     with app.app_context():
         from models import User
-        assert User.query.filter_by(email="x@y.test").first() is None
+        assert User.query.filter_by(email="x@y.test").first().trainer_id is None
 
 
 # --- smoke flow ---------------------------------------------------------------
@@ -94,7 +93,6 @@ def _register_form(email, **extra):
         "activity_level": "light",
         "goal_type": "maintenance",
         "target_weight": "60",
-        "trainer_id": "",
     }
     data.update(extra)
     return data

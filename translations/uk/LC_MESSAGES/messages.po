@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-27 16:34+0300\n"
+"POT-Creation-Date: 2026-10-06 11:41+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -178,9 +178,6 @@ msgstr "Виберіть тип цілі."
 
 msgid "Enter a valid birth date."
 msgstr "Введіть правильну дату народження."
-
-msgid "The selected trainer was not found."
-msgstr "Вибраного тренера не знайдено."
 
 msgid "Account created. Please sign in."
 msgstr "Акаунт створено. Увійдіть."
@@ -415,6 +412,29 @@ msgstr "Не вдалося зберегти тренування. Спробу�
 msgid "Client not found or not assigned to you."
 msgstr "Клієнта не знайдено або він не закріплений за вами."
 
+#, python-format
+msgid "%(email)s was removed from your athletes."
+msgstr "%(email)s видалено зі списку ваших спортсменів."
+
+msgid "Only athletes can connect to a trainer."
+msgstr "Підключатися до тренера можуть лише спортсмени."
+
+msgid "You already have a trainer. Disconnect first to join another."
+msgstr "У вас уже є тренер. Спершу відключіться, щоб приєднатися до іншого."
+
+msgid "Too many attempts. Please wait a minute and try again."
+msgstr "Забагато спроб. Зачекайте хвилину й спробуйте знову."
+
+msgid "This code is invalid or has expired. Ask your trainer for a new one."
+msgstr "Код недійсний або прострочений. Попросіть тренера створити новий."
+
+#, python-format
+msgid "Connected to trainer %(email)s."
+msgstr "Ви підключені до тренера %(email)s."
+
+msgid "You disconnected from your trainer."
+msgstr "Ви відключилися від тренера."
+
 msgid "Recommendation message cannot be empty."
 msgstr "Рекомендація не може бути порожньою."
 
@@ -480,6 +500,21 @@ msgstr "Чоловік"
 
 msgid "Female"
 msgstr "Жінка"
+
+msgid "Copied"
+msgstr "Скопійовано"
+
+msgid "Camera needs a secure (HTTPS) connection. Type the code instead."
+msgstr "Для камери потрібне захищене (HTTPS) з’єднання. Введіть код вручну."
+
+msgid "Camera access was denied. Type the code instead."
+msgstr "Доступ до камери заборонено. Введіть код вручну."
+
+msgid "Camera is not available. Type the code instead."
+msgstr "Камера недоступна. Введіть код вручну."
+
+msgid "Point the camera at your trainer’s QR code."
+msgstr "Наведіть камеру на QR-код тренера."
 
 msgid "You're offline. Reconnect to save your changes."
 msgstr "Ви офлайн. Підключіться до мережі, щоб зберегти зміни."
@@ -1543,6 +1578,34 @@ msgstr "Сховати пароль"
 msgid "Profile — Kolos"
 msgstr "Профіль — Kolos"
 
+msgid "My trainer"
+msgstr "Мій тренер"
+
+msgid "Your trainer can see your meals, workouts and progress."
+msgstr "Тренер бачить ваші страви, тренування та прогрес."
+
+msgid "Disconnect from your trainer? They will no longer see your data."
+msgstr "Відключитися від тренера? Він більше не бачитиме ваших даних."
+
+msgid "Disconnect"
+msgstr "Відключитися"
+
+#, python-format
+msgid "Connect to trainer %(email)s?"
+msgstr "Підключитися до тренера %(email)s?"
+
+msgid "Ask your trainer for a code or QR, then enter or scan it here."
+msgstr "Попросіть у тренера код або QR, потім введіть чи скануйте його тут."
+
+msgid "Trainer code"
+msgstr "Код тренера"
+
+msgid "Connect"
+msgstr "Підключити"
+
+msgid "Scan QR code"
+msgstr "Сканувати QR-код"
+
 msgid "Daily targets"
 msgstr "Добові цілі"
 
@@ -1639,11 +1702,8 @@ msgstr "Тренер"
 msgid "Guide your athletes"
 msgstr "Веду атлетів"
 
-msgid "Your trainer"
-msgstr "Ваш тренер"
-
-msgid "— None —"
-msgstr "— Немає —"
+msgid "You can connect a trainer later in the Me section."
+msgstr "Тренера можна підключити пізніше в розділі «Я»."
 
 msgid "About your body"
 msgstr "Про ваше тіло"
@@ -1705,6 +1765,37 @@ msgstr "Кабінет тренера — Kolos"
 msgid "Athletes"
 msgstr "Атлети"
 
+msgid "Invite an athlete"
+msgstr "Запросити спортсмена"
+
+msgid "QR code to connect to you"
+msgstr "QR-код для підключення до вас"
+
+msgid "Code"
+msgstr "Код"
+
+#, python-format
+msgid "Valid until %(time)s, one use."
+msgstr "Діє до %(time)s, одноразовий."
+
+msgid "Copy code"
+msgstr "Копіювати код"
+
+msgid "Copy link"
+msgstr "Копіювати посилання"
+
+msgid "Link"
+msgstr "Посилання"
+
+msgid "New code"
+msgstr "Новий код"
+
+msgid "Create a one-time code and QR. The athlete enters or scans it in their profile."
+msgstr "Створіть одноразовий код і QR. Спортсмен вводить або скануює його у своєму профілі."
+
+msgid "Create invite code"
+msgstr "Створити код запрошення"
+
 msgid "Search athletes"
 msgstr "Пошук атлетів"
 
@@ -1724,8 +1815,8 @@ msgstr "За вашим запитом атлетів не знайдено."
 msgid "No athletes yet"
 msgstr "Поки немає атлетів"
 
-msgid "Athletes can select you as their trainer during registration."
-msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
+msgid "Create a code above and give it to your athlete."
+msgstr "Створіть код вище й передайте його спортсмену."
 
 msgid "Client View"
 msgstr "Картка клієнта"
@@ -1798,4 +1889,22 @@ msgstr "З'явиться на вкладці «Коуч» у атлета."
 
 msgid "Approved"
 msgstr "Схвалені"
+
+msgid "Remove this athlete from your list? They can reconnect with a new code."
+msgstr "Видалити спортсмена зі списку? Він зможе підключитися знову з новим кодом."
+
+msgid "Remove athlete"
+msgstr "Видалити спортсмена"
+
+#~ msgid "The selected trainer was not found."
+#~ msgstr "Вибраного тренера не знайдено."
+
+#~ msgid "Your trainer"
+#~ msgstr "Ваш тренер"
+
+#~ msgid "— None —"
+#~ msgstr "— Немає —"
+
+#~ msgid "Athletes can select you as their trainer during registration."
+#~ msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
 
