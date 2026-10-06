@@ -559,20 +559,35 @@ def create_invite(trainer: User) -> TrainerInvite:
     return invite
 
 
-_LINK_ATTEMPTS: dict[int, list[float]] = {}
-LINK_MAX_FAILURES = 5
-LINK_WINDOW_SECONDS = 60
+_FAILED_ATTEMPTS: dict[tuple, list[float]] = {}
+MAX_FAILURES = 5
+FAILURE_WINDOW_SECONDS = 60
 
 
-def _link_rate_limited(user_id: int) -> bool:
+def _rate_limited(key: tuple) -> bool:
+    """True after MAX_FAILURES failures for `key` within the window (per process, in memory)."""
     now = time.monotonic()
-    recent = [t for t in _LINK_ATTEMPTS.get(user_id, []) if now - t < LINK_WINDOW_SECONDS]
-    _LINK_ATTEMPTS[user_id] = recent
-    return len(recent) >= LINK_MAX_FAILURES
+    recent = [t for t in _FAILED_ATTEMPTS.get(key, []) if now - t < FAILURE_WINDOW_SECONDS]
+    _FAILED_ATTEMPTS[key] = recent
+    return len(recent) >= MAX_FAILURES
 
 
-def _record_link_failure(user_id: int) -> None:
-    _LINK_ATTEMPTS.setdefault(user_id, []).append(time.monotonic())
+def _record_failure(key: tuple) -> None:
+    _FAILED_ATTEMPTS.setdefault(key, []).append(time.monotonic())
+
+
+MIN_PASSWORD_LENGTH = 8
+
+
+def target_weight_error(goal_type: str, current: float | None, target: float | None) -> str | None:
+    """The target must point the way of the goal: lower to lose weight, higher to gain muscle."""
+    if current is None or target is None:
+        return None
+    if goal_type == "weight_loss" and target >= current:
+        return _("To lose weight, the target must be below your current weight.")
+    if goal_type == "muscle_gain" and target <= current:
+        return _("To gain muscle, the target must be above your current weight.")
+    return None
 
 
 def get_active_goal(user_id: int) -> Goal | None:
@@ -653,6 +668,8 @@ def _migrate_profile_goals_schema() -> None:
     user_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(users)")).fetchall()}
     if "language" not in user_cols:
         db.session.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR(5)"))
+    if "consented_at" not in user_cols:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN consented_at DATETIME"))
 
     product_cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(products)")).fetchall()}
     if "name_uk" not in product_cols:
@@ -706,94 +723,109 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        next_url = _safe_next(request.values.get("next")) or ""
         if current_user.is_authenticated:
-            return redirect(url_for("index"))
+            return redirect(next_url or url_for("index"))
 
+        email = ""
+        error = None
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
-            user = User.query.filter_by(email=email).first()
+            if _rate_limited(("login", email)):
+                error = _("Too many attempts. Please wait a minute and try again.")
+            else:
+                user = User.query.filter_by(email=email).first()
+                if user and check_password_hash(user.password_hash, password):
+                    login_user(user, remember=True)
+                    flash(_("Welcome back!"), "success")
+                    return redirect(next_url or url_for("index"))
+                _record_failure(("login", email))
+                error = _("Invalid email or password.")
 
-            if user and check_password_hash(user.password_hash, password):
-                login_user(user)
-                flash(_("Welcome back!"), "success")
-                return redirect(_safe_next(request.form.get("next")) or url_for("index"))
-
-            flash(_("Invalid email or password."), "error")
-
-        return render_template("login.html", next_url=_safe_next(request.values.get("next")) or "")
+        return render_template(
+            "login.html", next_url=next_url, email=email, error=error,
+            joining=next_url.startswith("/join/"),
+        ), (401 if error else 200)
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
+        next_url = _safe_next(request.values.get("next")) or ""
         if current_user.is_authenticated:
-            return redirect(url_for("index"))
+            return redirect(next_url or url_for("index"))
 
+        errors: dict[str, str] = {}
         if request.method == "POST":
-            email = request.form.get("email", "").strip().lower()
-            password = request.form.get("password", "")
-            confirm = request.form.get("confirm_password", "")
-            role = request.form.get("role", "user")
+            form = request.form
+            email = form.get("email", "").strip().lower()
+            password = form.get("password", "")
+            role = form.get("role", "")
 
-            errors = []
-            if not email or not password:
-                errors.append(_("Email and password are required."))
-            elif "@" not in email or len(email) > 255:
-                errors.append(_("Enter a valid email address."))
-            if password and len(password) < 6:
-                errors.append(_("Password must be at least 6 characters."))
-            if password != confirm:
-                errors.append(_("Passwords do not match."))
-            if User.query.filter_by(email=email).first():
-                errors.append(_("An account with this email already exists."))
             if role not in ("user", "trainer"):
-                errors.append(_("Invalid role selected."))
+                errors["role"] = _("Choose whether you are an athlete or a trainer.")
+            if not email:
+                errors["email"] = _("Enter your email.")
+            elif "@" not in email or len(email) > 255:
+                errors["email"] = _("Enter a valid email address.")
+            elif User.query.filter_by(email=email).first():
+                errors["email"] = _("An account with this email already exists.")
+            if len(password) < MIN_PASSWORD_LENGTH:
+                errors["password"] = _("Password must be at least %(n)s characters.", n=MIN_PASSWORD_LENGTH)
+            if not form.get("consent"):
+                errors["consent"] = _("Please agree to the processing of your data.")
 
             gender = birth_date = activity_level = goal_type = None
             height = weight = target_weight = None
 
             if role == "user":
-                gender = request.form.get("gender", "").strip()
-                birth_date_str = request.form.get("birth_date", "")
-                activity_level = request.form.get("activity_level", "").strip()
-                goal_type = request.form.get("goal_type", "").strip()
-                height = parse_number(request.form.get("height"), 100, 250)
-                weight = parse_number(request.form.get("weight"), 30, 300)
-                target_weight = parse_number(request.form.get("target_weight"), 30, 300)
-                if height is None or weight is None or target_weight is None:
-                    errors.append(_("Enter valid height, weight, and target weight."))
+                gender = form.get("gender", "").strip()
+                activity_level = form.get("activity_level", "").strip()
+                goal_type = form.get("goal_type", "").strip()
+                height = parse_number(form.get("height"), 100, 250)
+                weight = parse_number(form.get("weight"), 30, 300)
+                target_weight = parse_number(form.get("target_weight"), 30, 300)
+                birth_date = parse_date_strict(form.get("birth_date", ""))
                 if gender not in ("male", "female"):
-                    errors.append(_("Select a valid gender."))
-                if activity_level not in ("sedentary", "light", "moderate", "active"):
-                    errors.append(_("Select a valid activity level."))
-                if goal_type not in ("weight_loss", "maintenance", "muscle_gain"):
-                    errors.append(_("Select a valid goal type."))
-                birth_date = parse_date_strict(birth_date_str)
+                    errors["gender"] = _("Select a valid gender.")
                 if birth_date is None or not (date(1900, 1, 1) <= birth_date < date.today()):
-                    errors.append(_("Enter a valid birth date."))
+                    errors["birth_date"] = _("Enter a valid birth date.")
+                if height is None:
+                    errors["height"] = _("Height must be between 100 and 250 cm.")
+                if weight is None:
+                    errors["weight"] = _("Weight must be between 30 and 300 kg.")
+                if activity_level not in ("sedentary", "light", "moderate", "active"):
+                    errors["activity_level"] = _("Select a valid activity level.")
+                if goal_type not in ("weight_loss", "maintenance", "muscle_gain"):
+                    errors["goal_type"] = _("Select a valid goal type.")
+                if target_weight is None:
+                    errors["target_weight"] = _("Target weight must be between 30 and 300 kg.")
+                elif goal_type:
+                    direction = target_weight_error(goal_type, weight, target_weight)
+                    if direction:
+                        errors["target_weight"] = direction
 
-            if errors:
-                for msg in errors:
-                    flash(msg, "error")
-            else:
+            if not errors:
                 try:
                     user = User(
                         email=email,
                         password_hash=generate_password_hash(password),
                         role=role,
+                        consented_at=datetime.utcnow(),
                     )
                     db.session.add(user)
                     db.session.flush()
 
                     if role == "user":
-                        profile = Profile(
-                            user_id=user.id,
-                            gender=gender,
-                            birth_date=birth_date,
-                            height=height,
-                            weight=weight,
-                            activity_level=activity_level,
+                        db.session.add(
+                            Profile(
+                                user_id=user.id,
+                                gender=gender,
+                                birth_date=birth_date,
+                                height=height,
+                                weight=weight,
+                                activity_level=activity_level,
+                            )
                         )
-                        db.session.add(profile)
                         db.session.add(
                             Goal(
                                 user_id=user.id,
@@ -808,13 +840,77 @@ def register_routes(app: Flask) -> None:
                         db.session.add(Profile(user_id=user.id))
 
                     db.session.commit()
-                    flash(_("Account created. Please sign in."), "success")
-                    return redirect(url_for("login"))
+                    login_user(user, remember=True)
+                    flash(_("Welcome to Kolos!"), "success")
+                    return redirect(next_url or url_for("index"))
                 except Exception:
                     db.session.rollback()
                     flash(_("Registration failed. Please try again."), "error")
 
-        return render_template("register.html")
+        step_of = {
+            "role": 1, "email": 1, "password": 1, "consent": 1,
+            "gender": 2, "birth_date": 2, "height": 2, "weight": 2, "activity_level": 2,
+            "goal_type": 3, "target_weight": 3,
+        }
+        start_step = min((step_of.get(k, 1) for k in errors), default=1)
+        return render_template(
+            "register.html",
+            form=request.form if request.method == "POST" else {},
+            errors=errors,
+            start_step=start_step,
+            next_url=next_url,
+            joining=next_url.startswith("/join/"),
+            min_password=MIN_PASSWORD_LENGTH,
+            today_iso=date.today().isoformat(),
+        ), (400 if errors else 200)
+
+    @app.route("/api/targets-preview")
+    def targets_preview():
+        """Daily targets for the sign-up form, computed from unsaved values (nothing is stored)."""
+        args = request.args
+        profile = Profile(
+            gender=args.get("gender") if args.get("gender") in ("male", "female") else None,
+            birth_date=parse_date_strict(args.get("birth_date", "")),
+            height=parse_number(args.get("height"), 100, 250),
+            weight=parse_number(args.get("weight"), 30, 300),
+            activity_level=args.get("activity_level") or "sedentary",
+        )
+        goal_type = args.get("goal_type")
+        goal = Goal(goal_type=goal_type) if goal_type in ("weight_loss", "maintenance", "muscle_gain") else None
+        targets = calculate_daily_targets(profile, goal) if profile.gender else None
+        if not targets:
+            return jsonify({"ok": False})
+        return jsonify({
+            "ok": True,
+            "calories": targets["calories"],
+            "proteins": round(targets["proteins"]),
+            "fats": round(targets["fats"]),
+            "carbs": round(targets["carbs"]),
+        })
+
+    @app.route("/account/password", methods=["GET", "POST"])
+    @login_required
+    def change_password():
+        errors: dict[str, str] = {}
+        if request.method == "POST":
+            current = request.form.get("current_password", "")
+            new = request.form.get("new_password", "")
+            if _rate_limited(("password", current_user.id)):
+                errors["current_password"] = _("Too many attempts. Please wait a minute and try again.")
+            elif not check_password_hash(current_user.password_hash, current):
+                _record_failure(("password", current_user.id))
+                errors["current_password"] = _("The current password is incorrect.")
+            if len(new) < MIN_PASSWORD_LENGTH:
+                errors["new_password"] = _("Password must be at least %(n)s characters.", n=MIN_PASSWORD_LENGTH)
+            if not errors:
+                current_user.password_hash = generate_password_hash(new)
+                db.session.commit()
+                flash(_("Password changed."), "success")
+                return redirect(url_for("trainer_dashboard" if current_user.role == "trainer" else "profile_page"))
+        back = url_for("trainer_dashboard" if current_user.role == "trainer" else "profile_page")
+        return render_template(
+            "password.html", errors=errors, back_url=back, min_password=MIN_PASSWORD_LENGTH
+        ), (400 if errors else 200)
 
     @app.route("/logout")
     @login_required
@@ -1079,6 +1175,11 @@ def register_routes(app: Flask) -> None:
                 if target_val is None:
                     db.session.rollback()
                     flash(_("Enter a valid target weight when changing goal."), "error")
+                    return redirect(url_for("profile_page"))
+                direction = target_weight_error(new_goal_type, new_weight, target_val)
+                if direction:
+                    db.session.rollback()
+                    flash(direction, "error")
                     return redirect(url_for("profile_page"))
 
                 if active_goal and active_goal.goal_type == new_goal_type:
@@ -1616,13 +1717,13 @@ def register_routes(app: Flask) -> None:
         if current_user.trainer_id:
             flash(_("You already have a trainer. Disconnect first to join another."), "error")
             return redirect(url_for("profile_page"))
-        if _link_rate_limited(current_user.id):
+        if _rate_limited(("link", current_user.id)):
             flash(_("Too many attempts. Please wait a minute and try again."), "error")
             return redirect(url_for("profile_page"))
         code = normalize_invite_code(request.form.get("code"))
         invite = TrainerInvite.query.filter_by(code=code).first() if code else None
         if invite is None or not invite.is_active() or invite.trainer.role != "trainer":
-            _record_link_failure(current_user.id)
+            _record_failure(("link", current_user.id))
             flash(_("This code is invalid or has expired. Ask your trainer for a new one."), "error")
             return redirect(url_for("profile_page"))
         current_user.trainer_id = invite.trainer_id
@@ -1770,6 +1871,18 @@ def register_routes(app: Flask) -> None:
         report = generate_coach_report(user_id, days=days, lang=user.language or DEFAULT_LANGUAGE)
         print(f"engine: {report.engine}")
         print(json.dumps(report.data, indent=2, ensure_ascii=False))
+
+    @app.cli.command("reset-password")
+    @click.argument("email")
+    def reset_password(email: str):
+        """Give a user a temporary password (they change it in Me / Change password)."""
+        user = User.query.filter_by(email=email.strip().lower()).first()
+        if user is None:
+            raise click.ClickException(f"No user with email {email}")
+        temporary = secrets.token_urlsafe(9)
+        user.password_hash = generate_password_hash(temporary)
+        db.session.commit()
+        click.echo(f"Temporary password for {user.email}: {temporary}")
 
     @app.cli.command("init-db")
     def init_db():

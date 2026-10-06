@@ -31,6 +31,14 @@ def _make_app(tmp_path, **overrides):
     return app
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    import app as app_module
+
+    app_module._FAILED_ATTEMPTS.clear()
+    yield
+
+
 @pytest.fixture
 def app(tmp_path):
     app = _make_app(tmp_path)

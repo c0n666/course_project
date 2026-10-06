@@ -95,6 +95,13 @@
     <p class="mt-1 text-sm text-fg-muted max-w-xs mx-auto">{{ _('Create a code above and give it to your athlete.') }}</p>
   </div>
   {% endif %}
+
+  <div class="mt-6 {{ ui.list }}">
+    <a href="{{ url_for('change_password') }}" class="press flex items-center gap-3 px-4 min-h-[52px]">
+      <span class="flex-1 text-[17px] sm:text-[15px]">{{ _('Change password') }}</span>
+      <svg class="w-4 h-4 shrink-0 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+    </a>
+  </div>
 </div>
 {% endblock %}
 

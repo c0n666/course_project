@@ -359,3 +359,12 @@ html.dark .toast--info    .toast-icon { color: #60A5FA; }
 .grade-unrated { background: rgb(var(--line)); color: rgb(var(--fg-muted)); }
 /* Predicted by the Kolos model rather than published by Open Food Facts */
 .grade-model { outline: 1.5px dashed rgb(var(--fg-muted)); outline-offset: 1.5px; }
+
+/* Field with a validation error (set by the server or the form scripts) */
+input[aria-invalid="true"]:not([type="radio"]):not([type="checkbox"]) {
+  border-color: rgb(220 38 38);
+}
+input[aria-invalid="true"]:not([type="radio"]):not([type="checkbox"]):focus {
+  border-color: rgb(220 38 38);
+  box-shadow: 0 0 0 4px rgb(220 38 38 / .15);
+}

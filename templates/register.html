@@ -24,6 +24,21 @@
 </label>
 {%- endmacro %}
 
+{#- Error under a field: filled by the server, or by the step check in JS from data-msg -#}
+{% macro field_error(name, msg) -%}
+<p id="err-{{ name }}" class="field-error mt-1.5 text-[13px] font-medium text-red-600 dark:text-red-400" role="alert"
+   data-msg="{{ msg }}" {% if not errors.get(name) %}hidden{% endif %}>{{ errors.get(name, '') }}
+  {%- if name == 'email' and errors.get(name) == _('An account with this email already exists.') %}
+  <a href="{{ url_for('login', next=next_url) if next_url else url_for('login') }}" class="font-semibold text-primary underline">{{ _('Sign in') }}</a>
+  {%- endif %}</p>
+{%- endmacro %}
+
+{% macro invalid(name) %}{% if errors.get(name) %}aria-invalid="true"{% endif %} aria-describedby="err-{{ name }}"{% endmacro %}
+
+{% set height_msg = _('Height must be between 100 and 250 cm.') %}
+{% set weight_msg = _('Weight must be between 30 and 300 kg.') %}
+{% set target_msg = _('Target weight must be between 30 and 300 kg.') %}
+
 {% block content %}
 <style>
   /* checkmark inside a selected choice card */
@@ -31,8 +46,9 @@
 </style>
 
 <div class="mx-auto w-full max-w-xl">
-  <form method="post" action="{{ url_for('register') }}" id="regForm" novalidate>
+  <form method="post" action="{{ url_for('register') }}" id="regForm" novalidate data-start-step="{{ start_step }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
     {# ---------- Progress ---------- #}
     <div class="mb-6">
@@ -41,42 +57,61 @@
         <span class="step-seg h-1.5 flex-1 rounded-full bg-line transition-colors" data-seg="{{ n }}"></span>
         {% endfor %}
       </div>
-      <p class="mt-4 text-[13px] font-semibold uppercase tracking-wide text-fg-muted" id="stepCounter" aria-live="polite">{{ _('Step %(n)s of %(total)s', n=1, total=3) }}</p>
+      <p class="mt-4 text-[13px] font-semibold text-fg-muted" id="stepCounter" aria-live="polite">{{ _('Step %(n)s of %(total)s', n=1, total=3) }}</p>
       <h1 id="stepTitle" tabindex="-1" class="mt-1 text-[28px] font-bold tracking-tight outline-none">{{ _('Create your account') }}</h1>
     </div>
+
+    {% if joining %}
+    <div class="mb-6 flex gap-3 rounded-2xl bg-primary/10 p-4 text-sm text-fg" role="status">
+      <svg class="w-5 h-5 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
+      <p>{{ _('After sign-up you will connect to your trainer.') }}</p>
+    </div>
+    {% endif %}
 
     <!-- Step 1 -->
     <div class="reg-step" data-step="1" data-title="{{ _('Create your account') }}">
       <div class="space-y-5">
-        <div>
-          <label for="r-email" class="{{ ui.label }}">{{ _('Email') }}</label>
-          <input type="email" id="r-email" name="email" required autocomplete="email" autocapitalize="off" spellcheck="false"
-                 class="{{ ui.input }}" placeholder="{{ _('you@university.edu') }}">
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label for="r-password" class="{{ ui.label }}">{{ _('Password') }}</label>
-            <input type="password" id="r-password" name="password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
-            <p class="{{ ui.hint }}">{{ _('At least 6 characters') }}</p>
-          </div>
-          <div>
-            <label for="r-confirm" class="{{ ui.label }}">{{ _('Confirm password') }}</label>
-            <input type="password" id="r-confirm" name="confirm_password" required minlength="6" autocomplete="new-password" class="{{ ui.input }}">
-            <p id="confirmHint" class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400" hidden role="alert">{{ _('Passwords do not match') }}</p>
-          </div>
-        </div>
-
         <fieldset id="roleSelect">
           <legend class="{{ ui.label }}">{{ _('I am') }}</legend>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {{ choice('role', 'user', _('Athlete'), _('Track meals & workouts'), checked=true,
+            {{ choice('role', 'user', _('Athlete'), _('Track meals & workouts'), checked=form.get('role', 'user') == 'user',
                       icon_path='m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z') }}
-            {{ choice('role', 'trainer', _('Trainer'), _('Guide your athletes'),
+            {{ choice('role', 'trainer', _('Trainer'), _('Guide your athletes'), checked=form.get('role') == 'trainer',
                       icon_path='M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z') }}
           </div>
+          {{ field_error('role', _('Choose whether you are an athlete or a trainer.')) }}
+          <p id="trainer-hint" class="{{ ui.hint }}" {% if form.get('role') == 'trainer' %}hidden{% endif %}>{{ _('You can connect a trainer later in the Me section.') }}</p>
         </fieldset>
 
-        <p id="trainer-hint" class="{{ ui.hint }}">{{ _('You can connect a trainer later in the Me section.') }}</p>
+        <div>
+          <label for="r-email" class="{{ ui.label }}">{{ _('Email') }}</label>
+          <input type="email" id="r-email" name="email" value="{{ form.get('email', '') }}" required autocomplete="email" autocapitalize="off" spellcheck="false"
+                 class="{{ ui.input }}" placeholder="name@example.com" {{ invalid('email') }}>
+          {{ field_error('email', _('Enter a valid email address.')) }}
+        </div>
+
+        <div>
+          <label for="r-password" class="{{ ui.label }}">{{ _('Password') }}</label>
+          <div class="relative">
+            <input type="password" id="r-password" name="password" required minlength="{{ min_password }}" autocomplete="new-password"
+                   class="{{ ui.input }} pr-12" {{ invalid('password') }}>
+            <button type="button" id="togglePassword" aria-label="{{ _('Show password') }}" aria-pressed="false"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-11 h-10 rounded-lg text-fg-subtle hover:text-fg">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+            </button>
+          </div>
+          <p class="{{ ui.hint }}">{{ _('At least %(n)s characters', n=min_password) }}</p>
+          {{ field_error('password', _('Password must be at least %(n)s characters.', n=min_password)) }}
+        </div>
+
+        <div>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="consent" value="1" id="r-consent" required {% if form.get('consent') %}checked{% endif %}
+                   class="mt-0.5 h-5 w-5 shrink-0 rounded border-line" style="accent-color: rgb(var(--primary))" {{ invalid('consent') }}>
+            <span class="text-[13px] leading-relaxed text-fg-muted">{{ _('I agree that Kolos stores my body, nutrition and training data to calculate my targets. A trainer sees it only after I connect with their code, and I can disconnect at any time.') }}</span>
+          </label>
+          {{ field_error('consent', _('Please agree to the processing of your data.')) }}
+        </div>
       </div>
     </div>
 
@@ -88,34 +123,42 @@
           <div class="grid grid-cols-2 gap-1 rounded-2xl bg-surface-2 p-1">
             {% for value, text in [('male', _('Male')), ('female', _('Female'))] %}
             <label class="relative">
-              <input type="radio" name="gender" value="{{ value }}" class="metric-field peer sr-only" {% if loop.first %}checked{% endif %}>
+              <input type="radio" name="gender" value="{{ value }}" class="metric-field peer sr-only" {% if form.get('gender') == value %}checked{% endif %}>
               <span class="press flex h-11 items-center justify-center rounded-xl text-[15px] font-semibold text-fg-muted
                            peer-checked:bg-surface peer-checked:text-fg peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary">{{ text }}</span>
             </label>
             {% endfor %}
           </div>
+          {{ field_error('gender', _('Select a valid gender.')) }}
         </fieldset>
         <div>
           <label for="r-birth" class="{{ ui.label }}">{{ _('Birth date') }}</label>
-          <input type="date" name="birth_date" id="r-birth" class="metric-field {{ ui.input }}">
+          <input type="date" name="birth_date" id="r-birth" value="{{ form.get('birth_date', '') }}" min="1900-01-01" max="{{ today_iso }}"
+                 class="metric-field {{ ui.input }}" {{ invalid('birth_date') }}>
+          {{ field_error('birth_date', _('Enter a valid birth date.')) }}
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label for="r-height" class="{{ ui.label }}">{{ _('Height, cm') }}</label>
-            <input type="number" name="height" id="r-height" step="0.1" min="100" max="250" inputmode="decimal" placeholder="175" class="metric-field {{ ui.input }}">
+            <input type="number" name="height" id="r-height" value="{{ form.get('height', '') }}" step="0.1" min="100" max="250" inputmode="decimal" placeholder="175"
+                   class="metric-field {{ ui.input }}" {{ invalid('height') }}>
+            {{ field_error('height', height_msg) }}
           </div>
           <div>
             <label for="r-weight" class="{{ ui.label }}">{{ _('Weight, kg') }}</label>
-            <input type="number" name="weight" id="r-weight" step="0.1" min="30" max="300" inputmode="decimal" placeholder="70" class="metric-field {{ ui.input }}">
+            <input type="number" name="weight" id="r-weight" value="{{ form.get('weight', '') }}" step="0.1" min="30" max="300" inputmode="decimal" placeholder="70"
+                   class="metric-field {{ ui.input }}" {{ invalid('weight') }}>
+            {{ field_error('weight', weight_msg) }}
           </div>
         </div>
         <fieldset>
           <legend class="{{ ui.label }}">{{ _('Activity level') }}</legend>
           <div class="space-y-2">
             {% for value, title, desc in [('sedentary', _('Sedentary'), _('Little or no exercise')), ('light', pgettext('activity level', 'Light'), _('1–3 days a week')), ('moderate', _('Moderate'), _('3–5 days a week')), ('active', _('Active'), _('6–7 days a week'))] %}
-            {{ choice('activity_level', value, title, desc, checked=loop.first, extra_class='metric-field') }}
+            {{ choice('activity_level', value, title, desc, checked=form.get('activity_level') == value, extra_class='metric-field') }}
             {% endfor %}
           </div>
+          {{ field_error('activity_level', _('Select a valid activity level.')) }}
         </fieldset>
       </div>
     </div>
@@ -131,14 +174,29 @@
               ('maintenance', _('Maintenance'), _('Keep your current shape'), 'M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5'),
               ('muscle_gain', _('Muscle gain'), _('Calorie surplus for growth'), 'M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941'),
             ] %}
-            {{ choice('goal_type', value, title, desc, checked=loop.first, extra_class='metric-field', icon_path=path) }}
+            {{ choice('goal_type', value, title, desc, checked=form.get('goal_type') == value, extra_class='metric-field', icon_path=path) }}
             {% endfor %}
           </div>
+          {{ field_error('goal_type', _('Select a valid goal type.')) }}
         </fieldset>
         <div>
           <label for="r-target" class="{{ ui.label }}">{{ _('Target weight, kg') }}</label>
-          <input type="number" name="target_weight" id="r-target" step="0.1" min="30" max="300" inputmode="decimal" placeholder="65" class="metric-field {{ ui.input }}">
+          <input type="number" name="target_weight" id="r-target" value="{{ form.get('target_weight', '') }}" step="0.1" min="30" max="300" inputmode="decimal" placeholder="65"
+                 class="metric-field {{ ui.input }}" {{ invalid('target_weight') }}>
+          {{ field_error('target_weight', target_msg) }}
         </div>
+
+        {# Live result of the data entered so far (computed by the server, nothing is stored) #}
+        <section id="targetsPreview" class="{{ ui.card }} p-4" aria-live="polite" hidden>
+          <p class="text-[13px] font-medium text-fg-muted">{{ _('Your daily target') }}</p>
+          <p class="mt-0.5 text-[30px] leading-tight font-bold tracking-tight tabular-nums text-kcal">≈ <span data-t="calories">—</span> <span class="text-[15px] font-semibold text-fg-muted">{{ _('kcal') }}</span></p>
+          <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-fg-muted tabular-nums">
+            <li><span class="inline-block h-2 w-2 rounded-full bg-protein align-middle mr-1" aria-hidden="true"></span>{{ _('Protein') }} <b class="font-semibold text-fg" data-t="proteins">—</b> {{ _('g') }}</li>
+            <li><span class="inline-block h-2 w-2 rounded-full bg-fat align-middle mr-1" aria-hidden="true"></span>{{ _('Fat') }} <b class="font-semibold text-fg" data-t="fats">—</b> {{ _('g') }}</li>
+            <li><span class="inline-block h-2 w-2 rounded-full bg-carbs align-middle mr-1" aria-hidden="true"></span>{{ _('Carbs') }} <b class="font-semibold text-fg" data-t="carbs">—</b> {{ _('g') }}</li>
+          </ul>
+        </section>
+
         <div class="flex gap-3 rounded-2xl bg-primary/10 p-4 text-sm text-fg">
           <svg class="w-5 h-5 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
           <p>{{ _('Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data.') }}</p>
@@ -157,7 +215,7 @@
 
     <p class="mt-6 text-center text-[15px] text-fg-muted">
       {{ _('Already have an account?') }}
-      <a href="{{ url_for('login') }}" class="font-semibold text-primary hover:text-primary-strong">{{ _('Sign in') }}</a>
+      <a href="{{ url_for('login', next=next_url) if next_url else url_for('login') }}" class="font-semibold text-primary hover:text-primary-strong">{{ _('Sign in') }}</a>
     </p>
   </form>
 </div>
@@ -172,35 +230,67 @@
     const segs = Array.from(document.querySelectorAll('.step-seg'));
     const metricFields = document.querySelectorAll('.metric-field');
     const password = document.getElementById('r-password');
-    const confirmPw = document.getElementById('r-confirm');
-    const confirmHint = document.getElementById('confirmHint');
     const title = document.getElementById('stepTitle');
     const counter = document.getElementById('stepCounter');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const submitBtn = document.getElementById('submitBtn');
+    const preview = document.getElementById('targetsPreview');
+    const DIRECTION = {
+      weight_loss: {{ _('To lose weight, the target must be below your current weight.')|tojson }},
+      muscle_gain: {{ _('To gain muscle, the target must be above your current weight.')|tojson }},
+    };
     let current = 1;
 
-    const isTrainer = () => (form.querySelector('input[name="role"]:checked') || {}).value === 'trainer';
+    const value = (name) => (form.querySelector(`input[name="${name}"]:checked`) || {}).value;
+    const isTrainer = () => value('role') === 'trainer';
     const lastStep = () => (isTrainer() ? 1 : 3);
 
     function setMetricRequired(required) { metricFields.forEach(f => { f.required = required; }); }
 
-    function checkPasswords() {
-      const mismatch = confirmPw.value && confirmPw.value !== password.value;
-      confirmPw.setCustomValidity(mismatch ? {{ _('Passwords do not match')|tojson }} : '');
-      confirmHint.hidden = !mismatch;
+    /* ---------- errors under fields ---------- */
+    function showError(name, message) {
+      const p = document.getElementById('err-' + name);
+      if (!p) return;
+      p.textContent = message || p.dataset.msg;
+      p.hidden = false;
+      form.querySelectorAll(`[name="${name}"]`).forEach(f => f.setAttribute('aria-invalid', 'true'));
+    }
+    function clearError(name) {
+      const p = document.getElementById('err-' + name);
+      if (p) p.hidden = true;
+      form.querySelectorAll(`[name="${name}"]`).forEach(f => f.removeAttribute('aria-invalid'));
+    }
+    form.addEventListener('input', (e) => { if (e.target.name) clearError(e.target.name); });
+    form.addEventListener('change', (e) => { if (e.target.name) clearError(e.target.name); });
+
+    function directionError() {
+      const goal = value('goal_type');
+      const weight = parseFloat(form.weight.value), target = parseFloat(form.target_weight.value);
+      if (!DIRECTION[goal] || isNaN(weight) || isNaN(target)) return null;
+      if (goal === 'weight_loss' && target >= weight) return DIRECTION.weight_loss;
+      if (goal === 'muscle_gain' && target <= weight) return DIRECTION.muscle_gain;
+      return null;
     }
 
-    /* Validate every field of step n; show the browser message on the first invalid one. */
+    /* Check every field of step n; show the message under the first invalid one and focus it. */
     function stepValid(n) {
-      const fields = steps[n - 1].querySelectorAll('input, select, textarea');
+      const fields = Array.from(steps[n - 1].querySelectorAll('input'));
+      const seen = new Set();
+      let first = null;
       for (const f of fields) {
-        if (!f.checkValidity()) {
-          if (f.type === 'radio') f.closest('label').scrollIntoView({ block: 'center' });
-          f.reportValidity();
-          return false;
-        }
+        if (seen.has(f.name)) continue;
+        seen.add(f.name);
+        if (!f.checkValidity()) { showError(f.name); first = first || f; }
+      }
+      if (n === 3 && !first) {
+        const msg = directionError();
+        if (msg) { showError('target_weight', msg); first = form.target_weight; }
+      }
+      if (first) {
+        (first.type === 'radio' ? first.closest('fieldset') : first).scrollIntoView({ block: 'center', behavior: 'smooth' });
+        first.focus({ preventScroll: true });
+        return false;
       }
       return true;
     }
@@ -219,6 +309,7 @@
       prevBtn.hidden = n === 1;
       nextBtn.hidden = n === total;
       submitBtn.hidden = n !== total;
+      if (n === 3) updatePreview();
       if (moveFocus) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         title.focus({ preventScroll: true });
@@ -232,15 +323,41 @@
       showStep(n);
     }
 
+    /* ---------- live daily-target preview (step 3) ---------- */
+    let previewTimer = null;
+    function updatePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(async () => {
+        const params = new URLSearchParams();
+        ['gender', 'activity_level', 'goal_type'].forEach(k => { if (value(k)) params.set(k, value(k)); });
+        ['birth_date', 'height', 'weight'].forEach(k => params.set(k, form[k].value));
+        try {
+          const res = await fetch('{{ url_for("targets_preview") }}?' + params, { headers: { Accept: 'application/json' } });
+          const data = await res.json();
+          preview.hidden = !data.ok;
+          if (data.ok) ['calories', 'proteins', 'fats', 'carbs'].forEach(k => {
+            preview.querySelector(`[data-t="${k}"]`).textContent = data[k].toLocaleString(document.documentElement.lang);
+          });
+        } catch (_) { preview.hidden = true; }
+      }, 150);
+    }
+
     form.addEventListener('change', (e) => {
+      if (e.target.name === 'goal_type') updatePreview();
       if (e.target.name !== 'role') return;
       trainerHint.hidden = isTrainer();
       setMetricRequired(!isTrainer());
       showStep(isTrainer() ? 1 : current, false);
     });
 
-    password.addEventListener('input', checkPasswords);
-    confirmPw.addEventListener('input', checkPasswords);
+    document.getElementById('togglePassword').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      const show = password.type === 'password';
+      password.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.setAttribute('aria-label', show ? {{ _('Hide password')|tojson }} : {{ _('Show password')|tojson }});
+    });
+
     nextBtn.addEventListener('click', () => { if (current < lastStep()) goTo(current + 1); });
     prevBtn.addEventListener('click', () => { if (current > 1) showStep(current - 1); });
 
@@ -253,14 +370,18 @@
     });
 
     form.addEventListener('submit', (e) => {
-      checkPasswords();
       for (let i = 1; i <= lastStep(); i++) {
-        if (!stepValid(i)) { e.preventDefault(); if (i !== current) { showStep(i); stepValid(i); } return; }
+        if (!stepValid(i)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();  // no spinner on the submit button
+          if (i !== current) { showStep(i); stepValid(i); }
+          return;
+        }
       }
     });
 
-    setMetricRequired(true);
-    showStep(1, false);
+    setMetricRequired(!isTrainer());
+    showStep(Math.min(parseInt(form.dataset.startStep, 10) || 1, lastStep()), false);
   })();
 </script>
 {% endblock %}

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-06 11:41+0300\n"
+"POT-Creation-Date: 2026-10-06 12:54+0300\n"
 "PO-Revision-Date: 2026-09-27 12:03+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: uk\n"
@@ -140,35 +140,51 @@ msgstr "Увійдіть, щоб продовжити."
 msgid "You do not have permission to access this page."
 msgstr "У вас немає доступу до цієї сторінки."
 
+msgid "To lose weight, the target must be below your current weight."
+msgstr "Щоб схуднути, цільова вага має бути меншою за поточну."
+
+msgid "To gain muscle, the target must be above your current weight."
+msgstr "Щоб набрати м’язову масу, цільова вага має бути більшою за поточну."
+
+msgid "Too many attempts. Please wait a minute and try again."
+msgstr "Забагато спроб. Зачекайте хвилину й спробуйте знову."
+
 msgid "Welcome back!"
 msgstr "З поверненням!"
 
 msgid "Invalid email or password."
 msgstr "Неправильна пошта або пароль."
 
-msgid "Email and password are required."
-msgstr "Потрібні пошта й пароль."
+msgid "Choose whether you are an athlete or a trainer."
+msgstr "Оберіть, хто ви: спортсмен чи тренер."
+
+msgid "Enter your email."
+msgstr "Введіть пошту."
 
 msgid "Enter a valid email address."
 msgstr "Введіть правильну адресу пошти."
 
-msgid "Password must be at least 6 characters."
-msgstr "Пароль має містити щонайменше 6 символів."
-
-msgid "Passwords do not match."
-msgstr "Паролі не збігаються."
-
 msgid "An account with this email already exists."
 msgstr "Акаунт із такою поштою вже існує."
 
-msgid "Invalid role selected."
-msgstr "Вибрано недійсну роль."
+#, python-format
+msgid "Password must be at least %(n)s characters."
+msgstr "Пароль має містити щонайменше %(n)s символів."
 
-msgid "Enter valid height, weight, and target weight."
-msgstr "Введіть правильні зріст, вагу й цільову вагу."
+msgid "Please agree to the processing of your data."
+msgstr "Підтвердьте згоду на обробку ваших даних."
 
 msgid "Select a valid gender."
 msgstr "Виберіть стать."
+
+msgid "Enter a valid birth date."
+msgstr "Введіть правильну дату народження."
+
+msgid "Height must be between 100 and 250 cm."
+msgstr "Зріст має бути від 100 до 250 см."
+
+msgid "Weight must be between 30 and 300 kg."
+msgstr "Вага має бути від 30 до 300 кг."
 
 msgid "Select a valid activity level."
 msgstr "Виберіть рівень активності."
@@ -176,14 +192,20 @@ msgstr "Виберіть рівень активності."
 msgid "Select a valid goal type."
 msgstr "Виберіть тип цілі."
 
-msgid "Enter a valid birth date."
-msgstr "Введіть правильну дату народження."
+msgid "Target weight must be between 30 and 300 kg."
+msgstr "Цільова вага має бути від 30 до 300 кг."
 
-msgid "Account created. Please sign in."
-msgstr "Акаунт створено. Увійдіть."
+msgid "Welcome to Kolos!"
+msgstr "Ласкаво просимо до Kolos!"
 
 msgid "Registration failed. Please try again."
 msgstr "Не вдалося зареєструватися. Спробуйте ще раз."
+
+msgid "The current password is incorrect."
+msgstr "Поточний пароль неправильний."
+
+msgid "Password changed."
+msgstr "Пароль змінено."
 
 msgid "You have been signed out."
 msgstr "Ви вийшли з акаунта."
@@ -421,9 +443,6 @@ msgstr "Підключатися до тренера можуть лише сп�
 
 msgid "You already have a trainer. Disconnect first to join another."
 msgstr "У вас уже є тренер. Спершу відключіться, щоб приєднатися до іншого."
-
-msgid "Too many attempts. Please wait a minute and try again."
-msgstr "Забагато спроб. Зачекайте хвилину й спробуйте знову."
 
 msgid "This code is invalid or has expired. Ask your trainer for a new one."
 msgstr "Код недійсний або прострочений. Попросіть тренера створити новий."
@@ -1551,17 +1570,20 @@ msgstr "З поверненням"
 msgid "Sign in to continue."
 msgstr "Увійдіть, щоб продовжити."
 
+msgid "Sign in or create an account to connect to your trainer."
+msgstr "Увійдіть або створіть акаунт, щоб підключитися до тренера."
+
 msgid "Email"
 msgstr "Пошта"
-
-msgid "you@university.edu"
-msgstr "you@university.edu"
 
 msgid "Password"
 msgstr "Пароль"
 
 msgid "Show password"
 msgstr "Показати пароль"
+
+msgid "Forgot your password? Ask the administrator for a temporary one."
+msgstr "Забули пароль? Попросіть адміністратора про тимчасовий."
 
 msgid "Sign in"
 msgstr "Увійти"
@@ -1574,6 +1596,25 @@ msgstr "Створіть його"
 
 msgid "Hide password"
 msgstr "Сховати пароль"
+
+msgid "Change password"
+msgstr "Змінити пароль"
+
+msgid "Current password"
+msgstr "Поточний пароль"
+
+msgid "New password"
+msgstr "Новий пароль"
+
+#, python-format
+msgid "At least %(n)s characters"
+msgstr "Щонайменше %(n)s символів"
+
+msgid "Save"
+msgstr "Зберегти"
+
+msgid "Forgot your password? Ask the administrator for a temporary one and change it here."
+msgstr "Забули пароль? Попросіть адміністратора про тимчасовий і змініть його тут."
 
 msgid "Profile — Kolos"
 msgstr "Профіль — Kolos"
@@ -1678,14 +1719,8 @@ msgstr "Крок %(n)s з %(total)s"
 msgid "Create your account"
 msgstr "Створіть акаунт"
 
-msgid "At least 6 characters"
-msgstr "Щонайменше 6 символів"
-
-msgid "Confirm password"
-msgstr "Підтвердіть пароль"
-
-msgid "Passwords do not match"
-msgstr "Паролі не збігаються"
+msgid "After sign-up you will connect to your trainer."
+msgstr "Після реєстрації ви підключитеся до тренера."
 
 msgid "I am"
 msgstr "Я"
@@ -1704,6 +1739,13 @@ msgstr "Веду атлетів"
 
 msgid "You can connect a trainer later in the Me section."
 msgstr "Тренера можна підключити пізніше в розділі «Я»."
+
+msgid ""
+"I agree that Kolos stores my body, nutrition and training data to calculate my targets. A trainer"
+" sees it only after I connect with their code, and I can disconnect at any time."
+msgstr ""
+"Я погоджуюся, що Kolos зберігає мої дані про тіло, харчування й тренування для розрахунку цілей. "
+"Тренер бачить їх лише після того, як я підключуся за його кодом, і я можу відключитися будь-коли."
 
 msgid "About your body"
 msgstr "Про ваше тіло"
@@ -1746,6 +1788,9 @@ msgstr "Профіцит калорій для росту"
 
 msgid "Target weight, kg"
 msgstr "Цільова вага, кг"
+
+msgid "Your daily target"
+msgstr "Ваша денна норма"
 
 msgid "Daily calorie and macro targets are calculated with the Mifflin-St Jeor equation from this data."
 msgstr "Добові цілі калорій і БЖВ розраховуються з цих даних за формулою Міффліна–Сан Жеора."
@@ -1907,4 +1952,28 @@ msgstr "Видалити спортсмена"
 
 #~ msgid "Athletes can select you as their trainer during registration."
 #~ msgstr "Атлети можуть вибрати вас тренером під час реєстрації."
+
+#~ msgid "Email and password are required."
+#~ msgstr "Потрібні пошта й пароль."
+
+#~ msgid "Passwords do not match."
+#~ msgstr "Паролі не збігаються."
+
+#~ msgid "Invalid role selected."
+#~ msgstr "Вибрано недійсну роль."
+
+#~ msgid "Enter valid height, weight, and target weight."
+#~ msgstr "Введіть правильні зріст, вагу й цільову вагу."
+
+#~ msgid "Account created. Please sign in."
+#~ msgstr "Акаунт створено. Увійдіть."
+
+#~ msgid "you@university.edu"
+#~ msgstr "you@university.edu"
+
+#~ msgid "Confirm password"
+#~ msgstr "Підтвердіть пароль"
+
+#~ msgid "Passwords do not match"
+#~ msgstr "Паролі не збігаються"
 

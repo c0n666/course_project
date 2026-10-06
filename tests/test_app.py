@@ -93,6 +93,7 @@ def _register_form(email, **extra):
         "activity_level": "light",
         "goal_type": "maintenance",
         "target_weight": "60",
+        "consent": "1",
     }
     data.update(extra)
     return data
@@ -101,10 +102,7 @@ def _register_form(email, **extra):
 def test_smoke_register_login_log_food_dashboard(app, client):
     assert client.get("/register").status_code == 200
     resp = client.post("/register", data=_register_form("new@user.test"))
-    assert resp.status_code == 302 and resp.headers["Location"].endswith("/login")
-
-    resp = login(client, "new@user.test")
-    assert resp.status_code == 302
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/")  # signed in right away
 
     with app.app_context():
         product_id = Product.query.first().id

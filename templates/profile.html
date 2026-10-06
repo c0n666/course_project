@@ -175,6 +175,10 @@
       </section>
 
       <div class="{{ ui.list }}">
+        <a href="{{ url_for('change_password') }}" class="press {{ row }}">
+          <span class="{{ row_label }}">{{ _('Change password') }}</span>
+          <svg class="w-4 h-4 shrink-0 text-fg-subtle" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </a>
         <button type="button" data-install data-install-action hidden class="press w-full {{ row }} text-left">
           <span class="{{ row_label }} text-primary">{{ _('Install app') }}</span>
         </button>
