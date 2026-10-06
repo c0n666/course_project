@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 import sqlite3
+import sys
 import time
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -2268,6 +2269,12 @@ def _seed_generic_foods() -> None:
     if added:
         print(f"Seeded {added} generic foods.")
 
+
+# Local settings (SECRET_KEY, MAIL_*, AI keys) from .env, which git ignores. Tests use their own config.
+if "pytest" not in sys.modules:
+    from dotenv import load_dotenv
+
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 app = create_app()
 
